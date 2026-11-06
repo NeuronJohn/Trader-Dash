@@ -1235,6 +1235,17 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         source_verified:false
       };
     }
+    if(S.mesSignalPreview){
+      const sig=S.mesSignalPreview;
+      result.evidence.mes_session_signal={
+        rule:sig.rule,version:sig.ruleVersion,day:sig.day,side:sig.side,
+        signal_bar_start_utc:iso(sig.signalBarStart),
+        confirmation_close_utc:iso(sig.signalTime),
+        boundary:sig.boundary,structural_invalidation:sig.structuralStop,
+        status:"HISTORICAL_RESEARCH_MATCH_NOT_A_TRADE",
+        future_outcome_included:false
+      };
+    }
     if(S.selectedCandidate)result.pattern_candidate={id:S.selectedCandidate.id,rule_version:S.selectedCandidate.version,kind:S.selectedCandidate.type,detected_at_utc:iso(S.selectedCandidate.at),direction:S.selectedCandidate.side,range_boundary:S.selectedCandidate.boundary,reference_close:S.selectedCandidate.trigger,illustrative_invalidation:S.selectedCandidate.invalidation,confirmation_checks:S.selectedCandidate.checks,profitability:"NOT_TESTED",outcome:"UNKNOWN"};
     if(S.strategy)result.strategy_candidate={id:S.strategy,name:strategyMap[S.strategy].name,detail:strategyMap[S.strategy].detail,validation:"not_tested"};
     return result;
@@ -1395,6 +1406,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       selected_range:S.selection?[...S.selection]:null,window:{start_utc:iso(a.bars[0].time),end_utc:iso(a.bars[a.bars.length-1].time)},
       candles:b.map(x=>({...x})),drawings:activeDrawings().map(x=>({...x})),
       image:canvas.toDataURL("image/png"),review:"",experiment_id:S.mesRun?.id||S.experiment?.id||S.strategy||null,
+      historical_mes_signal:S.mesSignalPreview?{
+        rule:S.mesSignalPreview.rule,day:S.mesSignalPreview.day,
+        observed_at:iso(S.mesSignalPreview.signalTime),
+        status:"RESEARCH_MATCH_NO_OUTCOME"}:null,
       modeled_mes_case:S.mesPreview?{rule:S.mesPreview.rule,side:S.mesPreview.side,day:S.mesPreview.day,
         signalTime:S.mesPreview.signalTime,entryTime:S.mesPreview.entryTime,exitTime:S.mesPreview.exitTime,
         modeledNetR:S.mesPreview.netR,status:"NOT_EXECUTED_HISTORICAL_SIMULATION"}:null,
@@ -1683,7 +1698,14 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       throw Error("MES rule engine unavailable. Download the complete prototype folder including session-engine.js.");
     return engine;
   }
+  function checkMesSource(){
+    if(!$("mesConfirm").checked)throw Error("Confirm MES dataset provenance and five-minute bar-start timestamps before researching");
+    if(S.data.source!=="user-csv-unverified")throw Error("Import MES history. The synthetic chart is only for drawing practice");
+    if(!/(^|[^a-z])mes(?=[^a-z]|$)/i.test(S.data.symbol))
+      throw Error("MES instrument identity must be present in the CSV filename");
+  }
   function buildMesOptions(){
+    checkMesSource();
     const o={
       rule:$("mesRule").value,
       slippageTicks:Number($("mesSlip").value),
@@ -1692,13 +1714,64 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       source:S.data.source,
     };
     if(!["ORP-001","FBR-001"].includes(o.rule))throw Error("Unsupported frozen strategy rule");
-    if(!$("mesConfirm").checked)throw Error("Confirm MES dataset provenance and five-minute bar-start timestamps before testing");
-    if(S.data.source!=="user-csv-unverified")throw Error("Import a MES historical CSV. The generic synthetic demonstration cannot be used for a MES session test");
-    if(!/(^|[^a-z])mes(?=[^a-z]|$)/i.test(S.data.symbol))
-      throw Error("The imported file name must identify MES so the instrument metadata cannot silently be confused");
     if(S.replay)throw Error("Exit visual historical reveal mode before running this full-dataset experiment");
     return o;
   }
+  function renderMesScans(){
+    const host=$("mesScanned");host.textContent="";
+    const data=S.mesSignals;
+    if(!data||data.datasetId!==S.data.id){
+      host.append(htmlText("p","Find MES setups using only completed historical candle information. Click a match to inspect it in reveal mode without seeing future bars.","small muted"));
+      return;
+    }
+    const summary=htmlText("p",data.matches.length+" completed-bar historical matches · "+
+      data.excluded.length+" sessions excluded for incomplete data · "+
+      "as of "+new Date(data.asOfUtc).toISOString().slice(0,16)+"Z","small muted");
+    host.append(summary);
+    const wrap=document.createElement("div");wrap.className="matches";
+    if(!data.matches.length){
+      wrap.append(htmlText("p","No qualifying confirmations under this frozen rule. No trades should be invented to fill an empty shortlist.","empty"));
+    }else{
+      for(const t of data.matches.slice(-16).reverse()){
+        const btn=document.createElement("button");btn.type="button";btn.className="hit";
+        btn.append(htmlText("strong",t.rule+" · "+t.side));
+        btn.append(htmlText("small",t.day+" · "+new Date(t.signalTime).toISOString().slice(11,16)+"Z"));
+        btn.append(htmlText("div","Boundary "+Number(t.boundary).toFixed(2)+" · Invalid "+Number(t.structuralStop).toFixed(2),"label"));
+        btn.addEventListener("click",()=>focusMesSignal(t));
+        wrap.append(btn);
+      }
+    }
+    host.append(wrap);
+    host.append(htmlText("p","Matched rules only: no next-candle entry, execution cost, outcome or win probability is included.","small dim"));
+  }
+  function runMesScan(){
+    try{
+      checkMesSource();
+      const engine=mesEngine();
+      const index=S.replay?S.reveal:S.data.bars.length-1;
+      const asOfUtc=S.data.bars[index].time+300000;
+      S.mesSignals={...engine.scanSignals(S.data.bars,{rule:$("mesRule").value,asOfUtc}),datasetId:S.data.id};
+      renderMesScans();
+      toast("Found "+S.mesSignals.matches.length+" historic confirmations without using future outcomes.");
+    }catch(e){toast("MES setup search blocked: "+e.message)}
+  }
+  function focusMesSignal(signal){
+    const index=S.data.bars.findIndex(bar=>bar.time===signal.signalBarStart);
+    if(index<0){toast("Source candle was not found");return}
+    S.mesSignalPreview={...signal};
+    S.mesPreview=null;S.selectedCandidate=null;
+    // Open a genuinely pre-outcome visual state: the signal bar is the LAST
+    // visible one. Future bars and later journal cases are excluded.
+    S.replay=true;S.reveal=index;S.viewportEnd=index;
+    S.replayDrawings=[];S.selectedDrawing=null;S.drag=null;
+    $("replayToggle").checked=true;
+    S.selection=[Math.max(0,index-12),index];
+    S.packet=null;
+    $("setupName").value=signal.rule+" · "+signal.side+" · "+signal.day+" (historical research)";
+    setPage("workspace");renderDrawingList();updateContext();renderScanner();
+    toast("Confirmation-only view opened. Use +1 to reveal what happened afterward.");
+  }
+
   async function runMesResearch(){
     try{
       const engine=mesEngine(),options=buildMesOptions();
@@ -1821,7 +1894,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(S.data.id!==record.datasetId){toast("Load the matching dataset before opening this case.");return}
     const idx=S.data.bars.findIndex(b=>b.time===t.entryTime);
     if(idx<0){toast("Original candle could not be located.");return}
-    S.selectedCandidate=null;
+    S.selectedCandidate=null;S.mesSignalPreview=null;
+    S.replay=false;S.reveal=S.data.bars.length-1;$("replayToggle").checked=false;
     S.mesPreview={...t};
     S.viewportEnd=Math.min(S.data.bars.length-1,idx+Math.round(S.visible*.55));
     S.selection=[Math.max(0,idx-8),Math.min(S.data.bars.length-1,idx+3)];
