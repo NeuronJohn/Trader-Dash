@@ -37,6 +37,11 @@ function createUI(){
       this.children=[];this.dataset={};this.style={};this.listeners={};
       this.classList={add(){},remove(){},toggle(){}};
     }
+    set textContent(value){
+      this._textContent=String(value);
+      if(value==="")this.children=[];
+    }
+    get textContent(){return this._textContent||""}
     addEventListener(type,callback){(this.listeners[type]??=[]).push(callback)}
     append(...items){this.children.push(...items)}
     appendChild(item){this.children.push(item);return item}
