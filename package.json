@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test tests/chart-data.test.js"
+    "test": "node --test"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
