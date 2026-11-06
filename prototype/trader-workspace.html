@@ -695,11 +695,16 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const limit=S.replay?S.reveal:S.data.bars.length-1;
     S.candidates=searchPatterns(S.data.bars,limit);
     if(S.selectedCandidate && !S.candidates.some(c=>c.id===S.selectedCandidate.id))S.selectedCandidate=null;
-    if(focusLatest && S.candidates.length){
-      const candidate=S.candidates[S.candidates.length-1];
-      S.selectedCandidate=candidate;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
-      S.viewportEnd=Math.min(limit,candidate.index+Math.round(S.visible*.35));
-      $("setupName").value=candidate.title+" · "+candidate.side+" · "+iso(candidate.at).slice(0,16)+"Z";
+    if(focusLatest){
+      const type=$("scanFilter").value;
+      const eligible=S.candidates.filter(c=>type==="all"||c.type===type);
+      const candidate=eligible.at(-1)||null;
+      S.selectedCandidate=candidate;
+      if(candidate){
+        S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
+        S.viewportEnd=Math.min(limit,candidate.index+Math.round(S.visible*.35));
+        $("setupName").value=candidate.title+" · "+candidate.side+" · "+iso(candidate.at).slice(0,16)+"Z";
+      } else S.selection=null;
     }
     $("latestCase").textContent=S.candidates.length?S.candidates.length+" historical matches":"No patterns found";
     renderScanner();
@@ -1097,7 +1102,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("scanTop").addEventListener("click",()=>{scanHistory(true);toast(S.candidates.length+" historical candidate patterns found. None are verified trading signals.");});
     $("scanNow").addEventListener("click",()=>{scanHistory(true);toast("Historical scan refreshed.");});
     $("aiScanBtn").addEventListener("click",()=>{setPage("workspace");scanHistory(true);toast("Candidate search is local and rule-based, not an active AI model.");});
-    $("scanFilter").addEventListener("change",renderScanner);
+    $("scanFilter").addEventListener("change",()=>{const kind=$("scanFilter").value;const matching=S.candidates.filter(c=>kind==="all"||c.type===kind);
+      if(!S.selectedCandidate||!matching.some(c=>c.id===S.selectedCandidate.id)){
+        if(matching.length)selectCandidate(matching.at(-1));else{S.selectedCandidate=null;S.selection=null;S.packet=null;updateContext();renderScanner();}
+      }else renderScanner();
+    });
     $("latestCase").addEventListener("click",()=>{const newest=S.candidates.at(-1);if(newest)selectCandidate(newest);else toast("No matching pattern in this dataset.");});
     $("drawingLabel").addEventListener("input",e=>{
       const m=selectedMark();if(!m)return;m.label=e.target.value.slice(0,180);
