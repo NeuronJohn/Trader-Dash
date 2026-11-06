@@ -290,6 +290,19 @@ class Handler(BaseHTTPRequestHandler):
                              "connect-src 'self'; base-uri 'none'; form-action 'none'")
             self.end_headers()
             self.wfile.write(content)
+        elif pathname in ("/session-engine.js", "/prototype/session-engine.js"):
+            path = ROOT / "prototype" / "session-engine.js"
+            if not path.is_file():
+                self._reply(404, {"ok": False, "error": "Strategy engine unavailable"})
+                return
+            content = path.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/javascript; charset=utf-8")
+            self.send_header("Content-Length", str(len(content)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            self.wfile.write(content)
         elif pathname == "/api/session":
             self._reply(200, {"ok": True, "server": "local-only-research",
                               "token": TOKEN, "ollama": model_status(), "execution": False})
