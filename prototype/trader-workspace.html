@@ -714,13 +714,18 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const out=[];
     const last=Math.min(cutoff,bars.length-1);
     if(last<25)return out;
-    const deltas=[];
-    for(let k=1;k<Math.min(last,75);k++){const d=bars[k].time-bars[k-1].time;if(d>0)deltas.push(d)}
-    deltas.sort((a,b)=>a-b);
-    const typical=deltas[Math.floor(deltas.length/2)]||300000;
     const minSpacing=8;
     const seen=new Map();
     for(let i=23;i<=last;i++){
+      // Estimate expected bar spacing only from the history that would have
+      // existed at signal time. No peeking into future sessions or gaps.
+      const dt=[];
+      for(let j=Math.max(1,i-25);j<i;j++){
+        const gap=bars[j].time-bars[j-1].time;
+        if(gap>0)dt.push(gap);
+      }
+      dt.sort((a,b)=>a-b);
+      const typical=dt[Math.floor(dt.length/2)]||300000;
       if(bars[i].time-bars[i-1].time>typical*2.5 || bars[i-1].time-bars[i-2].time>typical*2.5)continue;
       const history=bars.slice(i-19,i-2);
       if(history.length<15)continue;
@@ -803,14 +808,6 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const out=[];
     let occupiedUntil=-1;
     const limit=bars.length-1;
-    const gapMedian=(()=>{
-      const diffs=[];
-      for(let i=1;i<Math.min(200,bars.length);i++){
-        const dt=bars[i].time-bars[i-1].time;if(dt>0)diffs.push(dt)
-      }
-      diffs.sort((a,b)=>a-b);
-      return diffs[Math.floor(diffs.length/2)]||300000;
-    })();
     const dayLimit=options.maxPerDay??0;
     const byDay=new Map();
     for(const c of patterns){
@@ -819,7 +816,15 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       if(entryIndex+maxHold-1>limit||signal<=occupiedUntil)continue;
       const date=new Date(bars[entryIndex].time).toISOString().slice(0,10);
       if(dayLimit>0&&(byDay.get(date)||0)>=dayLimit)continue;
-      // Do not bridge a large missing-data gap during the actual holding period.
+      // Calibrate expected spacing from history available at signal time.
+      const diffs=[];
+      for(let j=Math.max(1,signal-25);j<=signal;j++){
+        const dt=bars[j].time-bars[j-1].time;
+        if(dt>0)diffs.push(dt);
+      }
+      diffs.sort((a,b)=>a-b);
+      const gapMedian=diffs[Math.floor(diffs.length/2)]||300000;
+      // Do not bridge a large missing-data gap during the holding period.
       let gap=false;
       for(let j=signal+1;j<entryIndex+maxHold;j++)
         if(bars[j].time-bars[j-1].time>gapMedian*2.5){gap=true;break}
