@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import "../prototype/session-engine.js";
+import "../prototype/paper-ledger.js";
 
 const html=readFileSync(join(dirname(fileURLToPath(import.meta.url)),"../prototype/trader-workspace.html"),"utf8");
 const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
@@ -61,7 +62,7 @@ function createUI(){
   const window={matchMedia(){return {matches:false}},addEventListener(){},confirm(){return true}};
   const inner=script.slice(script.indexOf("(function(){")+"(function(){".length,script.lastIndexOf("})();"));
   const patched=inner.replace(/\n\s*start\(\);\s*$/,
-    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible}));');
+    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger}));');
   assert.notEqual(inner,patched);
   const launch=new Function("document","window","globalThis","indexedDB","localStorage","devicePixelRatio",
     "requestAnimationFrame","ResizeObserver","setTimeout","clearTimeout","fetch",patched);
@@ -114,4 +115,59 @@ test("MES research is blocked until source is explicitly acknowledged",async()=>
   assert.equal(x.S.mesRun,null);
   assert.equal(x.S.experimentRuns.length,0);
   assert.ok(x.nodes.mesResult.children.length>0);
+});
+
+function fakePaperDb(){
+  const saved=new Map();
+  return {
+    saved,
+    transaction(){
+      const tx={oncomplete:null,onerror:null,
+        objectStore:()=>({
+          put(c){
+            saved.set(c.id,JSON.parse(JSON.stringify(c)));
+            queueMicrotask(()=>tx.oncomplete?.());
+            return {result:c};
+          }
+        })
+      };
+      return tx;
+    }
+  };
+}
+test("paper case can be recorded from MES discovery and stored before its outcome",async()=>{
+  const x=await createUI();
+  x.resetDataset(dataset());x.nodes.mesConfirm.checked=true;
+  x.runMesScan();
+  x.S.db=fakePaperDb();
+  await x.capturePaperCase(false);
+  assert.equal(x.S.paperCases.length,1);
+  assert.equal(x.S.paperCases[0].status,"PENDING");
+  assert.equal(x.S.paperCases[0].origin,"HISTORICAL_REPLAY");
+  assert.equal(x.S.paperCases[0].outcome,undefined);
+  assert.equal(x.S.db.saved.size,1);
+  assert.equal(x.nodes.paperCases.children.length,1);
+});
+test("outcome reconciliation adds a later event without changing the captured signal",async()=>{
+  const x=await createUI();x.resetDataset(dataset());x.nodes.mesConfirm.checked=true;
+  x.runMesScan();x.S.db=fakePaperDb();
+  await x.capturePaperCase(false);
+  const prefix=JSON.stringify(x.S.paperCases[0].prefix);
+  await x.reconcilePaperCases();
+  assert.equal(x.S.paperCases.length,1);
+  assert.equal(x.S.paperCases[0].status,"RESOLVED");
+  assert.equal(x.S.paperCases[0].events.length,2);
+  assert.equal(JSON.stringify(x.S.paperCases[0].prefix),prefix);
+  assert.ok(Number.isFinite(x.S.paperCases[0].outcome.netR));
+  assert.equal(x.nodes.paperSummary.children.length,3);
+});
+test("paper statistics are opt-in and excluded from historical replay AI context",async()=>{
+  const x=await createUI();x.resetDataset(dataset());x.nodes.mesConfirm.checked=true;
+  x.runMesScan();x.S.db=fakePaperDb();await x.capturePaperCase(false);
+  x.nodes.aiPrompt.value="Explain this MES setup";
+  assert.equal(x.packet().evidence.paper_research,undefined);
+  x.S.scopes.paper=true;
+  assert.equal(x.packet().evidence.paper_research.summary.verifiedForwardCases,0);
+  x.S.replay=true;x.S.reveal=10;x.S.viewportEnd=10;
+  assert.equal(x.packet().evidence.paper_research,undefined);
 });
