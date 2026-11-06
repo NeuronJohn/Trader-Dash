@@ -1103,6 +1103,17 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(S.scopes.notes)result.evidence.notes={setup:$("setupName").value,thesis:$("thesis").value};
     if(S.scopes.history && !S.replay)result.evidence.saved_cases=S.snapshots.slice(0,10).map(s=>({id:s.id,at:s.at,symbol:s.symbol,setup:s.setup,note:s.note,source:s.source}));
     if(S.scopes.history && S.replay)result.missing.push("Saved journal cases omitted from reveal mode to avoid retrospective outcome leakage");
+    if(S.experiment && S.experiment.datasetId===S.data.id && !S.replay){
+      const run=S.experiment;
+      result.evidence.research_simulation={
+        run_id:run.id,status:"RESEARCH_ONLY_NOT_VERIFIED",
+        assumptions:run.report.assumptions,
+        train:run.report.train,
+        reserved:run.holdoutRevealedAt?run.report.holdout:null,
+        reserved_unseen:!run.holdoutRevealedAt,
+        source_verified:false
+      };
+    }
     if(S.selectedCandidate)result.pattern_candidate={id:S.selectedCandidate.id,rule_version:S.selectedCandidate.version,kind:S.selectedCandidate.type,detected_at_utc:iso(S.selectedCandidate.at),direction:S.selectedCandidate.side,range_boundary:S.selectedCandidate.boundary,reference_close:S.selectedCandidate.trigger,illustrative_invalidation:S.selectedCandidate.invalidation,confirmation_checks:S.selectedCandidate.checks,profitability:"NOT_TESTED",outcome:"UNKNOWN"};
     if(S.strategy)result.strategy_candidate={id:S.strategy,name:strategyMap[S.strategy].name,detail:strategyMap[S.strategy].detail,validation:"not_tested"};
     return result;
@@ -1271,14 +1282,15 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     try {
       const datasets=S.db?await dbAction("datasets","readonly",store=>store.getAll()):[];
       const drawings=S.db?await dbAction("drawings","readonly",store=>store.getAll()):[];
+      const experiments=S.db?await dbAction("experiments","readonly",store=>store.getAll()):S.experimentRuns;
       if(S.data.source!=="synthetic"&&!datasets.some(x=>x.id===S.data.id))datasets.push(S.data);
       if(!drawings.some(x=>x.id===S.data.id))drawings.push({id:S.data.id,list:S.drawings,updated_at:new Date().toISOString()});
-      const out={schema:"trader.html.foundation.v2",exported_at:new Date().toISOString(),
-        disclaimer:"Demo / imported unverified data; not live broker fills",snapshots:S.snapshots.map(x=>({...x})),datasets,drawings,
+      const out={schema:"trader.html.foundation.v3",exported_at:new Date().toISOString(),
+        disclaimer:"Demo / imported unverified data; not live broker fills",snapshots:S.snapshots.map(x=>({...x})),datasets,drawings,experiments,
         replay_drawings:S.replay?S.replayDrawings.map(x=>({...x})):[],
         draft:{setup:$("setupName").value,thesis:$("thesis").value},active_context:S.packet?{...S.packet,evidence:undefined}:null};
       downloadText(JSON.stringify(out,null,2),"trader-research-archive-"+new Date().toISOString().slice(0,10)+".json");
-      toast("Full chart archive exported. Restore UI still pending — keep this file safe.");
+      toast("Research archive exported: charts, drawings, snapshots and saved experiment runs.");
     } catch(e){toast("Archive failed: "+e.message)}
   }
   async function restoreArchive(event){
@@ -1288,12 +1300,13 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(file.size>25000000){toast("Archive too large (25 MB maximum in this prototype).");return}
     try{
       const archive=JSON.parse(await file.text());
-      if(!["trader.html.foundation.v1","trader.html.foundation.v2"].includes(archive.schema))
+      if(!["trader.html.foundation.v1","trader.html.foundation.v2","trader.html.foundation.v3"].includes(archive.schema))
         throw Error("Unsupported research archive schema");
       const datasets=Array.isArray(archive.datasets)?archive.datasets:[];
       const snapshots=Array.isArray(archive.snapshots)?archive.snapshots:[];
       const drawings=Array.isArray(archive.drawings)?archive.drawings:[];
-      if(datasets.length>100||snapshots.length>750||drawings.length>100)throw Error("Archive exceeds safe record limits");
+      const experiments=Array.isArray(archive.experiments)?archive.experiments:[];
+      if(datasets.length>100||snapshots.length>750||drawings.length>100||experiments.length>250)throw Error("Archive exceeds safe record limits");
       for(const d of datasets){
         if(typeof d.id!=="string"||d.id.length>180||!Array.isArray(d.bars)||d.bars.length<5||d.bars.length>20000)throw Error("Malformed historical dataset");
         for(let i=0;i<d.bars.length;i++){
@@ -1313,17 +1326,30 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
            x.list.some(mark=>!mark || typeof mark.id!=="string" || !["level","note","line","rectangle","arrow","brush"].includes(mark.type)||
            (mark.points&&(!Array.isArray(mark.points)||mark.points.length>3000))))throw Error("Malformed drawing layer");
       }
-      if(!window.confirm("Import "+snapshots.length+" snapshots, "+datasets.length+" datasets, and "+drawings.length+" drawing layers into this browser? Matching IDs will be replaced."))return;
+      for(const r of experiments){
+        if(typeof r.id!=="string"||r.id.length>180||typeof r.datasetId!=="string"||
+           typeof r.createdAt!=="string"||!r.options||typeof r.options!=="object"||
+           !r.report||typeof r.report!=="object"||r.report.status!=="RESEARCH_ONLY_NOT_VERIFIED"||
+           !Array.isArray(r.report.trades)||r.report.trades.length>20000)
+          throw Error("Invalid historical research run");
+      }
+      if(!window.confirm("Import "+snapshots.length+" snapshots, "+datasets.length+" datasets, "+
+        drawings.length+" drawing layers, and "+experiments.length+
+        " research runs? Matching IDs will be replaced."))return;
       // One atomic write transaction: malformed or quota-failing batches leave existing records intact.
       await new Promise((resolve,reject)=>{
-        const tx=S.db.transaction(["datasets","snapshots","drawings"],"readwrite");
+        const tx=S.db.transaction(["datasets","snapshots","drawings","experiments"],"readwrite");
         datasets.forEach(item=>tx.objectStore("datasets").put(item));
         snapshots.forEach(item=>tx.objectStore("snapshots").put(item));
         drawings.forEach(item=>tx.objectStore("drawings").put(item));
+        experiments.forEach(item=>tx.objectStore("experiments").put(item));
         tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error("Restore failed"));tx.onabort=()=>reject(tx.error||Error("Restore aborted"));
       });
       S.snapshots=(await dbAction("snapshots","readonly",store=>store.getAll())).sort((a,b)=>b.at.localeCompare(a.at));
-      S.selectedSnapshot=null;await loadDrawingSet();renderJournal();updateContext();
+      S.selectedSnapshot=null;
+      S.experimentRuns=(await dbAction("experiments","readonly",store=>store.getAll())).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+      S.holdoutExposures=new Set(S.experimentRuns.filter(e=>e.holdoutRevealedAt).map(e=>e.datasetId));
+      await loadDrawingSet();renderJournal();updateContext();
       toast("Archive restored locally. Import sources remain unverified.");
     }catch(e){toast("Restore rejected: "+e.message)}
   }
