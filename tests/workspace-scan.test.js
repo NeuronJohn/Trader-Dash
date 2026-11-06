@@ -30,6 +30,19 @@ test("standalone script syntax and DOM bindings",()=>{
   assert.equal(new Set(ids).size,ids.length,"DOM IDs must be unique");
   for(const name of refs)assert.ok(ids.includes(name),"Missing DOM node "+name);
 });
+test("HTML body markup stays properly nested",()=>{
+  const body=html.slice(html.indexOf("<body>")+6,html.indexOf("<script>"));
+  const voids=new Set(["input","meta","link","img","br","hr","source","wbr","area"]);
+  const stack=[];
+  for(const match of body.matchAll(/<\/?([a-z][\w-]*)\b[^>]*>/gi)){
+    const raw=match[0],tag=match[1].toLowerCase();
+    if(voids.has(tag)||raw.endsWith("/>"))continue;
+    if(raw.startsWith("</"))assert.equal(stack.pop(),tag,"Mismatched HTML closing tag");
+    else stack.push(tag);
+  }
+  assert.deepEqual(stack,[],"No unclosed HTML components");
+});
+
 test("all drawing tools are reachable in the toolbar",()=>{
   for(const name of ["inspect","select","edit","level","line","rectangle","arrow","brush","note"])
     assert.ok(html.includes('data-tool="'+name+'"'),name+" tool missing");
