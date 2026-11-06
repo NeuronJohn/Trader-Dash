@@ -542,7 +542,12 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr);canvas.style.width=rect.width+"px";canvas.style.height=rect.height+"px";
     ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
   function chartMeta(){const width=canvas.clientWidth||700,height=canvas.clientHeight||400,padR=84,padL=15,padT=28,padB=45;
-    const a=visible(),maxPrice=Math.max(...a.bars.map(x=>x.high)),minPrice=Math.min(...a.bars.map(x=>x.low));
+    const a=visible(),highs=a.bars.map(x=>x.high),lows=a.bars.map(x=>x.low);
+    if(S.mesPreview&&a.bars.some(x=>x.time===S.mesPreview.entryTime)){
+      highs.push(S.mesPreview.entry,S.mesPreview.stop,S.mesPreview.target);
+      lows.push(S.mesPreview.entry,S.mesPreview.stop,S.mesPreview.target);
+    }
+    const maxPrice=Math.max(...highs),minPrice=Math.min(...lows);
     const padding=Math.max((maxPrice-minPrice)*.10,Math.abs(maxPrice)*.00003,.005);
     const max=maxPrice+padding,min=minPrice-padding,plotW=width-padR-padL,plotH=height-padT-padB;
     return {a,w:width,h:height,L:padL,T:padT,R:padR,B:padB,plotW,plotH,max,min,step:plotW/Math.max(a.bars.length,1)}
@@ -598,6 +603,28 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       line(x,yFor(b.high,m),x,yFor(b.low,m),color,Math.max(1,Math.min(1.5,bodyWidth*.12)));
       const hiY=yFor(Math.max(b.open,b.close),m),loY=yFor(Math.min(b.open,b.close),m);
       ctx.fillStyle=color;ctx.fillRect(x-bodyWidth/2,hiY,bodyWidth,Math.max(1.35,loY-hiY));
+    }
+    if(S.mesPreview){
+      const t=S.mesPreview;
+      const entryIdx=S.data.bars.findIndex(b=>b.time===t.entryTime);
+      const exitIdx=S.data.bars.findIndex(b=>b.time+300000===t.exitTime);
+      if(entryIdx>=m.a.start&&entryIdx<=m.a.end){
+        const l=Math.max(m.L,xFor(entryIdx,m));
+        const r=Math.min(m.w-m.R,xFor(Math.max(entryIdx,exitIdx),m)+m.step*.5);
+        for(const item of [
+          {name:"MODEL ENTRY",price:t.entry,color:"#acd7d1",dash:[4,3]},
+          {name:"MODEL STOP",price:t.stop,color:"#df9b9e",dash:[6,4]},
+          {name:"MODEL TARGET",price:t.target,color:"#b7c68e",dash:[6,4]}
+        ]){
+          const yy=yFor(item.price,m);
+          line(l,yy,Math.max(l+2,r),yy,item.color,1.3,item.dash);
+          ctx.fillStyle=item.color;ctx.textAlign="left";
+          ctx.fillText(item.name,Math.min(l+6,m.w-m.R-112),
+            clamp(yy-11,m.T+12,m.h-m.B-12));
+        }
+        ctx.fillStyle="#c7e1d9";ctx.textAlign="left";
+        ctx.fillText("RESEARCH SIMULATION — NOT FILLS",m.L+9,m.T+16);
+      }
     }
     // Highlight a research candidate without presenting it as a trading signal.
     if(S.selectedCandidate){
