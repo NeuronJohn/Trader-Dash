@@ -183,6 +183,16 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .results-scroll{overflow-x:auto;max-height:300px;overflow-y:auto}
 @media(max-width:900px){.experiment-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.experiment-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.experiment-fields{grid-template-columns:1fr}.experiment-stats{grid-template-columns:1fr 1fr}}
+
+.library-section{border-top:1px solid var(--hair);padding:11px 15px}
+.library-section>summary{cursor:pointer;font-size:12px;color:#c4d2db;font-weight:660}
+.library-section>summary::marker{color:#81b7a9}
+.library-head{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;margin:11px 0}
+.library-results{display:flex;gap:7px;flex-wrap:wrap;padding:3px 0 6px}
+.library-case{border:1px solid #30414a;border-radius:8px;background:#151f29;text-align:left;min-width:150px;padding:10px;display:flex;flex-direction:column;gap:4px}
+.library-case:hover{border-color:#86afa4}
+.library-case strong{font-size:11px;color:#d7e5eb}
+.library-case .muted{font-size:10px}
 </style>
 </head>
 <body>
@@ -214,7 +224,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   <main class="main">
     <section id="view-workspace">
       <div class="workspace-title"><div><h1>Market workspace</h1><p>Find candidate setups, understand the structure, then decide what deserves a note.</p></div>
-      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo</button><button class="btn primary" id="scanTop">⌕ &nbsp; Find setups</button></div></div>
+      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" multiple class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo</button><button class="btn primary" id="scanTop">⌕ &nbsp; Find setups</button></div></div>
       <div class="panel chartbox">
         <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span><button class="btn subtle" id="latestCase" title="Jump to most recently detected historical candidate">No scan yet</button></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
         <div class="chart-toolbar">
@@ -255,6 +265,14 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
           <div class="action-row"><select id="scanFilter" aria-label="Setup type"><option value="all">All patterns</option><option value="breakout">Break + retest</option><option value="failure">Failed break</option></select><button class="btn" id="scanNow">↻ Scan history</button></div>
         </div>
         <div id="scanResults" class="scan-results" aria-live="polite"></div>
+        <details class="library-section" id="librarySection">
+          <summary>Market library <span class="mono" id="libraryCount">· no imported sources</span> <span class="dim small">— compare cases across saved CSV datasets</span></summary>
+          <div class="library-head">
+            <span class="small muted">Historical datasets only · Imported sources unverified · No live scanner</span>
+            <button class="btn" id="scanLibrary">Scan saved datasets</button>
+          </div>
+          <div id="libraryMatches" class="library-results"></div>
+        </details>
         <div class="research-detail">
           <div id="scanDetail" class="research-explanation"><p class="empty">Select a detected pattern to see its context, structural levels and what's still unverified.</p></div>
           <div class="readiness" id="readiness">
@@ -377,7 +395,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),dataLibrary:[],libraryMatches:[],libraryBusy:false,
     scopes:{candles:true,marks:true,notes:true,history:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -901,6 +919,58 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     renderScanner();
     updateContext();
   }
+
+  async function refreshMarketLibrary(scan=true){
+    if(S.libraryBusy)return;
+    S.libraryBusy=true;
+    const host=$("libraryMatches");host.textContent="";
+    host.append(htmlText("p","Scanning saved historical instruments locally...","small muted"));
+    try{
+      const saved=S.db?await dbAction("datasets","readonly",store=>store.getAll()):[];
+      const unique=new Map();
+      if(S.data)unique.set(S.data.id,S.data);
+      for(const d of saved)if(d?.id&&Array.isArray(d.bars))unique.set(d.id,d);
+      S.dataLibrary=[...unique.values()].slice(0,16);
+      $("libraryCount").textContent="· "+S.dataLibrary.length+" available";
+      if(!scan)return;
+      const all=[];
+      for(const d of S.dataLibrary){
+        if(d.bars.length>=25){
+          const hits=searchPatterns(d.bars,d.bars.length-1).slice(-18);
+          for(const hit of hits)all.push({...hit,datasetId:d.id,symbol:d.symbol,
+            sourceKind:d.source,description:d.label});
+        }
+        // Keep UI responsive when scanning multiple 20,000-bar historical files.
+        await new Promise(resolve=>setTimeout(resolve,0));
+      }
+      S.libraryMatches=all.sort((a,b)=>b.at-a.at).slice(0,80);
+      renderLibraryMatches();
+    }catch(e){host.textContent="Market scan failed: "+e.message}
+    finally{S.libraryBusy=false}
+  }
+  function renderLibraryMatches(){
+    const host=$("libraryMatches");host.textContent="";
+    const matches=S.libraryMatches||[];
+    if(!matches.length){host.append(htmlText("p","No matching historical examples in saved datasets. This does not imply any strategy edge.","empty"));return}
+    for(const c of matches.slice(0,24)){
+      const b=document.createElement("button");b.type="button";b.className="library-case";
+      b.append(htmlText("strong",c.symbol+" · "+c.title),
+        htmlText("span",c.side+" · "+iso(c.at).slice(0,16).replace("T"," ")+"Z","muted"),
+        htmlText("span",c.sourceKind==="synthetic"?"Synthetic · tutorial only":"Imported CSV · unverified","muted"));
+      b.addEventListener("click",async()=>{
+        const d=S.dataLibrary.find(x=>x.id===c.datasetId);
+        if(!d){toast("Historical dataset unavailable");return}
+        if(S.data.id!==d.id){resetDataset(d);await loadDrawingSet();}
+        const match=searchPatterns(S.data.bars,S.data.bars.length-1).find(x=>x.id===c.id);
+        if(match){selectCandidate(match);setPage("workspace")}
+        else toast("Historical case no longer matches current source.");
+      });
+      host.append(b);
+    }
+    const count=htmlText("p",matches.length>24?"Showing newest 24 of "+matches.length+" matches. Use the active-chart scan for full context.":"Only structural historical patterns are shown; no profitability ranking.","small dim");
+    count.style.width="100%";host.append(count);
+  }
+
   function selectCandidate(candidate){
     S.selectedCandidate=candidate;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
     const end=S.replay?S.reveal:S.data.bars.length-1;
@@ -1042,18 +1112,26 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
     S.experiment=null;$("simTick").value=data.source==="synthetic"?"0.25":"";
     savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();}
-  async function importFile(event){const file=event.target.files&&event.target.files[0];if(!file)return;
-    try{const raw=await file.text(), d=readCSV(raw,file.name);
-      if(typeof crypto!=="undefined" && crypto.subtle && typeof TextEncoder!=="undefined") {
-        const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(d.symbol+"\n"+raw));
-        d.id="csv-sha256:"+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
-      } else d.id="csv-local:"+id();
-      if(S.db)await dbAction("datasets","readwrite",store=>store.put(d));
-      resetDataset(d);toast("Imported "+d.bars.length+" candles. Source remains unverified.");
-    }catch(e){toast("Import error: "+e.message)}
+  async function importFile(event){
+    const files=[...(event.target.files||[])].slice(0,12);
     event.target.value="";
+    if(!files.length)return;
+    let completed=0, last=null, issues=[];
+    for(const file of files){
+      try{
+        const raw=await file.text(),d=readCSV(raw,file.name);
+        if(typeof crypto!=="undefined"&&crypto.subtle&&typeof TextEncoder!=="undefined"){
+          const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(d.symbol+"\n"+raw));
+          d.id="csv-sha256:"+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
+        }else d.id="csv-local:"+id();
+        if(S.db)await dbAction("datasets","readwrite",store=>store.put(d));
+        last=d;completed++;
+      }catch(e){issues.push(file.name+": "+e.message)}
+      await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    if(last){resetDataset(last);refreshMarketLibrary(true);}
+    toast(completed+" dataset(s) imported. "+(issues.length?issues.length+" failed: "+issues[0]:"All sources remain unverified."));
   }
-
   function chartLimit(){return S.replay?S.reveal:S.data.bars.length-1}
   function scrollChart(deltaBars){
     const limit=chartLimit(),now=visible().end;
@@ -1440,6 +1518,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("captureSecondary").addEventListener("click",capture);
     $("scanTop").addEventListener("click",()=>{scanHistory(true);toast(S.candidates.length+" historical candidate patterns found. None are verified trading signals.");});
     $("scanNow").addEventListener("click",()=>{scanHistory(true);toast("Historical scan refreshed.");});
+    $("scanLibrary").addEventListener("click",()=>refreshMarketLibrary(true));
     $("aiScanBtn").addEventListener("click",()=>{setPage("workspace");scanHistory(true);toast("Candidate search is local and rule-based, not an active AI model.");});
     $("scanFilter").addEventListener("change",()=>{const kind=$("scanFilter").value;const matching=S.candidates.filter(c=>kind==="all"||c.type===kind);
       if(!S.selectedCandidate||!matching.some(c=>c.id===S.selectedCandidate.id)){
@@ -1506,7 +1585,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();refreshMarketLibrary(true);resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
