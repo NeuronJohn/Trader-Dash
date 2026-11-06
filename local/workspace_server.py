@@ -198,6 +198,47 @@ def validate_context(payload: object) -> dict:
             "reserved_unseen": bool(simulation.get("reserved_unseen", True)),
             "disclaimer": "Exploratory OHLC model; source not verified; not validated live results",
         }
+    # The MES signal and backtest report must be opt-in and may NEVER be
+    # represented to the model as a real broker fill or validated edge.
+    def finite_price(value):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        return value if math.isfinite(value) else None
+
+    mes_signal = evidence.get("mes_session_signal")
+    safe_mes_signal = None
+    if isinstance(mes_signal, dict) and mes_signal.get("status") == "HISTORICAL_RESEARCH_MATCH_NOT_A_TRADE":
+        safe_mes_signal = {
+            "rule": compact_text(mes_signal.get("rule"), 25),
+            "version": compact_text(mes_signal.get("version"), 40),
+            "day": compact_text(mes_signal.get("day"), 20),
+            "side": compact_text(mes_signal.get("side"), 10),
+            "signal_bar_start_utc": compact_text(mes_signal.get("signal_bar_start_utc"), 40),
+            "confirmation_close_utc": compact_text(mes_signal.get("confirmation_close_utc"), 40),
+            "boundary": finite_price(mes_signal.get("boundary")),
+            "structural_invalidation": finite_price(mes_signal.get("structural_invalidation")),
+            "later_bars_visible": bool(mes_signal.get("later_bars_visible", False)),
+            "status": "HISTORICAL_RESEARCH_MATCH_NOT_A_TRADE",
+            "assumed_fills": None,
+        }
+    mes_simulation = evidence.get("session_research")
+    safe_mes_simulation = None
+    if isinstance(mes_simulation, dict) and mes_simulation.get("status") == "UNVERIFIED_RESEARCH_ONLY":
+        training = mes_simulation.get("train", {})
+        if not isinstance(training, dict):
+            training = {}
+        safe_mes_simulation = {
+            "status": "UNVERIFIED_RESEARCH_ONLY",
+            "rule": compact_text(mes_simulation.get("rule"), 25),
+            "version": compact_text(mes_simulation.get("version"), 40),
+            "train_count": training.get("count") if type(training.get("count")) is int else None,
+            "train_expectancy_R": finite_price(training.get("expectancyR")),
+            "train_net_USD_one_contract": finite_price(training.get("netUsd")),
+            "reserve_not_revealed": bool(mes_simulation.get("reserve_unseen", True)),
+            "source_verified": False,
+            "trading_qualification": "NONE",
+        }
+
     candidate = payload.get("pattern_candidate")
     if isinstance(candidate, dict):
         candidate = {
@@ -225,6 +266,8 @@ def validate_context(payload: object) -> dict:
             "thesis": compact_text(notes.get("thesis"), 2000),
         },
         "candidate": candidate,
+        "mes_signal": safe_mes_signal,
+        "mes_session_experiment": safe_mes_simulation,
         "exploratory_simulation": safe_simulation,
         "user_selected_prior_cases": safe_cases,
         "disclaimers": [
