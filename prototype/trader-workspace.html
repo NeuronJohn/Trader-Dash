@@ -328,7 +328,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),
     scopes:{candles:true,marks:true,notes:true,history:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -373,8 +373,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const symbol=safeStr(filename).replace(/\.[^.]+$/,"").slice(0,32);
     return {id:"csv:"+symbol+":"+bars.length+":"+bars[0].time+":"+bars[bars.length-1].time,symbol,timeframe:"source",source:"user-csv-unverified",label:"Imported CSV / source unverified",bars};
   }
-  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,1);
-    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
+  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,2);
+    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets","drawings"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||Error("IndexedDB unavailable"));})}
   function dbAction(store,mode,op){return new Promise((resolve,reject)=>{if(!S.db)return reject(Error("Browser storage unavailable; export immediately"));
     const tx=S.db.transaction(store,mode),r=op(tx.objectStore(store));tx.oncomplete=()=>resolve(r.result);
@@ -527,6 +527,104 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       line(m.L,y,m.w-m.R,y,"#89a5ad",.8,[4,5]);
     }
     ctx.restore();
+  }
+
+
+  function markArray(){return S.replay?S.replayDrawings:S.drawings}
+  function selectedMark(){return markArray().find(x=>x.id===S.selectedDrawing)||null}
+  function queueDrawingSave(){
+    if(S.replay)return; // Replay annotations are ephemeral and cannot modify historical research evidence.
+    const record={id:S.data.id,list:S.drawings.map(m=>JSON.parse(JSON.stringify(m))),updated_at:new Date().toISOString()};
+    S.markWriteQueue=S.markWriteQueue.catch(()=>{}).then(()=>dbAction("drawings","readwrite",store=>store.put(record)))
+      .catch(e=>toast("Chart drawings could not be saved: "+e.message));
+  }
+  async function loadDrawingSet(){
+    const token=++S.drawingLoadId, key=S.data.id;
+    S.drawings=[];S.selectedDrawing=null;renderDrawingList();
+    if(!S.db)return;
+    try{
+      const record=await dbAction("drawings","readonly",store=>store.get(key));
+      if(token!==S.drawingLoadId || S.data.id!==key)return;
+      S.drawings=Array.isArray(record?.list)?record.list:[];renderDrawingList();updateContext();
+    }catch(e){toast("Drawing history could not be loaded: "+e.message)}
+  }
+  function changeMark(id, patch){
+    const item=markArray().find(m=>m.id===id);if(!item)return;
+    Object.assign(item,patch);queueDrawingSave();renderDrawingList();updateContext();
+  }
+  function addMark(mark){
+    markArray().push({id:id(),createdReveal:S.reveal,hidden:false,label:"",...mark});
+    S.selectedDrawing=markArray()[markArray().length-1].id;
+    queueDrawingSave();renderDrawingList();updateContext();
+  }
+  function removeMark(id){
+    const arr=markArray(),i=arr.findIndex(m=>m.id===id);
+    if(i<0)return;arr.splice(i,1);
+    if(S.selectedDrawing===id)S.selectedDrawing=null;
+    queueDrawingSave();renderDrawingList();updateContext();
+  }
+  function renderDrawingList(){
+    const arr=markArray();
+    const list=$("drawingList");list.textContent="";
+    $("drawingCount").textContent=arr.length+" saved"+(S.replay?" (replay only)":"");
+    $("deleteDrawing").disabled=!selectedMark();
+    if(!arr.length){const empty=document.createElement("p");empty.className="empty";empty.textContent="Draw with Line, Level, Box, Arrow, Brush or Note. Choose Edit to select or move them.";list.append(empty)}
+    const labels={level:"Level",line:"Trendline",rectangle:"Zone",arrow:"Arrow",brush:"Brush stroke",note:"Pinned note"};
+    for(const mark of [...arr].reverse()){
+      const b=document.createElement("button");b.type="button";b.className="drawing-item"+(S.selectedDrawing===mark.id?" selected":"")+(mark.hidden?" hidden-mark":"");
+      const l=document.createElement("span");l.textContent=(labels[mark.type]||"Drawing")+" · "+(mark.label||"Untitled");
+      const flag=document.createElement("span");flag.textContent=mark.hidden?"Hidden":"Select";
+      b.append(l,flag);
+      b.addEventListener("click",()=>{S.selectedDrawing=mark.id;setTool("edit",true);renderDrawingList();draw()});list.append(b);
+    }
+    const selected=selectedMark(), editor=$("drawingEditor");
+    editor.classList.toggle("hidden",!selected);
+    if(selected){if(document.activeElement!==$("drawingLabel"))$("drawingLabel").value=selected.label||"";
+      $("toggleDrawing").textContent=selected.hidden?"Show drawing":"Hide drawing";
+      $("deleteDrawing").disabled=false;}
+  }
+  function coordsOf(event){
+    const rect=canvas.getBoundingClientRect(),m=chartMeta();
+    const x=clamp(event.clientX-rect.left,m.L,m.w-m.R-1),y=clamp(event.clientY-rect.top,m.T,m.h-m.B-1);
+    return {x,y,index:ixFrom(x,m),price:priceFrom(y,m),m};
+  }
+  function pt(p){return {index:p.index,price:p.price}}
+  function distSeg(px,py,ax,ay,bx,by){
+    const dx=bx-ax,dy=by-ay,q=dx*dx+dy*dy||1,t=clamp(((px-ax)*dx+(py-ay)*dy)/q,0,1);
+    return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+  }
+  function hitDrawing(point){
+    if(!point)return null;
+    const m=point.m;
+    for(const mark of [...activeDrawings()].reverse()){
+      if(mark.hidden)continue;
+      if(mark.type==="level"&&Math.abs(yFor(mark.price,m)-point.y)<8)return mark;
+      if(mark.type==="note"&&Math.hypot(xFor(mark.index,m)-point.x,yFor(mark.price,m)-point.y)<13)return mark;
+      if(["line","arrow"].includes(mark.type)&&mark.p1&&mark.p2){
+        if(distSeg(point.x,point.y,xFor(mark.p1.index,m),yFor(mark.p1.price,m),xFor(mark.p2.index,m),yFor(mark.p2.price,m))<9)return mark;
+      }
+      if(mark.type==="rectangle"&&mark.p1&&mark.p2){
+        const x1=xFor(mark.p1.index,m),x2=xFor(mark.p2.index,m),y1=yFor(mark.p1.price,m),y2=yFor(mark.p2.price,m);
+        if(point.x>=Math.min(x1,x2)-7&&point.x<=Math.max(x1,x2)+7&&point.y>=Math.min(y1,y2)-7&&point.y<=Math.max(y1,y2)+7)return mark;
+      }
+      if(mark.type==="brush"&&mark.points?.length>1){
+        for(let j=1;j<mark.points.length;j++){
+          const a=mark.points[j-1],b=mark.points[j];
+          if(distSeg(point.x,point.y,xFor(a.index,m),yFor(a.price,m),xFor(b.index,m),yFor(b.price,m))<9)return mark;
+        }
+      }
+    }
+    return null;
+  }
+  function shiftMark(original,deltaIndex,deltaPrice,limit){
+    const moved=JSON.parse(JSON.stringify(original));
+    const movePoint=p=>{p.index=clamp(p.index+deltaIndex,0,limit);p.price=Math.max(.000001,p.price+deltaPrice)};
+    if(moved.type==="level")moved.price=Math.max(.000001,moved.price+deltaPrice);
+    if(moved.type==="note"){moved.index=clamp(moved.index+deltaIndex,0,limit);moved.price=Math.max(.000001,moved.price+deltaPrice)}
+    if(moved.p1)movePoint(moved.p1);
+    if(moved.p2)movePoint(moved.p2);
+    if(moved.points)moved.points.forEach(movePoint);
+    return moved;
   }
 
   // Candidate detector: close-of-bar information only. It never infers profitability.
