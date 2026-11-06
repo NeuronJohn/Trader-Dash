@@ -1622,6 +1622,175 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     }catch(e){toast("Cannot simulate: "+e.message)}
   }
 
+
+  function mesEngine(){
+    const engine=globalThis.TraderSessionEngine;
+    if(!engine||engine.version!=="MES-SESSION-v1")
+      throw Error("MES rule engine unavailable. Download the complete prototype folder including session-engine.js.");
+    return engine;
+  }
+  function buildMesOptions(){
+    const o={
+      rule:$("mesRule").value,
+      slippageTicks:Number($("mesSlip").value),
+      roundTripFeeUsd:Number($("mesFee").value),
+      targetR:Number($("mesReward").value),
+      source:S.data.source,
+    };
+    if(!["ORP-001","FBR-001"].includes(o.rule))throw Error("Unsupported frozen strategy rule");
+    if(!$("mesConfirm").checked)throw Error("Confirm MES dataset provenance and five-minute bar-start timestamps before testing");
+    if(S.data.source!=="user-csv-unverified")throw Error("Import a MES historical CSV. The generic synthetic demonstration cannot be used for a MES session test");
+    if(!/(^|[^a-z])mes(?=[^a-z]|$)/i.test(S.data.symbol))
+      throw Error("The imported file name must identify MES so the instrument metadata cannot silently be confused");
+    if(S.replay)throw Error("Exit visual historical reveal mode before running this full-dataset experiment");
+    return o;
+  }
+  async function runMesResearch(){
+    try{
+      const engine=mesEngine(),options=buildMesOptions();
+      const report=engine.run(S.data.bars,options);
+      const record={
+        id:id(),kind:"MES_SESSION_V1",datasetId:S.data.id,
+        datasetSymbol:S.data.symbol,source:S.data.source,
+        createdAt:new Date().toISOString(),options,report,
+        holdoutRevealedAt:null
+      };
+      if(S.experimentRuns.length>=250)throw Error("Export your experiment archive before adding more runs");
+      S.mesRun=record;S.mesPreview=null;
+      const trainingDays=new Set();
+      const dayLimit=report.split.trainingThrough;
+      // Preserve only training entries and summary in the stored pre-reveal run:
+      // no reserved metrics/episodes or full-sample performance may leak via backup.
+      const safeReport={...report,reserve:null,reserveTrades:[],allTrades:report.allTrades.filter(t=>
+        dayLimit && t.day<=dayLimit),noSignal:report.noSignal.filter(x=>dayLimit && x.day<=dayLimit)};
+      const safe={...record,report:safeReport};
+      S.experimentRuns.unshift(safe);
+      if(S.db)await dbAction("experiments","readwrite",store=>store.put(safe));
+      renderMesReport();renderRunHistory();
+      toast("MES session test complete. Results are exploratory, not a qualified trading system.");
+    }catch(e){toast("MES experiment blocked: "+e.message);showMesWarning(e.message)}
+  }
+  function showMesWarning(message){
+    const host=$("mesResult");host.textContent="";
+    const box=htmlText("p",message,"report-warning");
+    host.append(box);
+  }
+  function renderMesReport(){
+    const host=$("mesResult");host.textContent="";
+    const record=S.mesRun;
+    if(!record){
+      host.append(htmlText("p","Choose a verified-format MES CSV, acknowledge the bar-start convention, and run a frozen rule. The engine uses Chicago DST-aware sessions and excludes incomplete days.","empty"));
+      return;
+    }
+    if(record.datasetId!==S.data.id){
+      showMesWarning("This research report belongs to another dataset. Select its saved run or reload the original CSV.");return;
+    }
+    const r=record.report,exposed=S.holdoutExposures.has(record.datasetId);
+    host.append(htmlText("h4",r.rule+" · "+r.version+" · "+r.source+" · exploratory research"));
+    const stats=document.createElement("div");stats.className="metrics";
+    function metric(label,n,description){
+      const box=document.createElement("div");box.className="stat";
+      const cap=htmlText("div",label,"caption");
+      const num=htmlText("div",n,"number"+(typeof n==="string"&&n.startsWith("-")?" minus":""));
+      box.append(cap,num,htmlText("div",description,"caption"));stats.append(box);
+    }
+    metric("Complete CT sessions",String(r.completeSessions),r.rejectedSessions.length+" incomplete excluded");
+    metric("Training trades",String(r.train.count),r.split.trainDays+" training days");
+    metric("Training avg net R",numberText(r.train.expectancyR)+"R","Not evidence of edge");
+    metric("Training net / 1 MES",numberText(r.train.netUsd,2)+" USD","With assumed fees & slippage");
+    metric("Closed-equity drawdown",numberText(-r.train.maxClosedDrawdownUsd,2)+" USD","Intrabar drawdown not modeled");
+    metric("Reserved days",String(r.split.reserveDays),"Hidden until deliberate reveal");
+    host.append(stats);
+    const warning=htmlText("div","CAUTION: Imported data is NOT authenticated; opening-range rules are newly implemented and unverified. No news filter, contract-roll audit, exchange fill data or Topstep loss-limit simulation. A positive backtest does not qualify a strategy.","report-warning");
+    host.append(warning);
+    if(r.completeSessions===0){
+      host.append(htmlText("p","No full 08:30–11:00 CT sessions found. Verify that timestamps represent five-minute START times in UTC, correct trading dates, continuous contract records, and no missing bars.","notice-small"));
+      return;
+    }
+    if(r.train.count<30){
+      host.append(htmlText("p","Too few training trades for meaningful statistical conclusions. Collect additional market sessions; do not lower filters just to create more trades.","notice-small"));
+    }
+    if(exposed){
+      host.append(htmlText("p","This dataset's reserved outcomes have been inspected before. Further parameter tuning on it is exploratory, not independent out-of-sample validation.","report-warning"));
+    }
+    if(record.holdoutRevealedAt){
+      const held=htmlText("p","Reserved: "+r.reserve.count+" trades, "+
+        numberText(r.reserve.expectancyR)+"R average, "+
+        numberText(r.reserve.netUsd,2)+" USD modeled net / 1 MES. "+
+        (r.split.reserveHasAdequateSample?"Reserved window has at least 20 days.":"Reserve contains fewer than 20 complete days."),"notice-small");
+      host.append(held);
+    }else{
+      const row=document.createElement("div");row.className="mes-footer";
+      row.append(htmlText("span","Reserved results are hidden. Reveal only after freezing the rules; a repeat look is not a new holdout.","small muted"));
+      const reveal=document.createElement("button");reveal.className="btn";reveal.textContent="Reveal reserved period";
+      reveal.addEventListener("click",revealMesReserve);row.append(reveal);host.append(row);
+    }
+    const title=htmlText("h4","Simulated cases · "+(record.holdoutRevealedAt?"all periods":"training only"));
+    title.style.marginTop="17px";host.append(title);
+    const eligible=record.holdoutRevealedAt?r.allTrades:r.allTrades.filter(t=>
+      r.split.trainingThrough&&t.day<=r.split.trainingThrough);
+    const wrap=document.createElement("div");wrap.className="episodes";
+    const table=document.createElement("table"),head=document.createElement("thead"),tr=document.createElement("tr");
+    for(const label of ["CT date","Side","Exit reason","Net R","Modeled USD","Chart"])
+      tr.append(htmlText("th",label));
+    head.append(tr);table.append(head);
+    const tbody=document.createElement("tbody");
+    for(const t of eligible.slice(0,100)){
+      const row=document.createElement("tr");
+      for(const value of [t.day,t.side,t.exitReason,numberText(t.netR)+"R",numberText(t.netUsd,2)])
+        row.append(htmlText("td",value));
+      const cell=document.createElement("td"),btn=document.createElement("button");btn.className="case-link";btn.textContent="Inspect";
+      btn.addEventListener("click",()=>focusMesCase(t,record));
+      cell.append(btn);row.append(cell);tbody.append(row);
+    }
+    if(!eligible.length){
+      const row=document.createElement("tr"),cell=document.createElement("td");
+      cell.colSpan=6;cell.textContent="No strategy-qualified trades were detected under the frozen rules in this period.";row.append(cell);tbody.append(row);
+    }
+    table.append(tbody);wrap.append(table);host.append(wrap);
+    const foot=document.createElement("div");foot.className="mes-footer";
+    const download=document.createElement("button");download.className="btn";download.textContent="Export this experiment";
+    download.addEventListener("click",()=>{
+      const cutoff=r.split.trainingThrough;
+      const safe=record.holdoutRevealedAt?r:{...r,reserve:null,reserveTrades:[],
+        allTrades:r.allTrades.filter(t=>cutoff&&t.day<=cutoff),
+        noSignal:r.noSignal.filter(x=>cutoff&&x.day<=cutoff)};
+      downloadText(JSON.stringify({kind:"MES_SESSION_V1",dataset_id:record.datasetId,
+        created_at:record.createdAt,options:record.options,report:safe,
+        reserved_exposed:!!record.holdoutRevealedAt},null,2),
+        "mes-session-"+record.id+".json");
+    });
+    foot.append(download,htmlText("span","Point value $5; 0.25 tick; 1 contract; estimated historical only.","small dim"));
+    host.append(foot);
+  }
+  function focusMesCase(t,record){
+    if(S.data.id!==record.datasetId){toast("Load the matching dataset before opening this case.");return}
+    const idx=S.data.bars.findIndex(b=>b.time===t.entryTime);
+    if(idx<0){toast("Original candle could not be located.");return}
+    S.selectedCandidate=null;
+    S.mesPreview={...t};
+    S.viewportEnd=Math.min(S.data.bars.length-1,idx+Math.round(S.visible*.55));
+    S.selection=[Math.max(0,idx-8),Math.min(S.data.bars.length-1,idx+3)];
+    S.packet=null;
+    $("setupName").value=t.rule+" · "+t.side+" · "+t.day;
+    setPage("workspace");updateContext();renderScanner();
+    toast("Showing an historical modeled trade. Overlay does not prove an executable fill.");
+  }
+  async function revealMesReserve(){
+    const r=S.mesRun;if(!r||r.holdoutRevealedAt)return;
+    if(!window.confirm("Reveal reserved MES session results? Any future tuning on the same imported data is no longer a clean independent test."))return;
+    r.holdoutRevealedAt=new Date().toISOString();
+    const stored={...r,report:r.report};
+    const i=S.experimentRuns.findIndex(e=>e.id===r.id);
+    if(i>=0)S.experimentRuns[i]=stored;
+    try{
+      if(S.db)await dbAction("experiments","readwrite",store=>store.put(stored));
+      S.holdoutExposures.add(r.datasetId);
+      renderMesReport();renderRunHistory();
+      toast("Reserved results revealed. This dataset is marked as previously examined.");
+    }catch(e){toast("Could not persist reserved-data exposure. Export the report and do not treat the reserve as blind. "+e.message)}
+  }
+
   function renderRunHistory(){
     const host=$("runHistory");host.textContent="";
     const entries=S.experimentRuns||[];
