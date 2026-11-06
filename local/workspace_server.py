@@ -281,8 +281,16 @@ def structured_analysis(result: dict) -> dict:
     message = result.get("message", {})
     content = message.get("content", "") if isinstance(message, dict) else ""
     if isinstance(content, str):
+        raw = content.strip()
+        # Some local instruction-tuned models wrap a JSON object in a single
+        # markdown code fence despite format=json. Allow ONLY that harmless
+        # wrapper; never extract arbitrary JSON fragments from an unsafe reply.
+        if raw.startswith("```json\n") and raw.endswith("```"):
+            raw = raw[len("```json\n"):-3].strip()
+        elif raw.startswith("```\n") and raw.endswith("```"):
+            raw = raw[len("```\n"):-3].strip()
         try:
-            parsed = json.loads(content)
+            parsed = json.loads(raw)
         except json.JSONDecodeError:
             raise ValueError("Model did not return structured JSON; no response was applied")
     else:
