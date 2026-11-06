@@ -151,6 +151,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 @media(max-width:1250px){.app{grid-template-columns:170px minmax(350px,1fr) 305px}.app.hide-ai{grid-template-columns:170px minmax(350px,1fr) 0}.brand{width:145px}.main{padding:16px}.detail-grid{grid-template-columns:1fr}.assistant-head{padding:15px}.ai-scroll{padding:14px}}
 @media(max-width:1050px){.app,.app.hide-ai{grid-template-columns:165px minmax(0,1fr);grid-template-rows:55px minmax(0,1fr) 32px}.assistant{grid-column:2;grid-row:2;position:relative;border-left:0;border-top:1px solid var(--hair);height:420px;min-height:0}.main{grid-column:2;grid-row:2;overflow:auto;padding-bottom:445px}.assistant{display:none}.app.show-ai .assistant{display:flex;position:fixed;z-index:4;right:0;top:55px;bottom:30px;height:auto;width:min(350px,calc(100vw - 165px));box-shadow:-16px 0 50px #0008}.app.show-ai .main{padding-bottom:26px}.topstatus{display:none}.chartwrap{height:420px}}
 @media(max-width:640px){.app,.app.hide-ai{grid-template-columns:1fr;grid-template-rows:54px minmax(0,1fr) 29px}.sidebar{display:none}.main{grid-column:1;grid-row:2;padding:15px}.brand{width:auto}.toplabel{display:none}.topbar{padding:0 12px}.workspace-title{flex-direction:column}.chartwrap{height:370px;min-height:300px}.summary-stripe{grid-template-columns:1fr 1fr}.labgrid,.journal-list,.journal-preview{grid-template-columns:1fr}.app.show-ai .assistant{width:100vw;top:54px;bottom:29px}.statusbar{gap:8px}.statusbar .right{display:none}}
+
+/* Foundation v0.2 — research-first workflow, precise chart axes and tidy drawing controls */
+.toolset{display:flex;gap:4px;flex-wrap:wrap;align-items:center}.tool-separator{height:19px;border-left:1px solid #2d3a44;margin:0 4px}.chart-toolbar .btn{font-size:11px;padding:7px 8px}.chart-bottom{min-height:45px}.chart-overlay-status{top:8px;left:14px;font-size:10px;background:rgba(15,22,30,.85);border-radius:5px;padding:3px 6px}.research-panel{margin-top:13px;overflow:hidden}.research-head{padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.research-head h3{font-size:14px;margin:5px 0 4px}.research-head select{width:auto;min-width:130px;padding:7px 9px;font-size:11px}.scan-results{display:flex;gap:8px;overflow:auto;padding:0 16px 15px;scrollbar-color:#3b4e56 transparent}.scan-hit{min-width:170px;max-width:195px;flex:0 0 auto;background:#141f29;border:1px solid #2a3944;border-radius:9px;padding:11px;text-align:left;display:flex;flex-direction:column;gap:6px}.scan-hit:hover{border-color:#698e83}.scan-hit.selected{border-color:#8ac5b7;background:#1c3132}.scan-hit .kind{font-size:10px;color:#91a2b4}.scan-hit strong{font-size:12px;line-height:1.45}.scan-hit .at{font:10px var(--mono);color:#82939f}.scan-hit .dir{font-size:10px;color:#cfc5af}.research-detail{border-top:1px solid #25313d;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(230px,.85fr)}.research-explanation{padding:16px;min-height:138px}.research-explanation h4{font-size:13px;font-weight:700;margin:0 0 7px}.research-explanation p{font-size:11px;color:#a7b9c6;line-height:1.7}.research-explanation .facts{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.fact{padding:5px 7px;background:#1d2a34;border:1px solid #35424c;border-radius:6px;color:#cad5de;font:10px var(--mono)}.readiness{border-left:1px solid var(--hair);padding:14px 17px;background:#121a22}.ready-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #26313b;font-size:11px;padding:8px 0;color:#a9b8c4}.ready-pending{color:#d7b978;text-align:right}.ready-ok{color:#9fd7c9}.drawing-list{max-height:172px;overflow:auto;display:flex;flex-direction:column;gap:5px}.drawing-item{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:1px solid #2a3742;border-radius:7px;padding:7px 9px;background:#131e28;text-align:left;font-size:11px;color:#b9c8d3}.drawing-item.selected{border-color:#7caf9e;color:#d3eee4;background:#1a3232}.drawing-item.hidden-mark{opacity:.55}.drawing-editor{margin-top:11px;padding-top:11px;border-top:1px solid var(--hair)}.ai-candidate{padding-top:10px}.ai-candidate h4{font-size:13px;margin:0 0 8px}.ai-candidate .level{padding:7px 0;border-bottom:1px solid var(--hair);font:11px var(--mono);color:#bacad3;display:flex;justify-content:space-between}.ai-candidate .why{font-size:11px;line-height:1.7;color:#aabdc9;margin:10px 0}.ai-candidate .warning{font-size:11px;line-height:1.6;color:#d5ba88}.ai-section.advanced{border-top:1px solid #24313b;padding-top:12px}.ai-section.advanced summary{cursor:pointer;color:#98a9b6;font-size:11px;font-weight:650}.ai-section.advanced[open] summary{margin-bottom:12px;color:#d6e6e7}.chartwrap{min-height:390px}.chart-toolbar{row-gap:7px}.notice-small{border:1px solid #544a36;background:#242018;color:#d6bd91;padding:9px;border-radius:7px;font-size:11px;line-height:1.55}
+@media(max-width:950px){.research-detail{grid-template-columns:1fr}.readiness{border-left:0;border-top:1px solid var(--hair)}.chart-toolbar .spacer{display:none}}
+@media(max-width:640px){.chart-toolbar .btn{padding:6px}.toolset{gap:2px}.research-head{align-items:flex-start}.chart-bottom #chartHelp{display:none}.scan-hit{min-width:152px}}
 </style>
 </head>
 <body>
@@ -181,45 +186,79 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   </aside>
   <main class="main">
     <section id="view-workspace">
-      <div class="workspace-title"><div><h1>Market workspace</h1><p>Study price, annotate decisions, and capture the evidence.</p></div>
-      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo data</button><button class="btn primary" id="captureBtn">Capture snapshot</button></div></div>
+      <div class="workspace-title"><div><h1>Market workspace</h1><p>Find candidate setups, understand the structure, then decide what deserves a note.</p></div>
+      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo</button><button class="btn primary" id="scanTop">⌕ &nbsp; Find setups</button></div></div>
       <div class="panel chartbox">
         <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
         <div class="chart-toolbar">
-          <button class="btn tool-active" data-tool="inspect">⌖ &nbsp; Inspect</button>
-          <button class="btn" data-tool="select">▧ &nbsp; Select range</button>
-          <button class="btn" data-tool="level">─ &nbsp; Price level</button>
-          <button class="btn" data-tool="note">✎ &nbsp; Note marker</button>
+          <div class="toolset">
+            <button class="btn tool-active" data-tool="inspect" title="Inspect candles and drag to pan. Keyboard: 1">⌖ &nbsp; Cursor</button>
+            <button class="btn" data-tool="select" title="Select a time range for research. Keyboard: 2">▧ &nbsp; Range</button>
+            <button class="btn" data-tool="edit" title="Select, move or delete any drawing. Keyboard: 3">↖ &nbsp; Edit</button>
+          </div>
+          <span class="tool-separator"></span>
+          <div class="toolset">
+            <button class="btn" data-tool="level" title="Horizontal price level">─ &nbsp; Level</button>
+            <button class="btn" data-tool="line" title="Two-point trendline">╱ &nbsp; Line</button>
+            <button class="btn" data-tool="rectangle" title="Price/time zone">▭ &nbsp; Box</button>
+            <button class="btn" data-tool="arrow" title="Two-point arrow">↗ &nbsp; Arrow</button>
+            <button class="btn" data-tool="brush" title="Draw a freehand stroke">✎ &nbsp; Brush</button>
+            <button class="btn" data-tool="note" title="Pinned note marker">◉ &nbsp; Note</button>
+          </div>
           <span class="spacer"></span>
-          <button class="btn subtle" id="undoMark" title="Undo last annotation">↶ &nbsp; Undo</button>
-          <button class="btn subtle" id="zoomOut" title="Show more candles">−</button>
+          <button class="btn subtle" id="deleteDrawing" disabled title="Delete selected drawing">Delete</button>
+          <button class="btn subtle" id="undoMark" title="Remove newest drawing">↶</button>
+          <span class="tool-separator"></span>
+          <button class="btn subtle" id="panLeft" title="Move earlier">‹</button>
+          <button class="btn subtle" id="zoomOut" title="Zoom out">−</button>
           <span class="mono small muted" id="zoomLabel">90 bars</span>
-          <button class="btn subtle" id="zoomIn" title="Show fewer candles">+</button>
+          <button class="btn subtle" id="zoomIn" title="Zoom in">+</button>
+          <button class="btn subtle" id="panRight" title="Move later">›</button>
         </div>
         <div class="chartwrap" id="chartWrap">
           <canvas id="chart" aria-label="Interactive candle chart"></canvas>
           <div class="chart-overlay-status" id="chartHover">Open/high/low/close · Move over chart</div>
-          <div class="chart-overlay-foot">Click to inspect · Select range to scope analyst · Draw levels or notes with the toolbar</div>
+          
         </div>
-        <div class="chart-bottom"><div class="replay-controls"><label class="flex"><input type="checkbox" id="replayToggle"> Historical reveal</label><button class="btn" id="replayBack">−1</button><button class="btn" id="replayNext">+1</button><button class="btn" id="replayTen">+10</button><span id="replayLabel" class="mono small muted">Full dataset</span></div><div id="rangeStatus" class="small muted">No range selected</div></div>
+        <div class="chart-bottom"><div class="replay-controls"><label class="flex"><input type="checkbox" id="replayToggle"> Historical reveal</label><button class="btn" id="replayBack">−1</button><button class="btn" id="replayNext">+1</button><button class="btn" id="replayTen">+10</button><span id="replayLabel" class="mono small muted">Full dataset</span></div><div class="small muted" id="chartHelp">Scroll to zoom · Drag with Cursor to pan · Click a drawing in Edit mode</div><div id="rangeStatus" class="small muted">No range selected</div></div>
+      </div>
+      <div class="research-panel panel">
+        <div class="research-head">
+          <div><div class="eyebrow">Local pattern finder · Not a signal service</div><h3>Research candidates <span id="scanCount" class="small dim mono"></span></h3><p id="scanSummary" class="muted small">Import dated candles or explore the synthetic demo. No model, backtest, or broker is connected.</p></div>
+          <div class="action-row"><select id="scanFilter" aria-label="Setup type"><option value="all">All patterns</option><option value="breakout">Break + retest</option><option value="failure">Failed break</option></select><button class="btn" id="scanNow">↻ Scan history</button></div>
+        </div>
+        <div id="scanResults" class="scan-results" aria-live="polite"></div>
+        <div class="research-detail">
+          <div id="scanDetail" class="research-explanation"><p class="empty">Select a detected pattern to see its context, structural levels and what's still unverified.</p></div>
+          <div class="readiness" id="readiness">
+            <div class="eyebrow">Readiness before risk</div>
+            <div class="ready-row"><span>Pattern definition</span><span id="readyPattern" class="ready-pending">Choose a case</span></div>
+            <div class="ready-row"><span>Data provenance</span><span id="readyData" class="ready-pending">Not verified</span></div>
+            <div class="ready-row"><span>Costs and execution</span><span class="ready-pending">Not modeled</span></div>
+            <div class="ready-row"><span>Out-of-sample edge</span><span class="ready-pending">Not tested</span></div>
+            <div class="ready-row"><span>Broker & risk controls</span><span class="ready-pending">Not connected</span></div>
+            <p class="small dim" style="margin-top:10px">A match is a place to research, not a buy/sell recommendation.</p>
+          </div>
+        </div>
       </div>
       <div class="detail-grid">
         <div class="minipanel">
-          <div class="flex between"><h3>Capture notes</h3><span class="eyebrow">Linked to snapshot</span></div>
-          <label class="label" for="setupName">Setup / idea</label><input class="field" id="setupName" placeholder="e.g. Opening-range pullback — variant A">
-          <div style="height:10px"></div>
-          <label class="label" for="thesis">What do you see, and what would invalidate it?</label>
-          <textarea id="thesis" placeholder="Write freely. Your reasoning matters more than a checkbox."></textarea>
-          <div class="divider"></div>
-          <div class="flex between"><span class="muted small">Chart image + candles + visible context + your notes</span><button class="btn" id="captureSecondary">Save to visual journal</button></div>
+          <div class="flex between"><h3>Selected drawings</h3><span id="drawingCount" class="eyebrow">0 active</span></div>
+          <div id="drawingList" class="drawing-list"><p class="empty">Use Level, Line, Box, Arrow, Brush or Note. Edit selects and moves existing drawings.</p></div>
+          <div id="drawingEditor" class="drawing-editor hidden">
+            <label class="label" for="drawingLabel">Label / observation</label>
+            <input class="field" id="drawingLabel" placeholder="Add context to this drawing">
+            <div class="fieldrow" style="margin-top:8px"><button class="btn" id="toggleDrawing">Hide drawing</button><button class="btn danger" id="removeDrawing">Delete drawing</button></div>
+          </div>
         </div>
         <div class="minipanel">
-          <div class="flex between"><h3>Session context</h3><span class="eyebrow">Objective values</span></div>
-          <div class="context-row"><span class="k">Price feed</span><span class="v" id="feedStatus">Synthetic / training only</span></div>
-          <div class="context-row"><span class="k">Selected candles</span><span class="v mono" id="selectedBars">Current view</span></div>
-          <div class="context-row"><span class="k">Chart markings</span><span class="v mono" id="markCount">0</span></div>
-          <div class="context-row"><span class="k">Recorded trades</span><span class="v mono">Not connected</span></div>
-          <p class="empty">The prototype never treats a chart pattern as a validated edge. Strategy results belong in separately audited tests.</p>
+          <div class="flex between"><h3>After research: save your case</h3><span class="eyebrow">Notes optional</span></div>
+          <p class="small muted" style="margin-bottom:11px">The scanner does the first search. Write only when you want to remember an idea, a decision or a correction.</p>
+          <label class="label" for="setupName">Research case</label>
+          <input class="field" id="setupName" placeholder="Selected setup (optional)">
+          <label class="label" for="thesis" style="margin-top:11px">Your observation</label>
+          <textarea id="thesis" placeholder="What makes this worth investigating? What could disprove it?"></textarea>
+          <div class="fieldrow" style="justify-content:space-between;margin-top:10px"><span class="small muted">Your note + visible chart + original data</span><button class="btn" id="captureSecondary">Save snapshot</button></div>
         </div>
       </div>
     </section>
@@ -250,7 +289,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   <aside class="assistant" id="assistant">
     <div class="assistant-head"><div class="assistant-title"><h2>✦ &nbsp; AI Research Analyst</h2><span class="ai-state">MODEL OFFLINE</span></div><p>Scoped to your selected evidence. Nothing is sent to an external model in this foundation.</p><div class="ai-modes" role="group" aria-label="Analyst interaction mode"><button class="active" data-ai-mode="quiet" aria-pressed="true">Quiet</button><button data-ai-mode="assist" aria-pressed="false">Assist</button><button data-ai-mode="coach" aria-pressed="false">Coach</button></div></div>
     <div class="ai-scroll">
-      <div class="ai-section"><div class="flex between" style="margin-bottom:12px"><h3 style="margin:0">Analysis context</h3><span class="eyebrow">Inspect before sending</span></div>
+      <div class="ai-section"><div class="flex between"><h3 style="margin:0">Selected candidate</h3><span class="eyebrow">Structure, not prediction</span></div><div id="aiCandidate" class="ai-candidate"><p class="empty">Click Find setups, then select a historical example. A concise visual breakdown will appear here.</p></div></div>
+      <details class="ai-section advanced"><summary>Evidence & context controls</summary><div class="flex between" style="margin-bottom:12px"><h3 style="margin:0">Analysis context</h3><span class="eyebrow">Inspect before sending</span></div>
         <div class="context-row"><span class="k">Source</span><span class="v" id="aiSource">Demo / synthetic</span></div>
         <div class="context-row"><span class="k">Instrument</span><span class="v mono" id="aiSymbol">DEMO</span></div>
         <div class="context-row"><span class="k">Evidence window</span><span class="v" id="aiWindow">Last visible 90 candles</span></div>
@@ -263,11 +303,12 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <button class="active" data-scope="notes" aria-pressed="true">Draft notes</button>
         <button data-scope="history" aria-pressed="false">Journal cases</button>
       </div><p class="small dim" style="margin-top:10px;line-height:1.7">Only selected sources enter a prepared context packet. Sensitive account credentials are never included.</p></div>
-      <div class="ai-section"><h3>Verified local observations</h3><div id="aiObservations"></div></div>
-      <div class="ai-section"><div class="flex between"><h3 style="margin:0">Context packet</h3><button class="subtle-link" id="copyContext">Copy JSON</button></div><p class="small muted" style="line-height:1.7;margin:9px 0">Prepared locally for a future connected model. Exact inputs, source type, and missing data are explicit.</p><pre id="packetPreview" style="margin:0;max-height:150px;overflow:auto;padding:10px;border:1px solid var(--edge);border-radius:7px;background:#0e151c;font:10px/1.65 var(--mono);color:#9db2bd;white-space:pre-wrap;overflow-wrap:anywhere">Select evidence and prepare an analysis.</pre></div>
+      </details>
+      <details class="ai-section advanced"><summary>Local observations</summary><div id="aiObservations" style="margin-top:9px"></div></details>
+      <details class="ai-section advanced"><summary>Context packet</summary><div class="flex between"><h3 style="margin:0">Prepared input</h3><button class="subtle-link" id="copyContext">Copy JSON</button></div><p class="small muted" style="line-height:1.7;margin:9px 0">Prepared locally for a future connected model. Exact inputs, source type, and missing data are explicit.</p><pre id="packetPreview" style="margin:0;max-height:150px;overflow:auto;padding:10px;border:1px solid var(--edge);border-radius:7px;background:#0e151c;font:10px/1.65 var(--mono);color:#9db2bd;white-space:pre-wrap;overflow-wrap:anywhere">Select evidence and prepare an analysis.</pre></div></details>
     </div>
     <div class="ai-composer">
-      <div class="prompt-row"><button class="prompt" data-prompt="Review my selected chart context. Separate observations, uncertainties, and what could falsify an idea.">Review setup</button><button class="prompt" data-prompt="Identify decision-process mistakes supported by my notes and observed candle sequence. Do not invent trade history.">Audit decisions</button><button class="prompt" data-prompt="Propose a falsifiable strategy experiment with exact entry/exit/risk conditions and out-of-sample validation.">Design test</button></div>
+      <div class="prompt-row"><button class="prompt" id="aiScanBtn">Find setups</button><button class="prompt" data-prompt="Review my selected chart context. Separate observations, uncertainties, and what could falsify an idea.">Review setup</button><button class="prompt" data-prompt="Identify decision-process mistakes supported by my notes and observed candle sequence. Do not invent trade history.">Audit decisions</button><button class="prompt" data-prompt="Propose a falsifiable strategy experiment with exact entry/exit/risk conditions and out-of-sample validation.">Design test</button></div>
       <label for="aiPrompt" class="label">Ask a grounded question</label><textarea id="aiPrompt" placeholder="What does this structure suggest I should investigate?"></textarea>
       <div class="composer-footer"><span class="muted">Read-only · User-controlled context</span><button class="btn primary" id="prepareContext">Prepare context</button></div>
     </div>
