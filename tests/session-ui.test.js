@@ -1,0 +1,117 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {dirname,join} from "node:path";
+import {fileURLToPath} from "node:url";
+import "../prototype/session-engine.js";
+
+const html=readFileSync(join(dirname(fileURLToPath(import.meta.url)),"../prototype/trader-workspace.html"),"utf8");
+const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+const paints="clearRect fillRect setTransform save restore beginPath rect clip moveTo lineTo stroke fill fillText setLineDash strokeRect arc closePath".split(" ");
+const ctx=Object.fromEntries(paints.map(name=>[name,()=>{}]));
+function fixture(day){
+  const start=Date.parse(day+"T13:30:00Z");
+  const make=(i,o=6000,h=6000.25,l=5999.75,c=6000)=>({
+    time:start+i*300000,open:o,high:h,low:l,close:c});
+  const a=Array.from({length:30},(_,i)=>make(i));
+  a[0]=make(0,6000,6010,5990,6000);
+  a[1]=make(1,6000,6009,5991,6000);
+  a[2]=make(2,6000,6009,5991,6000);
+  a[3]=make(3,6009,6012,6008,6011);
+  a[4]=make(4,6011,6012,6010,6011);
+  a[5]=make(5,6011,6013.5,6010.5,6013);
+  a[6]=make(6,6013,6014,6012,6013.5);
+  a[7]=make(7,6014,6022,6013,6021);
+  return a;
+}
+function createUI(){
+  class Node{
+    constructor(id){
+      this.id=id;
+      this.value=id==="scanFilter"||id==="simKind"?"all":
+        id==="mesRule"?"ORP-001":id==="mesSlip"?"1":id==="mesFee"?"2.5":
+        id==="mesReward"?"2":id==="simSlip"||id==="simFee"?"1":
+        id==="simTarget"?"2":id==="simHold"?"12":"";
+      this.checked=false;this.disabled=false;this.clientWidth=1050;this.clientHeight=500;
+      this.children=[];this.dataset={};this.style={};this.listeners={};
+      this.classList={add(){},remove(){},toggle(){}};
+    }
+    addEventListener(type,callback){(this.listeners[type]??=[]).push(callback)}
+    append(...items){this.children.push(...items)}
+    appendChild(item){this.children.push(item);return item}
+    setAttribute(){}
+    remove(){}
+    scrollIntoView(){}
+    getBoundingClientRect(){return {left:0,top:0,width:1050,height:500}}
+    setPointerCapture(){}
+    releasePointerCapture(){}
+    getContext(){return ctx}
+  }
+  const ids=[...html.matchAll(/id="([^"]+)"/g)].map(x=>x[1]);
+  const nodes=Object.fromEntries(ids.map(id=>[id,new Node(id)]));
+  const groups=Object.fromEntries(["tool","view","strategy","prompt","scope","ai-mode"].map(type=>
+    [type,[...html.matchAll(new RegExp('data-'+type+'="([^"]+)"','g'))].map(x=>{
+      const e=new Node(x[1]);e.dataset[type.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=x[1];return e;
+    })]));
+  const document={
+    getElementById:id=>nodes[id],createElement:tag=>new Node(tag),
+    querySelectorAll:selector=>groups[selector.match(/\[data-([a-z-]+)\]/)?.[1]]||[],
+    documentElement:new Node("html"),body:new Node("body"),addEventListener(){}
+  };
+  const window={matchMedia(){return {matches:false}},addEventListener(){},confirm(){return true}};
+  const inner=script.slice(script.indexOf("(function(){")+"(function(){".length,script.lastIndexOf("})();"));
+  const patched=inner.replace(/\n\s*start\(\);\s*$/,
+    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible}));');
+  assert.notEqual(inner,patched);
+  const launch=new Function("document","window","globalThis","indexedDB","localStorage","devicePixelRatio",
+    "requestAnimationFrame","ResizeObserver","setTimeout","clearTimeout","fetch",patched);
+  return launch(document,window,globalThis,undefined,
+    {getItem(){return null},setItem(){}},1,fn=>fn(),class {observe(){}},()=>1,()=>{},
+    async()=>{throw Error("Optional model is intentionally unavailable")}).then(r=>({...r,nodes}));
+}
+function dataset(){
+  const dates=[];
+  for(let i=1;i<=20;i++){
+    const d="2026-07-"+String(i).padStart(2,"0");
+    if([0,6].includes(new Date(d+"T12:00:00Z").getUTCDay()))continue;
+    dates.push(d);
+  }
+  return {id:"csv-test-mes-v4",symbol:"MES_5m_July",source:"user-csv-unverified",
+    timeframe:"5m",label:"Unverified fixture",bars:dates.flatMap(fixture)};
+}
+test("a confirmed MES import can run exact strategy and preserve hidden reserve",async()=>{
+  const x=await createUI();
+  x.resetDataset(dataset());
+  x.nodes.mesConfirm.checked=true;
+  await x.runMesResearch();
+  assert.ok(x.S.mesRun?.report?.allTrades.length>0);
+  assert.equal(x.S.mesRun.report.rule,"ORP-001");
+  assert.equal(x.S.mesRun.holdoutRevealedAt,null);
+  const stored=x.S.experimentRuns[0];
+  assert.equal(stored.kind,"MES_SESSION_V1");
+  assert.equal(stored.report.reserve,null);
+  assert.deepEqual(stored.report.reserveTrades,[]);
+  assert.ok(stored.report.allTrades.every(t=>t.day<=stored.report.split.trainingThrough));
+});
+test("scanner opens historical case at confirmation without exposing next candle",async()=>{
+  const x=await createUI();
+  x.resetDataset(dataset());
+  x.nodes.mesConfirm.checked=true;
+  x.runMesScan();
+  assert.ok(x.S.mesSignals.matches.length>0);
+  const signal=x.S.mesSignals.matches[0];
+  x.focusMesSignal(signal);
+  assert.equal(x.S.replay,true);
+  assert.equal(x.nodes.replayToggle.checked,true);
+  assert.equal(x.visible().bars.at(-1).time,signal.signalBarStart);
+  assert.equal(x.S.mesSignalPreview.status,"HISTORICAL_RESEARCH_MATCH_NOT_A_TRADE");
+  assert.equal(x.S.mesPreview,null);
+});
+test("MES research is blocked until source is explicitly acknowledged",async()=>{
+  const x=await createUI();
+  x.resetDataset(dataset());
+  await x.runMesResearch();
+  assert.equal(x.S.mesRun,null);
+  assert.equal(x.S.experimentRuns.length,0);
+  assert.ok(x.nodes.mesResult.children.length>0);
+});
