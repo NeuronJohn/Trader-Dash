@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import AnalystWorkspace from "./components/AnalystWorkspace";
+import ChartStudio from "./components/ChartStudio";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -869,8 +870,9 @@ export default function DisciplineTraderToolkit() {
           ))}
         </div>
 
-        <Tabs defaultValue="analyst" className="mt-6">
-          <TabsList className="grid w-full grid-cols-2 gap-2 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-2 md:grid-cols-4 xl:grid-cols-8 min-h-[72px]">
+        <Tabs defaultValue="charts" className="mt-6">
+          <TabsList className="grid w-full grid-cols-2 gap-2 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-2 md:grid-cols-4 xl:grid-cols-9 min-h-[72px]">
+            <TabsTrigger value="charts" className="rounded-2xl">Charts</TabsTrigger>
             <TabsTrigger value="analyst" className="rounded-2xl">Analyst</TabsTrigger>
             <TabsTrigger value="command" className="rounded-2xl">Command</TabsTrigger>
             <TabsTrigger value="prep" className="rounded-2xl">Prep</TabsTrigger>
@@ -880,6 +882,10 @@ export default function DisciplineTraderToolkit() {
             <TabsTrigger value="playbook" className="rounded-2xl">Playbook</TabsTrigger>
             <TabsTrigger value="tools" className="rounded-2xl">Tools</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="charts" className="mt-4">
+            <ChartStudio trades={state.trades || []}/>
+          </TabsContent>
 
           <TabsContent value="analyst" className="mt-4">
             <AnalystWorkspace trades={state.trades || []} onUpdateTrade={(id, patch) => setState(prev => ({ ...prev, trades: (prev.trades || []).map(t => t.id === id ? { ...t, ...patch } : t) }))} />
