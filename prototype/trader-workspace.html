@@ -151,6 +151,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 @media(max-width:1250px){.app{grid-template-columns:170px minmax(350px,1fr) 305px}.app.hide-ai{grid-template-columns:170px minmax(350px,1fr) 0}.brand{width:145px}.main{padding:16px}.detail-grid{grid-template-columns:1fr}.assistant-head{padding:15px}.ai-scroll{padding:14px}}
 @media(max-width:1050px){.app,.app.hide-ai{grid-template-columns:165px minmax(0,1fr);grid-template-rows:55px minmax(0,1fr) 32px}.assistant{grid-column:2;grid-row:2;position:relative;border-left:0;border-top:1px solid var(--hair);height:420px;min-height:0}.main{grid-column:2;grid-row:2;overflow:auto;padding-bottom:445px}.assistant{display:none}.app.show-ai .assistant{display:flex;position:fixed;z-index:4;right:0;top:55px;bottom:30px;height:auto;width:min(350px,calc(100vw - 165px));box-shadow:-16px 0 50px #0008}.app.show-ai .main{padding-bottom:26px}.topstatus{display:none}.chartwrap{height:420px}}
 @media(max-width:640px){.app,.app.hide-ai{grid-template-columns:1fr;grid-template-rows:54px minmax(0,1fr) 29px}.sidebar{display:none}.main{grid-column:1;grid-row:2;padding:15px}.brand{width:auto}.toplabel{display:none}.topbar{padding:0 12px}.workspace-title{flex-direction:column}.chartwrap{height:370px;min-height:300px}.summary-stripe{grid-template-columns:1fr 1fr}.labgrid,.journal-list,.journal-preview{grid-template-columns:1fr}.app.show-ai .assistant{width:100vw;top:54px;bottom:29px}.statusbar{gap:8px}.statusbar .right{display:none}}
+
+/* Foundation v0.2 — research-first workflow, precise chart axes and tidy drawing controls */
+.toolset{display:flex;gap:4px;flex-wrap:wrap;align-items:center}.tool-separator{height:19px;border-left:1px solid #2d3a44;margin:0 4px}.chart-toolbar .btn{font-size:11px;padding:7px 8px}.chart-bottom{min-height:45px}.chart-overlay-status{top:8px;left:14px;font-size:10px;background:rgba(15,22,30,.85);border-radius:5px;padding:3px 6px}.research-panel{margin-top:13px;overflow:hidden}.research-head{padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.research-head h3{font-size:14px;margin:5px 0 4px}.research-head select{width:auto;min-width:130px;padding:7px 9px;font-size:11px}.scan-results{display:flex;gap:8px;overflow:auto;padding:0 16px 15px;scrollbar-color:#3b4e56 transparent}.scan-hit{min-width:170px;max-width:195px;flex:0 0 auto;background:#141f29;border:1px solid #2a3944;border-radius:9px;padding:11px;text-align:left;display:flex;flex-direction:column;gap:6px}.scan-hit:hover{border-color:#698e83}.scan-hit.selected{border-color:#8ac5b7;background:#1c3132}.scan-hit .kind{font-size:10px;color:#91a2b4}.scan-hit strong{font-size:12px;line-height:1.45}.scan-hit .at{font:10px var(--mono);color:#82939f}.scan-hit .dir{font-size:10px;color:#cfc5af}.research-detail{border-top:1px solid #25313d;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(230px,.85fr)}.research-explanation{padding:16px;min-height:138px}.research-explanation h4{font-size:13px;font-weight:700;margin:0 0 7px}.research-explanation p{font-size:11px;color:#a7b9c6;line-height:1.7}.research-explanation .facts{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.fact{padding:5px 7px;background:#1d2a34;border:1px solid #35424c;border-radius:6px;color:#cad5de;font:10px var(--mono)}.readiness{border-left:1px solid var(--hair);padding:14px 17px;background:#121a22}.ready-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #26313b;font-size:11px;padding:8px 0;color:#a9b8c4}.ready-pending{color:#d7b978;text-align:right}.ready-ok{color:#9fd7c9}.drawing-list{max-height:172px;overflow:auto;display:flex;flex-direction:column;gap:5px}.drawing-item{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:1px solid #2a3742;border-radius:7px;padding:7px 9px;background:#131e28;text-align:left;font-size:11px;color:#b9c8d3}.drawing-item.selected{border-color:#7caf9e;color:#d3eee4;background:#1a3232}.drawing-item.hidden-mark{opacity:.55}.drawing-editor{margin-top:11px;padding-top:11px;border-top:1px solid var(--hair)}.ai-candidate{padding-top:10px}.ai-candidate h4{font-size:13px;margin:0 0 8px}.ai-candidate .level{padding:7px 0;border-bottom:1px solid var(--hair);font:11px var(--mono);color:#bacad3;display:flex;justify-content:space-between}.ai-candidate .why{font-size:11px;line-height:1.7;color:#aabdc9;margin:10px 0}.ai-candidate .warning{font-size:11px;line-height:1.6;color:#d5ba88}.ai-section.advanced{border-top:1px solid #24313b;padding-top:12px}.ai-section.advanced summary{cursor:pointer;color:#98a9b6;font-size:11px;font-weight:650}.ai-section.advanced[open] summary{margin-bottom:12px;color:#d6e6e7}.chartwrap{min-height:390px}.chart-toolbar{row-gap:7px}.notice-small{border:1px solid #544a36;background:#242018;color:#d6bd91;padding:9px;border-radius:7px;font-size:11px;line-height:1.55}
+@media(max-width:950px){.research-detail{grid-template-columns:1fr}.readiness{border-left:0;border-top:1px solid var(--hair)}.chart-toolbar .spacer{display:none}}
+@media(max-width:640px){.chart-toolbar .btn{padding:6px}.toolset{gap:2px}.research-head{align-items:flex-start}.chart-bottom #chartHelp{display:none}.scan-hit{min-width:152px}}
 </style>
 </head>
 <body>
@@ -181,45 +186,79 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   </aside>
   <main class="main">
     <section id="view-workspace">
-      <div class="workspace-title"><div><h1>Market workspace</h1><p>Study price, annotate decisions, and capture the evidence.</p></div>
-      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo data</button><button class="btn primary" id="captureBtn">Capture snapshot</button></div></div>
+      <div class="workspace-title"><div><h1>Market workspace</h1><p>Find candidate setups, understand the structure, then decide what deserves a note.</p></div>
+      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo</button><button class="btn primary" id="scanTop">⌕ &nbsp; Find setups</button></div></div>
       <div class="panel chartbox">
-        <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
+        <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span><button class="btn subtle" id="latestCase" title="Jump to most recently detected historical candidate">No scan yet</button></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
         <div class="chart-toolbar">
-          <button class="btn tool-active" data-tool="inspect">⌖ &nbsp; Inspect</button>
-          <button class="btn" data-tool="select">▧ &nbsp; Select range</button>
-          <button class="btn" data-tool="level">─ &nbsp; Price level</button>
-          <button class="btn" data-tool="note">✎ &nbsp; Note marker</button>
+          <div class="toolset">
+            <button class="btn tool-active" data-tool="inspect" title="Inspect candles and drag to pan. Keyboard: 1">⌖ &nbsp; Cursor</button>
+            <button class="btn" data-tool="select" title="Select a time range for research. Keyboard: 2">▧ &nbsp; Range</button>
+            <button class="btn" data-tool="edit" title="Select, move or delete any drawing. Keyboard: 3">↖ &nbsp; Edit</button>
+          </div>
+          <span class="tool-separator"></span>
+          <div class="toolset">
+            <button class="btn" data-tool="level" title="Horizontal price level">─ &nbsp; Level</button>
+            <button class="btn" data-tool="line" title="Two-point trendline">╱ &nbsp; Line</button>
+            <button class="btn" data-tool="rectangle" title="Price/time zone">▭ &nbsp; Box</button>
+            <button class="btn" data-tool="arrow" title="Two-point arrow">↗ &nbsp; Arrow</button>
+            <button class="btn" data-tool="brush" title="Draw a freehand stroke">✎ &nbsp; Brush</button>
+            <button class="btn" data-tool="note" title="Pinned note marker">◉ &nbsp; Note</button>
+          </div>
           <span class="spacer"></span>
-          <button class="btn subtle" id="undoMark" title="Undo last annotation">↶ &nbsp; Undo</button>
-          <button class="btn subtle" id="zoomOut" title="Show more candles">−</button>
+          <button class="btn subtle" id="deleteDrawing" disabled title="Delete selected drawing">Delete</button>
+          <button class="btn subtle" id="undoMark" title="Remove newest drawing">↶</button>
+          <span class="tool-separator"></span>
+          <button class="btn subtle" id="panLeft" title="Move earlier">‹</button>
+          <button class="btn subtle" id="zoomOut" title="Zoom out">−</button>
           <span class="mono small muted" id="zoomLabel">90 bars</span>
-          <button class="btn subtle" id="zoomIn" title="Show fewer candles">+</button>
+          <button class="btn subtle" id="zoomIn" title="Zoom in">+</button>
+          <button class="btn subtle" id="panRight" title="Move later">›</button>
         </div>
         <div class="chartwrap" id="chartWrap">
           <canvas id="chart" aria-label="Interactive candle chart"></canvas>
           <div class="chart-overlay-status" id="chartHover">Open/high/low/close · Move over chart</div>
-          <div class="chart-overlay-foot">Click to inspect · Select range to scope analyst · Draw levels or notes with the toolbar</div>
+          
         </div>
-        <div class="chart-bottom"><div class="replay-controls"><label class="flex"><input type="checkbox" id="replayToggle"> Historical reveal</label><button class="btn" id="replayBack">−1</button><button class="btn" id="replayNext">+1</button><button class="btn" id="replayTen">+10</button><span id="replayLabel" class="mono small muted">Full dataset</span></div><div id="rangeStatus" class="small muted">No range selected</div></div>
+        <div class="chart-bottom"><div class="replay-controls"><label class="flex"><input type="checkbox" id="replayToggle"> Historical reveal</label><button class="btn" id="replayBack">−1</button><button class="btn" id="replayNext">+1</button><button class="btn" id="replayTen">+10</button><span id="replayLabel" class="mono small muted">Full dataset</span></div><div class="small muted" id="chartHelp">Scroll to zoom · Drag with Cursor to pan · Click a drawing in Edit mode</div><div id="rangeStatus" class="small muted">No range selected</div></div>
+      </div>
+      <div class="research-panel panel">
+        <div class="research-head">
+          <div><div class="eyebrow">Local pattern finder · Not a signal service</div><h3>Research candidates <span id="scanCount" class="small dim mono"></span></h3><p id="scanSummary" class="muted small">Import dated candles or explore the synthetic demo. No model, backtest, or broker is connected.</p></div>
+          <div class="action-row"><select id="scanFilter" aria-label="Setup type"><option value="all">All patterns</option><option value="breakout">Break + retest</option><option value="failure">Failed break</option></select><button class="btn" id="scanNow">↻ Scan history</button></div>
+        </div>
+        <div id="scanResults" class="scan-results" aria-live="polite"></div>
+        <div class="research-detail">
+          <div id="scanDetail" class="research-explanation"><p class="empty">Select a detected pattern to see its context, structural levels and what's still unverified.</p></div>
+          <div class="readiness" id="readiness">
+            <div class="eyebrow">Readiness before risk</div>
+            <div class="ready-row"><span>Pattern definition</span><span id="readyPattern" class="ready-pending">Choose a case</span></div>
+            <div class="ready-row"><span>Data provenance</span><span id="readyData" class="ready-pending">Not verified</span></div>
+            <div class="ready-row"><span>Costs and execution</span><span class="ready-pending">Not modeled</span></div>
+            <div class="ready-row"><span>Out-of-sample edge</span><span class="ready-pending">Not tested</span></div>
+            <div class="ready-row"><span>Broker & risk controls</span><span class="ready-pending">Not connected</span></div>
+            <p class="small dim" style="margin-top:10px">A match is a place to research, not a buy/sell recommendation.</p>
+          </div>
+        </div>
       </div>
       <div class="detail-grid">
         <div class="minipanel">
-          <div class="flex between"><h3>Capture notes</h3><span class="eyebrow">Linked to snapshot</span></div>
-          <label class="label" for="setupName">Setup / idea</label><input class="field" id="setupName" placeholder="e.g. Opening-range pullback — variant A">
-          <div style="height:10px"></div>
-          <label class="label" for="thesis">What do you see, and what would invalidate it?</label>
-          <textarea id="thesis" placeholder="Write freely. Your reasoning matters more than a checkbox."></textarea>
-          <div class="divider"></div>
-          <div class="flex between"><span class="muted small">Chart image + candles + visible context + your notes</span><button class="btn" id="captureSecondary">Save to visual journal</button></div>
+          <div class="flex between"><h3>Selected drawings</h3><span id="drawingCount" class="eyebrow">0 active</span></div>
+          <div id="drawingList" class="drawing-list"><p class="empty">Use Level, Line, Box, Arrow, Brush or Note. Edit selects and moves existing drawings.</p></div>
+          <div id="drawingEditor" class="drawing-editor hidden">
+            <label class="label" for="drawingLabel">Label / observation</label>
+            <input class="field" id="drawingLabel" placeholder="Add context to this drawing">
+            <div class="fieldrow" style="margin-top:8px"><button class="btn" id="toggleDrawing">Hide drawing</button><button class="btn danger" id="removeDrawing">Delete drawing</button></div>
+          </div>
         </div>
         <div class="minipanel">
-          <div class="flex between"><h3>Session context</h3><span class="eyebrow">Objective values</span></div>
-          <div class="context-row"><span class="k">Price feed</span><span class="v" id="feedStatus">Synthetic / training only</span></div>
-          <div class="context-row"><span class="k">Selected candles</span><span class="v mono" id="selectedBars">Current view</span></div>
-          <div class="context-row"><span class="k">Chart markings</span><span class="v mono" id="markCount">0</span></div>
-          <div class="context-row"><span class="k">Recorded trades</span><span class="v mono">Not connected</span></div>
-          <p class="empty">The prototype never treats a chart pattern as a validated edge. Strategy results belong in separately audited tests.</p>
+          <div class="flex between"><h3>After research: save your case</h3><span class="eyebrow">Notes optional</span></div>
+          <p class="small muted" style="margin-bottom:11px">The scanner does the first search. Write only when you want to remember an idea, a decision or a correction.</p>
+          <label class="label" for="setupName">Research case</label>
+          <input class="field" id="setupName" placeholder="Selected setup (optional)">
+          <label class="label" for="thesis" style="margin-top:11px">Your observation</label>
+          <textarea id="thesis" placeholder="What makes this worth investigating? What could disprove it?"></textarea>
+          <div class="fieldrow" style="justify-content:space-between;margin-top:10px"><span class="small muted">Your note + visible chart + original data</span><button class="btn" id="captureSecondary">Save snapshot</button></div>
         </div>
       </div>
     </section>
@@ -240,7 +279,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       <div class="minipanel" style="margin-top:13px"><div class="flex between"><h3 id="labDetailTitle">Choose a hypothesis</h3><button class="btn" id="prepareStrategy">Prepare AI research context</button></div><p id="labDetailText" class="empty">Choose one of the strategies above to view its experiment requirements.</p></div>
     </section>
     <section id="view-journal" class="hidden">
-      <div class="workspace-title"><div><h1>Visual journal</h1><p>Every snapshot should lead back to a decision and an explanation.</p></div><div class="action-row"><button class="btn" id="goWorkspace">New snapshot</button><button class="btn" id="journalExport">Export archive</button></div></div>
+      <div class="workspace-title"><div><h1>Visual journal</h1><p>Every snapshot should lead back to a decision and an explanation.</p></div><div class="action-row"><input id="archiveFile" type="file" accept=".json,application/json" class="hidden"><button class="btn" id="restoreArchiveBtn">Restore archive</button><button class="btn" id="goWorkspace">New snapshot</button><button class="btn" id="journalExport">Export archive</button></div></div>
       <div class="summary-stripe"><div class="summary-item"><div class="eyebrow">Saved snapshots</div><div class="value" id="snapshotCount">0</div><div class="hint">Locally stored captures</div></div><div class="summary-item"><div class="eyebrow">Linked live trades</div><div class="value">—</div><div class="hint">Not yet integrated</div></div><div class="summary-item"><div class="eyebrow">Evidence coverage</div><div class="value">—</div><div class="hint">No broker fills imported</div></div></div>
       <div class="fieldrow"><input class="field" id="journalSearch" placeholder="Search notes, markets, or setups..."><button class="btn" id="refreshJournal">Refresh</button></div>
       <div id="snapshotCards" class="journal-list"></div>
@@ -250,24 +289,25 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   <aside class="assistant" id="assistant">
     <div class="assistant-head"><div class="assistant-title"><h2>✦ &nbsp; AI Research Analyst</h2><span class="ai-state">MODEL OFFLINE</span></div><p>Scoped to your selected evidence. Nothing is sent to an external model in this foundation.</p><div class="ai-modes" role="group" aria-label="Analyst interaction mode"><button class="active" data-ai-mode="quiet" aria-pressed="true">Quiet</button><button data-ai-mode="assist" aria-pressed="false">Assist</button><button data-ai-mode="coach" aria-pressed="false">Coach</button></div></div>
     <div class="ai-scroll">
-      <div class="ai-section"><div class="flex between" style="margin-bottom:12px"><h3 style="margin:0">Analysis context</h3><span class="eyebrow">Inspect before sending</span></div>
+      <div class="ai-section"><div class="flex between"><h3 style="margin:0">Selected candidate</h3><span class="eyebrow">Structure, not prediction</span></div><div id="aiCandidate" class="ai-candidate"><p class="empty">Historical rule matches appear here automatically; explore their structure before recording decisions.</p></div></div>
+      <details class="ai-section advanced"><summary>Evidence & context controls</summary><div class="flex between" style="margin-bottom:12px"><h3 style="margin:0">Analysis context</h3><span class="eyebrow">Inspect before sending</span></div>
         <div class="context-row"><span class="k">Source</span><span class="v" id="aiSource">Demo / synthetic</span></div>
         <div class="context-row"><span class="k">Instrument</span><span class="v mono" id="aiSymbol">DEMO</span></div>
         <div class="context-row"><span class="k">Evidence window</span><span class="v" id="aiWindow">Last visible 90 candles</span></div>
         <div class="context-row"><span class="k">Chart notes</span><span class="v mono" id="aiMarks">0 attached</span></div>
         <div class="context-row"><span class="k">Saved cases</span><span class="v mono" id="aiCases">0 snapshots</span></div>
-      </div>
       <div class="ai-section"><h3>Include in context</h3><div class="scope">
         <button class="active" data-scope="candles" aria-pressed="true">Candles</button>
         <button class="active" data-scope="marks" aria-pressed="true">Annotations</button>
         <button class="active" data-scope="notes" aria-pressed="true">Draft notes</button>
         <button data-scope="history" aria-pressed="false">Journal cases</button>
       </div><p class="small dim" style="margin-top:10px;line-height:1.7">Only selected sources enter a prepared context packet. Sensitive account credentials are never included.</p></div>
-      <div class="ai-section"><h3>Verified local observations</h3><div id="aiObservations"></div></div>
-      <div class="ai-section"><div class="flex between"><h3 style="margin:0">Context packet</h3><button class="subtle-link" id="copyContext">Copy JSON</button></div><p class="small muted" style="line-height:1.7;margin:9px 0">Prepared locally for a future connected model. Exact inputs, source type, and missing data are explicit.</p><pre id="packetPreview" style="margin:0;max-height:150px;overflow:auto;padding:10px;border:1px solid var(--edge);border-radius:7px;background:#0e151c;font:10px/1.65 var(--mono);color:#9db2bd;white-space:pre-wrap;overflow-wrap:anywhere">Select evidence and prepare an analysis.</pre></div>
+      </details>
+      <details class="ai-section advanced"><summary>Local observations</summary><div id="aiObservations" style="margin-top:9px"></div></details>
+      <details class="ai-section advanced"><summary>Context packet</summary><div class="flex between"><h3 style="margin:0">Prepared input</h3><button class="subtle-link" id="copyContext">Copy JSON</button></div><p class="small muted" style="line-height:1.7;margin:9px 0">Prepared locally for a future connected model. Exact inputs, source type, and missing data are explicit.</p><pre id="packetPreview" style="margin:0;max-height:150px;overflow:auto;padding:10px;border:1px solid var(--edge);border-radius:7px;background:#0e151c;font:10px/1.65 var(--mono);color:#9db2bd;white-space:pre-wrap;overflow-wrap:anywhere">Select evidence and prepare an analysis.</pre></details>
     </div>
     <div class="ai-composer">
-      <div class="prompt-row"><button class="prompt" data-prompt="Review my selected chart context. Separate observations, uncertainties, and what could falsify an idea.">Review setup</button><button class="prompt" data-prompt="Identify decision-process mistakes supported by my notes and observed candle sequence. Do not invent trade history.">Audit decisions</button><button class="prompt" data-prompt="Propose a falsifiable strategy experiment with exact entry/exit/risk conditions and out-of-sample validation.">Design test</button></div>
+      <div class="prompt-row"><button class="prompt" id="aiScanBtn">Find setups</button><button class="prompt" data-prompt="Review my selected chart context. Separate observations, uncertainties, and what could falsify an idea.">Review setup</button><button class="prompt" data-prompt="Identify decision-process mistakes supported by my notes and observed candle sequence. Do not invent trade history.">Audit decisions</button><button class="prompt" data-prompt="Propose a falsifiable strategy experiment with exact entry/exit/risk conditions and out-of-sample validation.">Design test</button></div>
       <label for="aiPrompt" class="label">Ask a grounded question</label><textarea id="aiPrompt" placeholder="What does this structure suggest I should investigate?"></textarea>
       <div class="composer-footer"><span class="muted">Read-only · User-controlled context</span><button class="btn primary" id="prepareContext">Prepare context</button></div>
     </div>
@@ -287,7 +327,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,replay:false,reveal:0,hover:null,selection:null,drag:null,
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),
     scopes:{candles:true,marks:true,notes:true,history:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -332,8 +372,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const symbol=safeStr(filename).replace(/\.[^.]+$/,"").slice(0,32);
     return {id:"csv:"+symbol+":"+bars.length+":"+bars[0].time+":"+bars[bars.length-1].time,symbol,timeframe:"source",source:"user-csv-unverified",label:"Imported CSV / source unverified",bars};
   }
-  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,1);
-    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
+  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,2);
+    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets","drawings"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||Error("IndexedDB unavailable"));})}
   function dbAction(store,mode,op){return new Promise((resolve,reject)=>{if(!S.db)return reject(Error("Browser storage unavailable; export immediately"));
     const tx=S.db.transaction(store,mode),r=op(tx.objectStore(store));tx.oncomplete=()=>resolve(r.result);
@@ -344,15 +384,18 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
   function savePrefs(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({dataId:S.data.id}))}catch(e){toast("Preferences not saved; export your work")}}
   function activeDrawings(){return S.replay?S.replayDrawings.filter(mark=>mark.createdReveal<=S.reveal):S.drawings}
-  function visible(){const max=S.replay?S.reveal:S.data.bars.length-1;return {start:Math.max(0,max-S.visible+1),end:max,bars:S.data.bars.slice(Math.max(0,max-S.visible+1),max+1)}}
+  function visible(){const limit=S.replay?S.reveal:S.data.bars.length-1;const end=clamp(S.viewportEnd==null?limit:S.viewportEnd,0,limit);const start=Math.max(0,end-S.visible+1);
+    return {start,end,bars:S.data.bars.slice(start,end+1)};
+  }
   const canvas=$("chart"),ctx=canvas.getContext("2d");
   const geom={};
   function resized(){const rect=$("chartWrap").getBoundingClientRect();if(rect.width<10)return;const dpr=Math.min(devicePixelRatio||1,2);
     canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr);canvas.style.width=rect.width+"px";canvas.style.height=rect.height+"px";
     ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
-  function chartMeta(){const width=canvas.clientWidth||700,height=canvas.clientHeight||400,padR=73,padL=11,padT=24,padB=35;
-    const a=visible(),maxPrice=Math.max(...a.bars.map(x=>x.high)),minPrice=Math.min(...a.bars.map(x=>x.low)),padding=Math.max((maxPrice-minPrice)*.12,.15);
-    const max=maxPrice+padding,min=minPrice-padding, plotW=width-padR-padL,plotH=height-padT-padB;
+  function chartMeta(){const width=canvas.clientWidth||700,height=canvas.clientHeight||400,padR=84,padL=15,padT=28,padB=45;
+    const a=visible(),maxPrice=Math.max(...a.bars.map(x=>x.high)),minPrice=Math.min(...a.bars.map(x=>x.low));
+    const padding=Math.max((maxPrice-minPrice)*.10,Math.abs(maxPrice)*.00003,.005);
+    const max=maxPrice+padding,min=minPrice-padding,plotW=width-padR-padL,plotH=height-padT-padB;
     return {a,w:width,h:height,L:padL,T:padT,R:padR,B:padB,plotW,plotH,max,min,step:plotW/Math.max(a.bars.length,1)}
   }
   function xFor(i,m){return m.L+(i-m.a.start+.5)*m.step}
@@ -362,26 +405,370 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   function dataFromEvent(event){const r=canvas.getBoundingClientRect(),x=event.clientX-r.left,y=event.clientY-r.top,m=chartMeta();if(x<m.L||x>m.w-m.R||y<m.T||y>m.h-m.B)return null;
     return {index:ixFrom(x,m),price:priceFrom(y,m),x,y,m}}
   function line(x1,y1,x2,y2,color,width=1,dash=[]){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore()}
-  function draw(){if(!S.data||!canvas.clientWidth)return;const m=chartMeta();Object.assign(geom,m);ctx.clearRect(0,0,m.w,m.h);ctx.fillStyle="#0f161e";ctx.fillRect(0,0,m.w,m.h);
-    ctx.save();ctx.fillStyle="#111c25";ctx.fillRect(m.L,m.T,m.plotW,m.plotH);
-    ctx.textBaseline="middle";ctx.font="10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono");
-    const range=m.max-m.min;
-    for(let t=0;t<=5;t++){const p=m.min+range*t/5,y=yFor(p,m);line(m.L,y,m.w-m.R,y,"#293845",1,[2,5]);ctx.fillStyle="#9aa9b7";ctx.fillText(p.toFixed(range<10?3:2),m.w-m.R+9,y)}
-    const marks=6,step=Math.max(1,Math.floor(m.a.bars.length/marks));
-    m.a.bars.forEach((b,j)=>{if(j%step===0){const x=xFor(m.a.start+j,m);line(x,m.T,x,m.h-m.B,"#21303d",.6,[2,8]);ctx.fillStyle="#7e93a2";ctx.fillText(iso(b.time).slice(5,16).replace("T"," ")+ "Z",Math.min(m.w-130,x+3),m.h-16)}});
-    ctx.save();ctx.beginPath();ctx.rect(m.L,m.T,m.plotW,m.plotH);ctx.clip();
-    m.a.bars.forEach((b,j)=>{const i=m.a.start+j,x=xFor(i,m),up=b.close>=b.open,color=up?"#50c19f":"#e38085";
-      line(x,yFor(b.high,m),x,yFor(b.low,m),color,Math.max(1,Math.min(1.5,m.step*.12)));
-      ctx.fillStyle=color;const y1=yFor(Math.max(b.open,b.close),m),y2=yFor(Math.min(b.open,b.close),m);ctx.fillRect(x-Math.max(1.5,m.step*.32),y1,Math.max(3,Math.min(12,m.step*.64)),Math.max(1.2,y2-y1));
-    });
-    for(const mark of activeDrawings()){if(mark.type==="level"){const y=yFor(mark.price,m);line(m.L,y,m.w-m.R,y,"#d6b773",1.2,[7,4]);ctx.fillStyle="#e7c88c";ctx.fillText("LEVEL",m.L+10,y-8)}
-      if(mark.type==="note"&&mark.index>=m.a.start&&mark.index<=m.a.end){const x=xFor(mark.index,m),y=yFor(mark.price,m);ctx.beginPath();ctx.fillStyle="#d7b978";ctx.arc(x,y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle="#1f2020";ctx.font="bold 10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono");ctx.fillText("N",x-3,y+1);ctx.font="10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono")}
-    }
-    if(S.selection){let l=xFor(Math.max(m.a.start,S.selection[0]),m),r=xFor(Math.min(m.a.end,S.selection[1]),m);if(r>=l){ctx.fillStyle="rgba(114,176,160,.14)";ctx.fillRect(l,m.T,r-l+m.step,m.plotH);line(l,m.T,l,m.h-m.B,"#95caba",1,[4,3]);line(r+m.step,m.T,r+m.step,m.h-m.B,"#95caba",1,[4,3])}}
-    if(S.drag&&S.tool==="select"){const l=xFor(S.drag.start,m),r=xFor(S.drag.end,m);ctx.fillStyle="rgba(114,176,160,.12)";ctx.fillRect(Math.min(l,r),m.T,Math.abs(r-l)||m.step,m.plotH)}
-    if(S.hover){const h=S.hover,x=xFor(h.index,m),y=yFor(h.price,m);line(x,m.T,x,m.h-m.B,"#829caa",.85,[3,5]);line(m.L,y,m.w-m.R,y,"#829caa",.85,[3,5]);}
-    ctx.restore();ctx.restore();
+  function drawingPoints(mark){
+    if(mark.type==="brush")return mark.points||[];
+    if(["line","rectangle","arrow"].includes(mark.type))return [mark.p1,mark.p2].filter(Boolean);
+    if(mark.type==="note")return [{index:mark.index,price:mark.price}];
+    return [];
   }
+  function shapePath(points,m,close=false){
+    if(!points?.length)return;
+    ctx.beginPath();points.forEach((p,i)=>{const x=xFor(p.index,m),y=yFor(p.price,m);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y)});
+    if(close)ctx.closePath();
+  }
+  function draw(){
+    if(!S.data||!canvas.clientWidth)return;
+    const m=chartMeta();Object.assign(geom,m);
+    ctx.clearRect(0,0,m.w,m.h);ctx.fillStyle="#0c131b";ctx.fillRect(0,0,m.w,m.h);
+    ctx.fillStyle="#0f1a23";ctx.fillRect(m.L,m.T,m.plotW,m.plotH);
+    ctx.font="11px ui-monospace,Consolas,monospace";ctx.textBaseline="middle";
+    const range=m.max-m.min;
+    const digits=range<.05?5:range<1?4:range<20?3:2;
+    ctx.textAlign="left";
+    for(let t=0;t<=5;t++){
+      const p=m.min+range*t/5,y=yFor(p,m);
+      line(m.L,y,m.w-m.R,y,"#293744",.75,[2,5]);
+      ctx.fillStyle="#9aa8b6";ctx.fillText(p.toFixed(digits),m.w-m.R+11,y);
+    }
+    const maxLabels=Math.max(2,Math.floor(m.plotW/136));
+    const interval=Math.max(1,Math.ceil(m.a.bars.length/maxLabels));
+    ctx.textAlign="center";
+    for(let j=0;j<m.a.bars.length;j+=interval){
+      const bar=m.a.bars[j],x=xFor(m.a.start+j,m);
+      line(x,m.T,x,m.h-m.B,"#263440",.6,[2,8]);
+      ctx.fillStyle="#899cab";
+      const label=iso(bar.time).slice(5,16).replace("T"," ")+"Z";
+      const safeX=clamp(x,m.L+57,m.w-m.R-57);
+      if(Math.abs(safeX-x)<27)ctx.fillText(label,safeX,m.h-21);
+    }
+    ctx.save();ctx.beginPath();ctx.rect(m.L,m.T,m.plotW,m.plotH);ctx.clip();
+    for(let j=0;j<m.a.bars.length;j++){
+      const b=m.a.bars[j],x=xFor(m.a.start+j,m);
+      const up=b.close>=b.open,color=up?"#57c5a4":"#e18389";
+      const bodyWidth=Math.max(2,Math.min(21,m.step*.7));
+      line(x,yFor(b.high,m),x,yFor(b.low,m),color,Math.max(1,Math.min(1.5,bodyWidth*.12)));
+      const hiY=yFor(Math.max(b.open,b.close),m),loY=yFor(Math.min(b.open,b.close),m);
+      ctx.fillStyle=color;ctx.fillRect(x-bodyWidth/2,hiY,bodyWidth,Math.max(1.35,loY-hiY));
+    }
+    // Highlight a research candidate without presenting it as a trading signal.
+    if(S.selectedCandidate){
+      const c=S.selectedCandidate;
+      if(c.index>=m.a.start-6&&c.lookbackStart<=m.a.end){
+        const x1=xFor(c.lookbackStart,m),x2=xFor(c.index,m),x3=xFor(c.breakIndex,m);
+        ctx.fillStyle="rgba(91,169,154,.08)";
+        ctx.fillRect(Math.max(m.L,x1),m.T,Math.max(0,Math.min(m.w-m.R,x2)-Math.max(m.L,x1)),m.plotH);
+        line(x1,yFor(c.boundary,m),x2,yFor(c.boundary,m),"#79b9b2",1.25,[5,4]);
+        const invalidY=yFor(c.invalidation,m);
+        line(x3,invalidY,x2,invalidY,"#d29f85",1.15,[3,5]);
+        const ix=xFor(c.index,m),iy=yFor(c.trigger,m);
+        ctx.beginPath();ctx.arc(ix,iy,6,0,Math.PI*2);ctx.fillStyle="#b7e6d5";ctx.fill();
+        ctx.strokeStyle="#263e3a";ctx.lineWidth=2;ctx.stroke();
+        ctx.textAlign="left";ctx.fillStyle="#bde3db";ctx.fillText("MATCH",clamp(ix+11,m.L+5,m.w-m.R-68),clamp(iy-12,m.T+13,m.h-m.B-12));
+      }
+    }
+    for(const mark of activeDrawings()){
+      if(mark.hidden)continue;
+      const selected=mark.id===S.selectedDrawing;
+      const ink=selected?"#e6ead9":"#d7bd81";
+      ctx.save();ctx.strokeStyle=ink;ctx.fillStyle=ink;ctx.lineWidth=selected?2.5:1.8;ctx.lineJoin="round";ctx.lineCap="round";
+      if(mark.type==="level"){
+        const y=yFor(mark.price,m);ctx.setLineDash([6,4]);line(m.L,y,m.w-m.R,y,ink,selected?2.5:1.5,[6,4]);
+        ctx.setLineDash([]);ctx.textAlign="left";ctx.fillText((mark.label||"LEVEL").slice(0,25),m.L+8,clamp(y-11,m.T+13,m.h-m.B-10));
+      }
+      if(mark.type==="note"&&mark.index>=m.a.start&&mark.index<=m.a.end){
+        const x=xFor(mark.index,m),y=yFor(mark.price,m);
+        ctx.beginPath();ctx.arc(x,y,selected?9:7.5,0,Math.PI*2);ctx.fill();ctx.fillStyle="#152026";ctx.font="bold 11px ui-sans-serif";ctx.textAlign="center";ctx.fillText("N",x,y+.5);
+        if(mark.label){ctx.font="11px ui-sans-serif";ctx.fillStyle="#e3cc9f";ctx.textAlign="left";ctx.fillText(mark.label.slice(0,30),x+13,clamp(y-12,m.T+12,m.h-m.B-10));}
+      }
+      if(mark.type==="line"||mark.type==="arrow"){
+        if(mark.p1&&mark.p2){
+          const ax=xFor(mark.p1.index,m),ay=yFor(mark.p1.price,m),bx=xFor(mark.p2.index,m),by=yFor(mark.p2.price,m);
+          line(ax,ay,bx,by,ink,selected?2.6:1.9);
+          if(mark.type==="arrow"){const angle=Math.atan2(by-ay,bx-ax),L=12;
+            line(bx,by,bx-L*Math.cos(angle-.52),by-L*Math.sin(angle-.52),ink,2);
+            line(bx,by,bx-L*Math.cos(angle+.52),by-L*Math.sin(angle+.52),ink,2);}
+        }
+      }
+      if(mark.type==="rectangle"&&mark.p1&&mark.p2){
+        const x1=xFor(mark.p1.index,m),y1=yFor(mark.p1.price,m),x2=xFor(mark.p2.index,m),y2=yFor(mark.p2.price,m);
+        const l=Math.min(x1,x2),t=Math.min(y1,y2),w=Math.abs(x2-x1),h=Math.abs(y2-y1);
+        ctx.fillStyle="rgba(220,183,112,.09)";ctx.fillRect(l,t,w,h);ctx.strokeRect(l,t,w,h);
+      }
+      if(mark.type==="brush"&&mark.points?.length>1){shapePath(mark.points,m);ctx.stroke()}
+      if(selected&&mark.type!=="level"&&mark.type!=="brush"){
+        for(const p of drawingPoints(mark)){const x=xFor(p.index,m),y=yFor(p.price,m);
+          ctx.fillStyle="#f0ebcd";ctx.fillRect(x-3,y-3,6,6)}
+      }
+      ctx.restore();
+    }
+    if(S.selection){
+      const lo=Math.max(m.a.start,Math.min(...S.selection)),hi=Math.min(m.a.end,Math.max(...S.selection));
+      if(hi>=lo){const l=xFor(lo,m)-m.step/2,r=xFor(hi,m)+m.step/2;
+        ctx.fillStyle="rgba(114,176,160,.13)";ctx.fillRect(l,m.T,Math.max(1,r-l),m.plotH);
+        line(l,m.T,l,m.h-m.B,"#8fc8bb",1,[4,4]);line(r,m.T,r,m.h-m.B,"#8fc8bb",1,[4,4]);}
+    }
+    if(S.drag?.kind==="range"){
+      const lo=Math.min(S.drag.start,S.drag.end),hi=Math.max(S.drag.start,S.drag.end);
+      const l=xFor(lo,m)-m.step/2,r=xFor(hi,m)+m.step/2;
+      ctx.fillStyle="rgba(114,176,160,.17)";ctx.fillRect(l,m.T,Math.max(1,r-l),m.plotH);
+    }
+    if(S.drag?.kind==="new" && S.drag.preview){
+      const mark=S.drag.preview;
+      ctx.save();ctx.strokeStyle="#e5d4ab";ctx.lineWidth=1.8;ctx.setLineDash([4,3]);
+      if(mark.type==="brush"){shapePath(mark.points,m);ctx.stroke()}
+      else if(mark.type==="rectangle"){ctx.strokeRect(Math.min(xFor(mark.p1.index,m),xFor(mark.p2.index,m)),Math.min(yFor(mark.p1.price,m),yFor(mark.p2.price,m)),Math.abs(xFor(mark.p2.index,m)-xFor(mark.p1.index,m)),Math.abs(yFor(mark.p2.price,m)-yFor(mark.p1.price,m)))}
+      else if(mark.p1&&mark.p2){line(xFor(mark.p1.index,m),yFor(mark.p1.price,m),xFor(mark.p2.index,m),yFor(mark.p2.price,m),"#e5d4ab",1.8,[4,3])}
+      ctx.restore();
+    }
+    if(S.hover){
+      const x=xFor(S.hover.index,m),y=yFor(S.hover.price,m);
+      line(x,m.T,x,m.h-m.B,"#89a5ad",.8,[4,5]);
+      line(m.L,y,m.w-m.R,y,"#89a5ad",.8,[4,5]);
+    }
+    ctx.restore();
+  }
+
+
+  function markArray(){return S.replay?S.replayDrawings:S.drawings}
+  function selectedMark(){return activeDrawings().find(x=>x.id===S.selectedDrawing)||null}
+  function queueDrawingSave(){
+    if(S.replay)return; // Replay annotations are ephemeral and cannot modify historical research evidence.
+    const record={id:S.data.id,list:S.drawings.map(m=>JSON.parse(JSON.stringify(m))),updated_at:new Date().toISOString()};
+    S.markWriteQueue=S.markWriteQueue.catch(()=>{}).then(()=>dbAction("drawings","readwrite",store=>store.put(record)))
+      .catch(e=>toast("Chart drawings could not be saved: "+e.message));
+  }
+  async function loadDrawingSet(){
+    const token=++S.drawingLoadId, key=S.data.id;
+    S.drawings=[];S.selectedDrawing=null;renderDrawingList();
+    if(!S.db)return;
+    try{
+      const record=await dbAction("drawings","readonly",store=>store.get(key));
+      if(token!==S.drawingLoadId || S.data.id!==key)return;
+      S.drawings=Array.isArray(record?.list)?record.list:[];renderDrawingList();updateContext();
+    }catch(e){toast("Drawing history could not be loaded: "+e.message)}
+  }
+  function changeMark(id, patch){
+    const item=markArray().find(m=>m.id===id);if(!item)return;
+    Object.assign(item,patch);queueDrawingSave();renderDrawingList();updateContext();
+  }
+  function addMark(mark){
+    markArray().push({id:id(),createdReveal:S.reveal,hidden:false,label:"",...mark});
+    S.selectedDrawing=markArray()[markArray().length-1].id;
+    queueDrawingSave();renderDrawingList();updateContext();
+  }
+  function removeMark(id){
+    const arr=markArray(),i=arr.findIndex(m=>m.id===id);
+    if(i<0)return;arr.splice(i,1);
+    if(S.selectedDrawing===id)S.selectedDrawing=null;
+    queueDrawingSave();renderDrawingList();updateContext();
+  }
+  function renderDrawingList(){
+    const arr=activeDrawings();
+    const list=$("drawingList");list.textContent="";
+    $("drawingCount").textContent=arr.length+" active"+(S.replay?" (replay only)":"");
+    $("deleteDrawing").disabled=!selectedMark();
+    if(!arr.length){const empty=document.createElement("p");empty.className="empty";empty.textContent="Draw with Line, Level, Box, Arrow, Brush or Note. Choose Edit to select or move them.";list.append(empty)}
+    const labels={level:"Level",line:"Trendline",rectangle:"Zone",arrow:"Arrow",brush:"Brush stroke",note:"Pinned note"};
+    for(const mark of [...arr].reverse()){
+      const b=document.createElement("button");b.type="button";b.className="drawing-item"+(S.selectedDrawing===mark.id?" selected":"")+(mark.hidden?" hidden-mark":"");
+      const l=document.createElement("span");l.textContent=(labels[mark.type]||"Drawing")+" · "+(mark.label||"Untitled");
+      const flag=document.createElement("span");flag.textContent=mark.hidden?"Hidden":"Select";
+      b.append(l,flag);
+      b.addEventListener("click",()=>{S.selectedDrawing=mark.id;setTool("edit",true);renderDrawingList();draw()});list.append(b);
+    }
+    const selected=selectedMark(), editor=$("drawingEditor");
+    editor.classList.toggle("hidden",!selected);
+    if(selected){if(document.activeElement!==$("drawingLabel"))$("drawingLabel").value=selected.label||"";
+      $("toggleDrawing").textContent=selected.hidden?"Show drawing":"Hide drawing";
+      $("deleteDrawing").disabled=false;}
+  }
+  function coordsOf(event){
+    const rect=canvas.getBoundingClientRect(),m=chartMeta();
+    const x=clamp(event.clientX-rect.left,m.L,m.w-m.R-1),y=clamp(event.clientY-rect.top,m.T,m.h-m.B-1);
+    return {x,y,index:ixFrom(x,m),fractional:clamp(m.a.start+(x-m.L)/m.step-.5,0,chartLimit()),price:priceFrom(y,m),m};
+  }
+  function pt(p){return {index:p.index,price:p.price}}
+  function distSeg(px,py,ax,ay,bx,by){
+    const dx=bx-ax,dy=by-ay,q=dx*dx+dy*dy||1,t=clamp(((px-ax)*dx+(py-ay)*dy)/q,0,1);
+    return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+  }
+  function hitDrawing(point){
+    if(!point)return null;
+    const m=point.m;
+    for(const mark of [...activeDrawings()].reverse()){
+      if(mark.hidden)continue;
+      if(mark.type==="level"&&Math.abs(yFor(mark.price,m)-point.y)<8)return mark;
+      if(mark.type==="note"&&Math.hypot(xFor(mark.index,m)-point.x,yFor(mark.price,m)-point.y)<13)return mark;
+      if(["line","arrow"].includes(mark.type)&&mark.p1&&mark.p2){
+        if(distSeg(point.x,point.y,xFor(mark.p1.index,m),yFor(mark.p1.price,m),xFor(mark.p2.index,m),yFor(mark.p2.price,m))<9)return mark;
+      }
+      if(mark.type==="rectangle"&&mark.p1&&mark.p2){
+        const x1=xFor(mark.p1.index,m),x2=xFor(mark.p2.index,m),y1=yFor(mark.p1.price,m),y2=yFor(mark.p2.price,m);
+        if(point.x>=Math.min(x1,x2)-7&&point.x<=Math.max(x1,x2)+7&&point.y>=Math.min(y1,y2)-7&&point.y<=Math.max(y1,y2)+7)return mark;
+      }
+      if(mark.type==="brush"&&mark.points?.length>1){
+        for(let j=1;j<mark.points.length;j++){
+          const a=mark.points[j-1],b=mark.points[j];
+          if(distSeg(point.x,point.y,xFor(a.index,m),yFor(a.price,m),xFor(b.index,m),yFor(b.price,m))<9)return mark;
+        }
+      }
+    }
+    return null;
+  }
+  function shiftMark(original,deltaIndex,deltaPrice,limit){
+    const moved=JSON.parse(JSON.stringify(original));
+    const movePoint=p=>{p.index=clamp(p.index+deltaIndex,0,limit);p.price=Math.max(.000001,p.price+deltaPrice)};
+    if(moved.type==="level")moved.price=Math.max(.000001,moved.price+deltaPrice);
+    if(moved.type==="note"){moved.index=Math.round(clamp(moved.index+deltaIndex,0,limit));moved.price=Math.max(.000001,moved.price+deltaPrice)}
+    if(moved.p1)movePoint(moved.p1);
+    if(moved.p2)movePoint(moved.p2);
+    if(moved.points)moved.points.forEach(movePoint);
+    return moved;
+  }
+
+  // Candidate detector: close-of-bar information only. It never infers profitability.
+  // Searches rolling ranges, NOT opening ranges, to avoid inventing session metadata.
+  function searchPatterns(bars, cutoff) {
+    const out=[];
+    const last=Math.min(cutoff,bars.length-1);
+    if(last<25)return out;
+    const deltas=[];
+    for(let k=1;k<Math.min(last,75);k++){const d=bars[k].time-bars[k-1].time;if(d>0)deltas.push(d)}
+    deltas.sort((a,b)=>a-b);
+    const typical=deltas[Math.floor(deltas.length/2)]||300000;
+    const minSpacing=8;
+    const seen=new Map();
+    for(let i=23;i<=last;i++){
+      if(bars[i].time-bars[i-1].time>typical*2.5 || bars[i-1].time-bars[i-2].time>typical*2.5)continue;
+      const history=bars.slice(i-19,i-2);
+      if(history.length<15)continue;
+      const h=Math.max(...history.map(b=>b.high)),l=Math.min(...history.map(b=>b.low));
+      let atr=0;
+      for(let j=i-18;j<i-2;j++){
+        const c=bars[j],prior=bars[j-1].close;
+        atr+=Math.max(c.high-c.low,Math.abs(c.high-prior),Math.abs(c.low-prior));
+      }
+      atr/=16;
+      const buffer=Math.max(atr*.09,(h-l)*.002);
+      const breakout=bars[i-2],pullback=bars[i-1],confirmation=bars[i];
+      const candidates=[];
+      const base={index:i,at:confirmation.time,rangeHigh:h,rangeLow:l,atr,lookbackStart:i-19,
+        breakIndex:i-2,retestIndex:i-1,confirmationIndex:i,version:"rolling-17-bar-v1"};
+      if(breakout.close>h+buffer && pullback.low<=h+atr*.6 && pullback.close>=h-atr*.42 && confirmation.close>pullback.high && confirmation.close>h){
+        const invalidation=Math.min(breakout.low,pullback.low)-buffer;
+        if(confirmation.close>invalidation)
+          candidates.push({...base,id:"breakout-long-"+i,type:"breakout",title:"Break + retest",side:"LONG",boundary:h,trigger:confirmation.close,invalidation,
+            why:"Closed beyond the prior 17-bar high, retested near the boundary, and closed above the pullback high.",
+            checks:["Prior 17-bar resistance breached on a completed candle","Retest returned near the original boundary","Confirmation closed above retest high"]});
+      }
+      if(breakout.close<l-buffer && pullback.high>=l-atr*.6 && pullback.close<=l+atr*.42 && confirmation.close<pullback.low && confirmation.close<l){
+        const invalidation=Math.max(breakout.high,pullback.high)+buffer;
+        if(confirmation.close<invalidation)
+          candidates.push({...base,id:"breakout-short-"+i,type:"breakout",title:"Break + retest",side:"SHORT",boundary:l,trigger:confirmation.close,invalidation,
+            why:"Closed beneath the prior 17-bar low, retested the boundary, and closed below the pullback low.",
+            checks:["Prior 17-bar support breached on a completed candle","Retest returned near the original boundary","Confirmation closed below retest low"]});
+      }
+      if(breakout.high>h+buffer && pullback.close<h && confirmation.close<pullback.low && confirmation.close<h){
+        const invalidation=Math.max(breakout.high,pullback.high)+buffer;
+        if(invalidation>confirmation.close)
+          candidates.push({...base,id:"failure-short-"+i,type:"failure",title:"Failed upper break",side:"SHORT",boundary:h,trigger:confirmation.close,invalidation,
+            why:"Price tested above the prior 17-bar high, returned into the range, then closed below the return bar's low.",
+            checks:["Upper boundary was exceeded","Next completed candle closed inside the previous range","Confirmation closed below the return candle low"]});
+      }
+      if(breakout.low<l-buffer && pullback.close>l && confirmation.close>pullback.high && confirmation.close>l){
+        const invalidation=Math.min(breakout.low,pullback.low)-buffer;
+        if(invalidation<confirmation.close)
+          candidates.push({...base,id:"failure-long-"+i,type:"failure",title:"Failed lower break",side:"LONG",boundary:l,trigger:confirmation.close,invalidation,
+            why:"Price tested below the prior 17-bar low, returned into the range, then closed above the return bar's high.",
+            checks:["Lower boundary was exceeded","Next completed candle closed inside the previous range","Confirmation closed above the return candle high"]});
+      }
+      for(const c of candidates){
+        const key=c.type+":"+c.side;
+        if(i-(seen.get(key)??-999)<minSpacing)continue;
+        seen.set(key,i);
+        out.push(c);
+      }
+    }
+    return out.slice(-200);
+  }
+  function scanHistory(focusLatest=false){
+    const limit=S.replay?S.reveal:S.data.bars.length-1;
+    S.candidates=searchPatterns(S.data.bars,limit);
+    if(S.selectedCandidate && !S.candidates.some(c=>c.id===S.selectedCandidate.id))S.selectedCandidate=null;
+    if(focusLatest){
+      const type=$("scanFilter").value;
+      const eligible=S.candidates.filter(c=>type==="all"||c.type===type);
+      const candidate=eligible.at(-1)||null;
+      S.selectedCandidate=candidate;
+      if(candidate){
+        S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
+        S.viewportEnd=Math.min(limit,candidate.index+Math.round(S.visible*.35));
+        $("setupName").value=candidate.title+" · "+candidate.side+" · "+iso(candidate.at).slice(0,16)+"Z";
+      } else S.selection=null;
+    }
+    $("latestCase").textContent=S.candidates.length?S.candidates.length+" historical matches":"No patterns found";
+    renderScanner();
+    updateContext();
+  }
+  function selectCandidate(candidate){
+    S.selectedCandidate=candidate;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
+    const end=S.replay?S.reveal:S.data.bars.length-1;
+    S.viewportEnd=Math.min(end,candidate.index+Math.round(S.visible*.35));
+    S.packet=null;
+    $("setupName").value=candidate.title+" · "+candidate.side+" · "+iso(candidate.at).slice(0,16)+"Z";
+    updateContext();
+    renderScanner();
+  }
+  function renderScanner(){
+    const host=$("scanResults");host.textContent="";
+    const filter=$("scanFilter").value, filtered=(S.candidates||[]).filter(c=>filter==="all"||filter===c.type).slice(-50).reverse();
+    $("scanCount").textContent=" · "+filtered.length+(S.candidates.length>50?" shown":"")+" candidates";
+    $("scanSummary").textContent=(S.data.source==="synthetic"?"Synthetic demonstration · ":"Imported historical candles (not verified) · ")+
+      "Rule-based matches, not backtested performance. No live monitoring.";
+    if(!filtered.length){const p=document.createElement("p");p.className="empty";p.textContent="No matching patterns in this dataset/window. This is a valid result—do not force trades. Try another data period or pattern family.";host.append(p)}
+    for(const c of filtered){
+      const b=document.createElement("button");b.type="button";b.className="scan-hit"+(S.selectedCandidate?.id===c.id?" selected":"");
+      const k=document.createElement("span");k.className="kind";k.textContent=c.type==="breakout"?"CONTINUATION · 17-BAR RANGE":"FAILURE · 17-BAR RANGE";
+      const title=document.createElement("strong");title.textContent=c.title;
+      const date=document.createElement("span");date.className="at";date.textContent=iso(c.at).slice(0,16).replace("T"," ")+"Z";
+      const dir=document.createElement("span");dir.className="dir";dir.textContent=c.side+" · historical pattern";
+      b.append(k,title,date,dir);b.addEventListener("click",()=>selectCandidate(c));host.append(b);
+    }
+    const d=$("scanDetail"),ai=$("aiCandidate");d.textContent="";ai.textContent="";
+    $("readyPattern").textContent=S.selectedCandidate?"Rule match":"Choose a case";
+    $("readyPattern").className=S.selectedCandidate?"ready-ok":"ready-pending";
+    $("readyData").textContent=S.data.source==="synthetic"?"Synthetic only":"CSV not authenticated";
+    if(!S.selectedCandidate){
+      const p=document.createElement("p");p.className="empty";p.textContent="Pick a candidate. You'll see what rule matched, exactly where it occurred, and what evidence is still needed.";d.append(p);
+      const q=document.createElement("p");q.className="empty";q.textContent="Select a case to get a compact breakdown and chart overlay.";ai.append(q);return;
+    }
+    const c=S.selectedCandidate;
+    const heading=document.createElement("h4");heading.textContent=c.title+" · "+c.side+" · historical example";
+    const desc=document.createElement("p");desc.textContent=c.why;
+    const factRow=document.createElement("div");factRow.className="facts";
+    for(const [label,value] of [["Boundary",fmt(c.boundary)],["Confirmation close",fmt(c.trigger)],["Structural invalidation",fmt(c.invalidation)],["Distance",fmt(Math.abs(c.trigger-c.invalidation))]]){
+      const el=document.createElement("span");el.className="fact";el.textContent=label+": "+value;factRow.append(el);
+    }
+    const warning=document.createElement("p");warning.className="small dim";warning.style.marginTop="10px";
+    warning.textContent="Confirmation close is not an executable fill. Direction and invalidation illustrate structure only; fees, spreads, actual orders and results are unknown.";
+    const go=document.createElement("button");go.type="button";go.className="btn";go.style.marginTop="11px";go.textContent="Prepare research question";go.addEventListener("click",()=>{
+      $("aiPrompt").value="Review this "+c.title+" "+c.side+" example. Check all "+c.checks.length+" pattern conditions, compare alternative explanations, and propose a falsifiable experiment. Do not claim this was profitable.";
+      S.packet=null;toast("Research question prepared. No model invoked.");
+    });
+    d.append(heading,desc,factRow,warning,go);
+    const h=document.createElement("h4");h.textContent=c.title+" · "+c.side;
+    ai.append(h);
+    for(const [label,value] of [["As of",iso(c.at).slice(0,16)+"Z"],["Range boundary",fmt(c.boundary)],["Confirmation",fmt(c.trigger)],["Invalidation",fmt(c.invalidation)]]){
+      const row=document.createElement("div");row.className="level";
+      const a=document.createElement("span");a.textContent=label;
+      const b=document.createElement("span");b.textContent=value;row.append(a,b);ai.append(row);
+    }
+    const why=document.createElement("p");why.className="why";why.textContent=c.why;ai.append(why);
+    const caution=document.createElement("p");caution.className="warning";
+    caution.textContent=S.data.source==="synthetic"?"Synthetic example. No real market evidence.":"Historical structural match only. No out-of-sample edge or executable signal.";
+    ai.append(caution);
+  }
+
   function updateContext(){const a=visible(),bars=a.bars;
     $("chartSymbol").textContent=S.data.symbol+ " · "+(S.data.source==="synthetic"?"Practice":"Imported data");
     $("chartPeriod").textContent=S.data.timeframe;$("chartCount").textContent=S.data.bars.length+" bars";
@@ -390,21 +777,20 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const demo=S.data.source==="synthetic";
     $("sourceTag").textContent=demo?"SYNTHETIC":"USER CSV";
     $("sourceTag").classList.toggle("imported",!demo);
-    $("feedStatus").textContent=demo?"Synthetic / training only":"Imported CSV / unverified";
-    $("markCount").textContent=activeDrawings().length;
     $("aiMarks").textContent=activeDrawings().length+" attached";
     $("aiSource").textContent=S.data.source==="synthetic"?"Synthetic demo":"Imported / unverified";
     $("aiSymbol").textContent=S.data.symbol;
     $("aiCases").textContent=S.snapshots.length+" snapshots";
     $("zoomLabel").textContent=S.visible+" bars";
-    $("selectedBars").textContent=S.selection?(S.selection[1]-S.selection[0]+1)+" selected":"Last "+bars.length;
-    $("aiWindow").textContent=S.selection?(S.selection[1]-S.selection[0]+1)+" selected bars":bars.length+" visible bars";
-    $("rangeStatus").textContent=S.selection?"Range: "+(S.selection[1]-S.selection[0]+1)+" candles":"No range selected";
+    $("aiWindow").textContent=S.selection?evidenceBars().length+" selected bars":bars.length+" visible bars";
+    $("rangeStatus").textContent=S.selection?"Range: "+evidenceBars().length+" visible candles":"No range selected";
     $("replayLabel").textContent=S.replay?(S.reveal+1)+" / "+S.data.bars.length:"Full dataset";
     $("replayBack").disabled=!S.replay||S.reveal<=Math.min(39,S.data.bars.length-1);
     $("replayNext").disabled=!S.replay||S.reveal>=S.data.bars.length-1;
     $("replayTen").disabled=!S.replay||S.reveal>=S.data.bars.length-1;
     $("footerMode").textContent=S.replay?"Historical reveal · No fills":"Research mode";
+    $("drawingCount").textContent=activeDrawings().length+" drawings"+(S.replay?" · replay":"");
+    $("deleteDrawing").disabled=!selectedMark();
     updateObservations();draw();
   }
   function evidenceBars(){const a=visible();if(!S.selection)return a.bars;
@@ -440,10 +826,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       missing:["Broker fills and costs not connected","Market data provider not verified","Strategy performance not validated","Live AI model unavailable"]
     };
     if(S.scopes.candles)result.evidence.candles=b.map(c=>({...c,time_utc:iso(c.time)}));
-    if(S.scopes.marks)result.evidence.drawings=activeDrawings().filter(d=>d.type==="level"||(d.index>=a.start&&d.index<=a.end));
+    if(S.scopes.marks)result.evidence.drawings=activeDrawings().filter(d=>!d.hidden && (d.type==="level" || drawingPoints(d).some(p=>p.index>=a.start&&p.index<=a.end)));
     if(S.scopes.notes)result.evidence.notes={setup:$("setupName").value,thesis:$("thesis").value};
     if(S.scopes.history && !S.replay)result.evidence.saved_cases=S.snapshots.slice(0,10).map(s=>({id:s.id,at:s.at,symbol:s.symbol,setup:s.setup,note:s.note,source:s.source}));
     if(S.scopes.history && S.replay)result.missing.push("Saved journal cases omitted from reveal mode to avoid retrospective outcome leakage");
+    if(S.selectedCandidate)result.pattern_candidate={id:S.selectedCandidate.id,rule_version:S.selectedCandidate.version,kind:S.selectedCandidate.type,detected_at_utc:iso(S.selectedCandidate.at),direction:S.selectedCandidate.side,range_boundary:S.selectedCandidate.boundary,reference_close:S.selectedCandidate.trigger,illustrative_invalidation:S.selectedCandidate.invalidation,confirmation_checks:S.selectedCandidate.checks,profitability:"NOT_TESTED",outcome:"UNKNOWN"};
     if(S.strategy)result.strategy_candidate={id:S.strategy,name:strategyMap[S.strategy].name,detail:strategyMap[S.strategy].detail,validation:"not_tested"};
     return result;
   }
@@ -460,9 +847,9 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     try{await navigator.clipboard.writeText(text);toast("Full context packet copied.");}
     catch(e){const temp=document.createElement("textarea");temp.value=text;document.body.appendChild(temp);temp.select();const ok=document.execCommand("copy");temp.remove();toast(ok?"Full packet copied.":"Clipboard blocked; export your journal or use the preview.");}
   }
-  function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.strategy=null;
+  function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selectedDrawing=null;S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.viewportEnd=null;S.strategy=null;S.selectedCandidate=null;
     $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
-    savePrefs();updateContext();}
+    savePrefs();scanHistory(true);loadDrawingSet();}
   async function importFile(event){const file=event.target.files&&event.target.files[0];if(!file)return;
     try{const raw=await file.text(), d=readCSV(raw,file.name);
       if(typeof crypto!=="undefined" && crypto.subtle && typeof TextEncoder!=="undefined") {
@@ -474,26 +861,109 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     }catch(e){toast("Import error: "+e.message)}
     event.target.value="";
   }
-  function handleDown(event){const p=dataFromEvent(event);if(!p)return;
-    if(S.tool==="select"){S.drag={start:p.index,end:p.index};canvas.setPointerCapture?.(event.pointerId)}}
-  function handleMove(event){const p=dataFromEvent(event);
+
+  function chartLimit(){return S.replay?S.reveal:S.data.bars.length-1}
+  function scrollChart(deltaBars){
+    const limit=chartLimit(),now=visible().end;
+    S.viewportEnd=clamp(now+deltaBars,Math.min(S.visible-1,limit),limit);
+    S.selection=null;S.hover=null;S.packet=null;updateContext();
+  }
+  function zoomAt(next,relative=.5){
+    const old=visible(),limit=chartLimit();
+    const count=clamp(Math.round(next),24,180),anchor=old.start+clamp(relative,0,1)*(old.bars.length-1);
+    S.visible=count;
+    S.viewportEnd=clamp(Math.round(anchor+(1-clamp(relative,0,1))*(count-1)),Math.min(count-1,limit),limit);
+    S.selection=null;S.hover=null;S.packet=null;
+    updateContext();
+  }
+  function handleDown(event){
+    if(event.button!==0)return;
+    const p=dataFromEvent(event);if(!p)return;
+    const point=coordsOf(event);
+    if(S.tool==="select"){S.drag={kind:"range",start:p.index,end:p.index,startX:point.x};}
+    else if(S.tool==="inspect"){S.drag={kind:"pan",startX:event.clientX,end:visible().end,step:point.m.step,moved:false};}
+    else if(S.tool==="edit"){
+      const hit=hitDrawing(point);S.selectedDrawing=hit?.id||null;renderDrawingList();
+      if(hit)S.drag={kind:"move",id:hit.id,original:JSON.parse(JSON.stringify(hit)),startX:event.clientX,startY:event.clientY,step:point.m.step,span:point.m.max-point.m.min,plotH:point.m.plotH};
+    }
+    else if(["line","rectangle","arrow","brush"].includes(S.tool)){
+      const p1={index:point.fractional,price:point.price};
+      const preview=S.tool==="brush"?{type:"brush",points:[p1]}:{type:S.tool,p1,p2:{...p1}};
+      S.drag={kind:"new",tool:S.tool,startX:point.x,startY:point.y,preview};
+    }
+    if(S.drag){try{canvas.setPointerCapture(event.pointerId)}catch(e){}}
+  }
+  function handleMove(event){
+    let p=dataFromEvent(event);
+    if(S.drag) p=coordsOf(event);
     if(!p){S.hover=null;draw();return}
     S.hover={index:p.index,price:p.price};
-    if(S.drag)S.drag.end=p.index;
     const bar=S.data.bars[p.index];
-    $("chartHover").textContent=iso(bar.time).slice(0,16)+"Z    O "+fmt(bar.open)+"    H "+fmt(bar.high)+"    L "+fmt(bar.low)+"    C "+fmt(bar.close);
+    $("chartHover").textContent=iso(bar.time).slice(0,16)+"Z · O "+fmt(bar.open)+" H "+fmt(bar.high)+" L "+fmt(bar.low)+" C "+fmt(bar.close);
+    if(S.drag){
+      const drag=S.drag;
+      if(drag.kind==="range") drag.end=p.index;
+      if(drag.kind==="pan"){
+        const delta=event.clientX-drag.startX;
+        drag.moved=drag.moved||Math.abs(delta)>4;
+        if(drag.moved){
+          const limit=chartLimit();
+          S.viewportEnd=clamp(Math.round(drag.end-delta/drag.step),Math.min(S.visible-1,limit),limit);
+          S.selection=null;S.packet=null;
+        }
+      }
+      if(drag.kind==="new"){
+        const now={index:p.fractional,price:p.price};
+        if(drag.tool==="brush"){
+          const arr=drag.preview.points,last=arr[arr.length-1];
+          if(!last||Math.abs(last.index-now.index)> .045 || Math.abs(last.price-now.price)>((p.m.max-p.m.min)/700)) {
+            if(arr.length<3000)arr.push(now);
+          }
+        }else drag.preview.p2=now;
+      }
+      if(drag.kind==="move"){
+        const hit=markArray().find(m=>m.id===drag.id);
+        if(hit){
+          const diffX=(event.clientX-drag.startX)/drag.step;
+          const diffPrice=-(event.clientY-drag.startY)*drag.span/drag.plotH;
+          Object.assign(hit,shiftMark(drag.original,diffX,diffPrice,chartLimit()));
+        }
+      }
+    }
     draw();
   }
-  function handleUp(event){if(!S.drag)return;const p=dataFromEvent(event);if(p)S.drag.end=p.index;
-    const lo=Math.min(S.drag.start,S.drag.end),hi=Math.max(S.drag.start,S.drag.end);
-    S.selection=[lo,hi];S.drag=null;S.packet=null;updateContext();
-    try{canvas.releasePointerCapture?.(event.pointerId)}catch(e){}}
-  function handleClick(event){const p=dataFromEvent(event);if(!p||S.tool==="select")return;
-    if(S.tool==="level"){(S.replay?S.replayDrawings:S.drawings).push({id:id(),type:"level",price:Number(p.price.toFixed(4)),createdReveal:S.reveal,at:iso(S.data.bars[p.index].time)});toast("Price level added.")}
-    if(S.tool==="note"){const draft=$("thesis").value.trim().slice(0,130);(S.replay?S.replayDrawings:S.drawings).push({id:id(),type:"note",index:p.index,price:Number(p.price.toFixed(4)),text:draft||"Review this candle",createdReveal:S.reveal,at:iso(S.data.bars[p.index].time)});toast("Note marker attached to this candle.")}
-    if(S.tool!=="inspect"){S.packet=null;updateContext()}
+  function handleUp(event){
+    const d=S.drag;if(!d)return;
+    const p=coordsOf(event);
+    if(d.kind==="range"){
+      d.end=p.index;
+      if(Math.abs(d.end-d.start)>=1)S.selection=[Math.min(d.start,d.end),Math.max(d.start,d.end)];
+      else S.selection=null;
+      S.packet=null;
+    }
+    if(d.kind==="new"){
+      const mark=d.preview;
+      if(d.tool==="brush"){
+        if(mark.points.length>1)addMark(mark);
+      }else if(Math.hypot(p.x-d.startX,p.y-d.startY)>5)addMark(mark);
+    }
+    if(d.kind==="move")queueDrawingSave();
+    S.drag=null;S.packet=null;
+    try{canvas.releasePointerCapture(event.pointerId)}catch(e){}
+    renderDrawingList();updateContext();
   }
-  function setTool(t){S.tool=t;document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("tool-active",b.dataset.tool===t));toast(t==="select"?"Drag across candles to select a range.":t==="level"?"Click a price to add a horizontal level.":t==="note"?"Click a candle to add a note marker.":"Inspect candles by hovering.")}
+  function handleClick(event){
+    if(!["level","note"].includes(S.tool))return;
+    const p=dataFromEvent(event);if(!p)return;
+    if(S.tool==="level")addMark({type:"level",price:Number(p.price.toFixed(6)),label:""});
+    if(S.tool==="note")addMark({type:"note",index:p.index,price:Number(p.price.toFixed(6)),label:""});
+    toast("Drawing saved. Choose Edit to select, label, move or delete.");
+  }
+  function setTool(t,quiet=false){
+    S.drag=null;S.tool=t;
+    document.querySelectorAll("[data-tool]").forEach(b=>{const on=b.dataset.tool===t;b.classList.toggle("tool-active",on);b.setAttribute("aria-pressed",String(on))});
+    if(!quiet)toast({inspect:"Drag to pan, scroll to zoom.",select:"Drag across candles to scope research.",edit:"Click a drawing, drag to move it, Delete to remove it.",line:"Drag across the chart to draw a line.",rectangle:"Drag between corners to create a price zone.",arrow:"Drag to draw an arrow.",brush:"Drag to draw freehand.",level:"Click to place a horizontal level.",note:"Click to pin a note."}[t]||"Tool selected");
+  }
   function setPage(page){S.page=page;
     document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===page));
     for(const value of ["workspace","lab","journal"])$("view-"+value).classList.toggle("hidden",value!==page);
@@ -518,13 +988,62 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   async function exportArchive(){
     try {
       const datasets=S.db?await dbAction("datasets","readonly",store=>store.getAll()):[];
+      const drawings=S.db?await dbAction("drawings","readonly",store=>store.getAll()):[];
       if(S.data.source!=="synthetic"&&!datasets.some(x=>x.id===S.data.id))datasets.push(S.data);
-      const out={schema:"trader.html.foundation.v1",exported_at:new Date().toISOString(),
-        disclaimer:"Demo / imported unverified data; not live broker fills",snapshots:S.snapshots.map(x=>({...x})),datasets,
+      if(!drawings.some(x=>x.id===S.data.id))drawings.push({id:S.data.id,list:S.drawings,updated_at:new Date().toISOString()});
+      const out={schema:"trader.html.foundation.v2",exported_at:new Date().toISOString(),
+        disclaimer:"Demo / imported unverified data; not live broker fills",snapshots:S.snapshots.map(x=>({...x})),datasets,drawings,
+        replay_drawings:S.replay?S.replayDrawings.map(x=>({...x})):[],
         draft:{setup:$("setupName").value,thesis:$("thesis").value},active_context:S.packet?{...S.packet,evidence:undefined}:null};
       downloadText(JSON.stringify(out,null,2),"trader-research-archive-"+new Date().toISOString().slice(0,10)+".json");
       toast("Full chart archive exported. Restore UI still pending — keep this file safe.");
     } catch(e){toast("Archive failed: "+e.message)}
+  }
+  async function restoreArchive(event){
+    const file=event.target.files?.[0];event.target.value="";
+    if(!file)return;
+    if(!S.db){toast("Local database unavailable; restore is disabled.");return}
+    if(file.size>25000000){toast("Archive too large (25 MB maximum in this prototype).");return}
+    try{
+      const archive=JSON.parse(await file.text());
+      if(!["trader.html.foundation.v1","trader.html.foundation.v2"].includes(archive.schema))
+        throw Error("Unsupported research archive schema");
+      const datasets=Array.isArray(archive.datasets)?archive.datasets:[];
+      const snapshots=Array.isArray(archive.snapshots)?archive.snapshots:[];
+      const drawings=Array.isArray(archive.drawings)?archive.drawings:[];
+      if(datasets.length>100||snapshots.length>750||drawings.length>100)throw Error("Archive exceeds safe record limits");
+      for(const d of datasets){
+        if(typeof d.id!=="string"||d.id.length>180||!Array.isArray(d.bars)||d.bars.length<5||d.bars.length>20000)throw Error("Malformed historical dataset");
+        for(let i=0;i<d.bars.length;i++){
+          const b=d.bars[i];
+          if(!Number.isFinite(b.time)||!["open","high","low","close"].every(k=>Number.isFinite(b[k])&&b[k]>0)||
+             b.high<Math.max(b.open,b.close,b.low)||b.low>Math.min(b.open,b.close,b.high)||
+             (i>0&&b.time<=d.bars[i-1].time))throw Error("Invalid OHLC series in archive");
+        }
+      }
+      for(const x of snapshots){
+        if(typeof x.id!=="string"||x.id.length>180||typeof x.at!=="string"||
+           typeof x.image!=="string"||!x.image.startsWith("data:image/png;base64,")||x.image.length>14000000||
+           !Array.isArray(x.candles)||x.candles.length>20000)throw Error("Malformed snapshot image or candle history");
+      }
+      for(const x of drawings){
+        if(typeof x.id!=="string"||x.id.length>180||!Array.isArray(x.list)||x.list.length>2500||
+           x.list.some(mark=>!mark || typeof mark.id!=="string" || !["level","note","line","rectangle","arrow","brush"].includes(mark.type)||
+           (mark.points&&(!Array.isArray(mark.points)||mark.points.length>3000))))throw Error("Malformed drawing layer");
+      }
+      if(!window.confirm("Import "+snapshots.length+" snapshots, "+datasets.length+" datasets, and "+drawings.length+" drawing layers into this browser? Matching IDs will be replaced."))return;
+      // One atomic write transaction: malformed or quota-failing batches leave existing records intact.
+      await new Promise((resolve,reject)=>{
+        const tx=S.db.transaction(["datasets","snapshots","drawings"],"readwrite");
+        datasets.forEach(item=>tx.objectStore("datasets").put(item));
+        snapshots.forEach(item=>tx.objectStore("snapshots").put(item));
+        drawings.forEach(item=>tx.objectStore("drawings").put(item));
+        tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error("Restore failed"));tx.onabort=()=>reject(tx.error||Error("Restore aborted"));
+      });
+      S.snapshots=(await dbAction("snapshots","readonly",store=>store.getAll())).sort((a,b)=>b.at.localeCompare(a.at));
+      S.selectedSnapshot=null;await loadDrawingSet();renderJournal();updateContext();
+      toast("Archive restored locally. Import sources remain unverified.");
+    }catch(e){toast("Restore rejected: "+e.message)}
   }
   function renderJournal(){
     $("snapshotCount").textContent=S.snapshots.length;$("snapshotCards").textContent="";
@@ -579,30 +1098,76 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     }));
     $("importBtn").addEventListener("click",()=>$("importCsv").click());$("importCsv").addEventListener("change",importFile);
     $("resetDemo").addEventListener("click",()=>resetDataset(demo()));
-    $("captureBtn").addEventListener("click",capture);$("captureSecondary").addEventListener("click",capture);
+    $("captureSecondary").addEventListener("click",capture);
+    $("scanTop").addEventListener("click",()=>{scanHistory(true);toast(S.candidates.length+" historical candidate patterns found. None are verified trading signals.");});
+    $("scanNow").addEventListener("click",()=>{scanHistory(true);toast("Historical scan refreshed.");});
+    $("aiScanBtn").addEventListener("click",()=>{setPage("workspace");scanHistory(true);toast("Candidate search is local and rule-based, not an active AI model.");});
+    $("scanFilter").addEventListener("change",()=>{const kind=$("scanFilter").value;const matching=S.candidates.filter(c=>kind==="all"||c.type===kind);
+      if(!S.selectedCandidate||!matching.some(c=>c.id===S.selectedCandidate.id)){
+        if(matching.length)selectCandidate(matching.at(-1));else{S.selectedCandidate=null;S.selection=null;S.packet=null;updateContext();renderScanner();}
+      }else renderScanner();
+    });
+    $("latestCase").addEventListener("click",()=>{const newest=S.candidates.at(-1);if(newest)selectCandidate(newest);else toast("No matching pattern in this dataset.");});
+    $("drawingLabel").addEventListener("input",e=>{
+      const m=selectedMark();if(!m)return;m.label=e.target.value.slice(0,180);
+      queueDrawingSave();renderDrawingList();draw();
+    });
+    $("toggleDrawing").addEventListener("click",()=>{const m=selectedMark();if(m)changeMark(m.id,{hidden:!m.hidden})});
+    $("removeDrawing").addEventListener("click",()=>{if(S.selectedDrawing)removeMark(S.selectedDrawing)});
+    $("deleteDrawing").addEventListener("click",()=>{if(S.selectedDrawing)removeMark(S.selectedDrawing)});
+    $("restoreArchiveBtn").addEventListener("click",()=>$("archiveFile").click());$("archiveFile").addEventListener("change",restoreArchive);
     $("exportBtn").addEventListener("click",exportArchive);$("journalExport").addEventListener("click",exportArchive);
     $("journalSearch").addEventListener("input",renderJournal);$("refreshJournal").addEventListener("click",renderJournal);
     $("goWorkspace").addEventListener("click",()=>setPage("workspace"));
-    $("zoomOut").addEventListener("click",()=>{S.visible=clamp(S.visible+25,30,180);S.selection=null;updateContext()});
-    $("zoomIn").addEventListener("click",()=>{S.visible=clamp(S.visible-25,30,180);S.selection=null;updateContext()});
-    $("undoMark").addEventListener("click",()=>{(S.replay?S.replayDrawings:S.drawings).pop();updateContext()});
-    $("replayToggle").addEventListener("change",e=>{S.replay=e.target.checked;if(S.replay)S.replayDrawings=[];S.reveal=Math.min(79,S.data.bars.length-1);S.selection=null;S.packet=null;updateContext()});
-    $("replayBack").addEventListener("click",()=>{S.reveal=clamp(S.reveal-1,Math.min(39,S.data.bars.length-1),S.data.bars.length-1);S.selection=null;updateContext()});
-    $("replayNext").addEventListener("click",()=>{S.reveal=clamp(S.reveal+1,0,S.data.bars.length-1);S.selection=null;updateContext()});
-    $("replayTen").addEventListener("click",()=>{S.reveal=clamp(S.reveal+10,0,S.data.bars.length-1);S.selection=null;updateContext()});
+    $("zoomOut").addEventListener("click",()=>zoomAt(S.visible+20,.5));
+    $("zoomIn").addEventListener("click",()=>zoomAt(S.visible-20,.5));
+    $("panLeft").addEventListener("click",()=>scrollChart(-Math.max(1,Math.round(S.visible*.3))));
+    $("panRight").addEventListener("click",()=>scrollChart(Math.max(1,Math.round(S.visible*.3))));
+    $("undoMark").addEventListener("click",()=>{const m=activeDrawings().at(-1);if(m)removeMark(m.id)});
+    $("replayToggle").addEventListener("change",e=>{
+      S.replay=e.target.checked;
+      if(S.replay){S.replayDrawings=[];S.reveal=Math.min(79,S.data.bars.length-1);S.viewportEnd=S.reveal;}
+      else S.viewportEnd=null;
+      S.selectedDrawing=null;S.selectedCandidate=null;S.selection=null;S.packet=null;
+      renderDrawingList();scanHistory();
+    });
+    function revealBy(n){
+      S.reveal=clamp(S.reveal+n,Math.min(39,S.data.bars.length-1),S.data.bars.length-1);
+      S.viewportEnd=S.reveal;S.selectedCandidate=null;S.selectedDrawing=null;S.selection=null;S.packet=null;renderDrawingList();scanHistory();
+    }
+    $("replayBack").addEventListener("click",()=>revealBy(-1));
+    $("replayNext").addEventListener("click",()=>revealBy(1));
+    $("replayTen").addEventListener("click",()=>revealBy(10));
+    canvas.addEventListener("wheel",e=>{
+      e.preventDefault();
+      if(e.shiftKey){scrollChart((e.deltaY>0?1:-1)*Math.max(1,Math.round(S.visible*.24)));return}
+      const r=canvas.getBoundingClientRect(),fraction=clamp((e.clientX-r.left-chartMeta().L)/chartMeta().plotW,0,1);
+      zoomAt(S.visible*(e.deltaY>0?1.14:.87),fraction);
+    },{passive:false});
     canvas.addEventListener("pointerdown",handleDown);canvas.addEventListener("pointermove",handleMove);
     canvas.addEventListener("pointerup",handleUp);canvas.addEventListener("click",handleClick);
     canvas.addEventListener("pointerleave",()=>{S.hover=null;draw()});
     canvas.addEventListener("pointercancel",()=>{S.drag=null;draw()});
-    document.addEventListener("keydown",e=>{const tag=e.target.tagName.toLowerCase();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="e"){e.preventDefault();exportArchive()}
+    document.addEventListener("keydown",e=>{
+      const tag=e.target?.tagName?.toLowerCase()||"";
+      if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="e"){e.preventDefault();exportArchive();return}
       if(["input","textarea","select"].includes(tag))return;
-      if(e.key==="Escape"&&S.page==="workspace"){S.selection=null;S.drag=null;updateContext()}
-      if(e.key==="1")setTool("inspect");if(e.key==="2")setTool("select");if(e.key==="3")setTool("level");if(e.key==="4")setTool("note");
+      if((e.key==="Delete"||e.key==="Backspace")&&S.selectedDrawing){e.preventDefault();removeMark(S.selectedDrawing);return}
+      if(e.key==="Escape"&&S.page==="workspace"){S.selection=null;S.drag=null;S.selectedDrawing=null;renderDrawingList();updateContext();return}
+      if(e.key==="1")setTool("inspect");
+      if(e.key==="2")setTool("select");
+      if(e.key==="3")setTool("edit");
+      if(e.key==="4")setTool("level");
+      if(e.key==="5")setTool("line");
+      if(e.key==="6")setTool("rectangle");
+      if(e.key==="7")setTool("arrow");
+      if(e.key==="8")setTool("brush");
+      if(e.key==="9")setTool("note");
     });
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;updateContext();resized();toast("Workspace ready · Demo mode · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();scanHistory(true);resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>

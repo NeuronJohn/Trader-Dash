@@ -1,4 +1,4 @@
-# Trader / Lab — HTML Workspace Foundation
+# Trader / Lab — Research Workspace v0.2
 
 This directory contains a single-file, self-contained browser prototype of the new professional Trader-Dash research workspace.
 
@@ -11,12 +11,15 @@ This directory contains a single-file, self-contained browser prototype of the n
 You can also run a local static server from the repository: python -m http.server 8080, then open http://localhost:8080/prototype/trader-workspace.html.
 
 ## Demo workflow
-- Chart initially shows SYNTHETIC candles. You can hover, select a time window, add a horizontal level, attach a note marker, and zoom.
-- Write a setup and thesis, then Capture snapshot. Captures include the original chart PNG, visible bar/time context, input source, annotation layer and notes.
+- The chart initially shows clearly labeled SYNTHETIC candles, and the local scanner automatically selects the latest historical rolling-range pattern it recognizes. None of the demo matches are real market evidence.
+- Mouse-wheel zoom, shift-wheel horizontal pan or drag in Cursor mode. The 24–180 bar window autosizes candles and price axes; range selection focuses evidence for the analyst.
+- Draw multiple price levels, lines, zones, arrows, brush marks and note pins. Edit lets you select, move, label, hide or delete one drawing. Annotations save per dataset in IndexedDB.
+- Study the selected historical candidate's boundary, confirmation, invalidation and readiness gaps before writing any note. Notes are optional; the scanner works without them.
+- When useful, capture a snapshot to preserve the original PNG, visible candle range, source, drawing layer and your optional observations.
 - Open Visual journal to search/edit review text and download PNG. The original thesis remains separate from review text.
 - Open the AI Research Analyst panel. Pick data scopes, click a suggested question, and Prepare context. A JSON packet is produced locally; it is not a model response. Copy the full packet for later integration.
 - Open Strategy lab to load a clearly labeled untested hypothesis and prepare its research scope.
-- Export journal to JSON to keep backups. There is not an archive import feature in this standalone v0.1 file.
+- Export a full JSON archive containing snapshots, imported datasets and standalone drawing layers. Use Restore archive in the Visual journal to validate and import saved research records atomically. Backup/restore is still a prototype; keep an external copy.
 
 ## CSV format
 Plain CSV, at least 5 bars, at most 20,000 bars and 5 MB. Required headers are time, open, high, low, close. Use an explicit UTC or offset timestamp, or Unix seconds/milliseconds. Example:
@@ -31,11 +34,12 @@ time,open,high,low,close
 Imported values are marked USER CSV / source unverified; they are not automatically licensed, accurate or tied to a broker account.
 
 ## Preservation and safety
-- Uses browser IndexedDB for snapshots and imported datasets and localStorage for an active dataset preference. Saved notes are local to your browser profile/origin, not cloud synced.
+- Uses browser IndexedDB for snapshots, dataset-specific drawings and imported datasets, and localStorage for the active dataset preference. Saved notes are local to your browser profile/origin, not cloud synced.
 - File:// browser storage can be browser-specific. Export regularly; prefer localhost static server for a consistent origin if testing across repeated sessions.
 - Chart historical reveal is not a blind strategy test or broker fill simulator. Replay mode excludes previously made full-history annotations and journal cases from its prepared AI context, but it does not substitute for a controlled experiment.
 - No external scripts, hosted calls, login, broker order routing, paid AI inference, or real-time quotes.
 - This HTML is a UX contract. The existing React application is the production target after visual verification and migration.
+- Local scanner uses a deterministic rolling 17-bar structural pattern, not the strategy-lab opening-range rules. Historical matches are NOT live signals, entry prices, positive-expectancy claims or AI results.
 
 ## Next
-Review docs/TRADER_LAB_MASTER_PLAN.md and port selected shell/interaction modules into the React app. Add browser smoke tests, import/restore, licensed data provenance, read-only broker fills and a true no-lookahead replay simulator before enabling model-based analysis or account execution.
+Review docs/TRADER_LAB_MASTER_PLAN.md and port selected shell/interaction modules into the React app. Add complete browser smoke tests, licensed data provenance, read-only broker fills and a true no-lookahead replay simulator before enabling model-based analysis or account execution.
