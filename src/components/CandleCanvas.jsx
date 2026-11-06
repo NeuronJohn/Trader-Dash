@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { utcLabel } from "../lib/marketData";
 
 const W = 1040, H = 528, LEFT = 38, RIGHT = 89, TOP = 23, BOTTOM = 42;
@@ -24,6 +24,7 @@ export default function CandleCanvas({
   const [pending, setPending] = useState(null);
   const [draft, setDraft] = useState([]);
   const penRef = useRef(null);
+  useEffect(() => { setPending(null); penRef.current = null; setDraft([]); }, [tool, candles]);
   const firstIndex = Math.max(0, Math.min(endIndex + 1, candles.length) - visibleCount);
   const lastIndex = Math.min(endIndex, candles.length - 1);
   const visible = useMemo(() => candles.slice(firstIndex, lastIndex + 1), [candles, firstIndex, lastIndex]);
@@ -111,7 +112,7 @@ export default function CandleCanvas({
       <text x={W-RIGHT+13} y={y(price)+4} fontSize="12" fill="#9aa9bb">{priceText(price,span)}</text>
     </g>)}
     {timeMarks.map(c => {
-      const idx = candles.indexOf(c);
+      const idx = firstIndex + visible.indexOf(c);
       return <g key={c.time}>
         <line x1={x(idx)} y1={TOP} x2={x(idx)} y2={H-BOTTOM} stroke="#293343" strokeWidth=".65" strokeDasharray="2 7"/>
         <text x={x(idx)} y={H-17} fill="#8b9aab" fontSize="12" textAnchor="middle">{utcLabel(c.time)}Z</text>
