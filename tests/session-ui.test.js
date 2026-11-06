@@ -126,7 +126,7 @@ function fakePaperDb(){
         objectStore:()=>({
           put(c){
             saved.set(c.id,JSON.parse(JSON.stringify(c)));
-            queueMicrotask(()=>tx.oncomplete?.());
+            Promise.resolve().then(()=>tx.oncomplete?.());
             return {result:c};
           }
         })
