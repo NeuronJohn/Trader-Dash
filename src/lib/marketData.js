@@ -97,8 +97,10 @@ export async function importMarketCsv(text, symbol = "Imported") {
   for (let i = 1; i < candles.length; i++) {
     if (candles[i].time === candles[i-1].time) throw new Error("Duplicate timestamp: " + new Date(candles[i].time).toISOString());
   }
-  const id = "csv-sha256-" + await sha256(text);
-  return { id, label: "IMPORTED CSV / VERIFY SOURCE", kind: "csv", symbol: String(symbol).slice(0,40) || "Imported", timeframe: "Source timestamps", candles };
+  const displaySymbol = String(symbol).slice(0,40) || "Imported";
+  // Include the instrument label so identical numeric series for different symbols cannot share drawings.
+  const id = "csv-sha256-" + await sha256(displaySymbol + "\n" + text);
+  return { id, label: "IMPORTED CSV / VERIFY SOURCE", kind: "csv", symbol: displaySymbol, timeframe: "Source timestamps", candles };
 }
 
 export function utcLabel(ms) {
