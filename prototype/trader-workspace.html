@@ -42,6 +42,11 @@ svg{display:block}h1,h2,h3,p{margin:0}strong{font-weight:640}
 .sidebottom .note{font-size:11px;color:var(--dim);line-height:1.7}
 .main{grid-column:2;grid-row:2;min-height:0;min-width:0;overflow-y:auto;padding:19px 22px 26px;scrollbar-color:#34414c transparent}
 .assistant{grid-column:3;grid-row:2;min-height:0;background:#101720;border-left:1px solid var(--hair);display:flex;flex-direction:column}
+.app.hide-ai{grid-template-columns:208px minmax(430px,1fr) 0}
+.app.hide-ai .assistant{display:none}
+.ai-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:11px;background:#0e141a;border:1px solid #26333d;border-radius:8px;padding:3px}
+.ai-modes button{border:0;background:transparent;border-radius:5px;padding:7px 3px;font-size:10px;color:#8e9fac}
+.ai-modes button.active{background:#243b3a;color:#d2ede5;font-weight:700}
 .statusbar{grid-column:1/-1;grid-row:3;border-top:1px solid var(--hair);display:flex;align-items:center;gap:18px;padding:0 17px;font-size:10px;color:#81909f;background:#0e141a}
 .statusbar .right{margin-left:auto}
 .workspace-title{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin:1px 0 19px}
@@ -143,9 +148,9 @@ textarea{resize:vertical;min-height:72px}
 .review-block{white-space:pre-wrap;color:#b4c3ce;font-size:12px;line-height:1.7}
 .toast{position:fixed;left:50%;bottom:53px;transform:translateX(-50%);z-index:10;padding:10px 15px;border:1px solid #536c64;border-radius:9px;background:#192b29;color:#dcf3eb;box-shadow:0 12px 40px #0008;font-size:12px;max-width:min(500px,94vw)}
 kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;font:10px var(--mono)}
-@media(max-width:1250px){.app{grid-template-columns:170px minmax(350px,1fr) 305px}.brand{width:145px}.main{padding:16px}.detail-grid{grid-template-columns:1fr}.assistant-head{padding:15px}.ai-scroll{padding:14px}}
-@media(max-width:1050px){.app{grid-template-columns:165px minmax(0,1fr);grid-template-rows:55px minmax(0,1fr) 32px}.assistant{grid-column:2;grid-row:2;position:relative;border-left:0;border-top:1px solid var(--hair);height:420px;min-height:0}.main{grid-column:2;grid-row:2;overflow:auto;padding-bottom:445px}.assistant{display:none}.app.show-ai .assistant{display:flex;position:fixed;z-index:4;right:0;top:55px;bottom:30px;height:auto;width:min(350px,calc(100vw - 165px));box-shadow:-16px 0 50px #0008}.app.show-ai .main{padding-bottom:26px}.topstatus{display:none}.chartwrap{height:420px}}
-@media(max-width:640px){.app{grid-template-columns:1fr;grid-template-rows:54px minmax(0,1fr) 29px}.sidebar{display:none}.main{grid-column:1;grid-row:2;padding:15px}.brand{width:auto}.toplabel{display:none}.topbar{padding:0 12px}.workspace-title{flex-direction:column}.chartwrap{height:370px;min-height:300px}.summary-stripe{grid-template-columns:1fr 1fr}.labgrid,.journal-list,.journal-preview{grid-template-columns:1fr}.app.show-ai .assistant{width:100vw;top:54px;bottom:29px}.statusbar{gap:8px}.statusbar .right{display:none}}
+@media(max-width:1250px){.app{grid-template-columns:170px minmax(350px,1fr) 305px}.app.hide-ai{grid-template-columns:170px minmax(350px,1fr) 0}.brand{width:145px}.main{padding:16px}.detail-grid{grid-template-columns:1fr}.assistant-head{padding:15px}.ai-scroll{padding:14px}}
+@media(max-width:1050px){.app,.app.hide-ai{grid-template-columns:165px minmax(0,1fr);grid-template-rows:55px minmax(0,1fr) 32px}.assistant{grid-column:2;grid-row:2;position:relative;border-left:0;border-top:1px solid var(--hair);height:420px;min-height:0}.main{grid-column:2;grid-row:2;overflow:auto;padding-bottom:445px}.assistant{display:none}.app.show-ai .assistant{display:flex;position:fixed;z-index:4;right:0;top:55px;bottom:30px;height:auto;width:min(350px,calc(100vw - 165px));box-shadow:-16px 0 50px #0008}.app.show-ai .main{padding-bottom:26px}.topstatus{display:none}.chartwrap{height:420px}}
+@media(max-width:640px){.app,.app.hide-ai{grid-template-columns:1fr;grid-template-rows:54px minmax(0,1fr) 29px}.sidebar{display:none}.main{grid-column:1;grid-row:2;padding:15px}.brand{width:auto}.toplabel{display:none}.topbar{padding:0 12px}.workspace-title{flex-direction:column}.chartwrap{height:370px;min-height:300px}.summary-stripe{grid-template-columns:1fr 1fr}.labgrid,.journal-list,.journal-preview{grid-template-columns:1fr}.app.show-ai .assistant{width:100vw;top:54px;bottom:29px}.statusbar{gap:8px}.statusbar .right{display:none}}
 </style>
 </head>
 <body>
@@ -243,7 +248,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     </section>
   </main>
   <aside class="assistant" id="assistant">
-    <div class="assistant-head"><div class="assistant-title"><h2>✦ &nbsp; AI Research Analyst</h2><span class="ai-state">MODEL OFFLINE</span></div><p>Scoped to your selected evidence. Nothing is sent to an external model in this foundation.</p></div>
+    <div class="assistant-head"><div class="assistant-title"><h2>✦ &nbsp; AI Research Analyst</h2><span class="ai-state">MODEL OFFLINE</span></div><p>Scoped to your selected evidence. Nothing is sent to an external model in this foundation.</p><div class="ai-modes" role="group" aria-label="Analyst interaction mode"><button class="active" data-ai-mode="quiet" aria-pressed="true">Quiet</button><button data-ai-mode="assist" aria-pressed="false">Assist</button><button data-ai-mode="coach" aria-pressed="false">Coach</button></div></div>
     <div class="ai-scroll">
       <div class="ai-section"><div class="flex between" style="margin-bottom:12px"><h3 style="margin:0">Analysis context</h3><span class="eyebrow">Inspect before sending</span></div>
         <div class="context-row"><span class="k">Source</span><span class="v" id="aiSource">Demo / synthetic</span></div>
@@ -283,7 +288,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
   const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,replay:false,reveal:0,hover:null,selection:null,drag:null,
-    scopes:{candles:true,marks:true,notes:true,history:false},snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
+    scopes:{candles:true,marks:true,notes:true,history:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
   const iso = ms => new Date(ms).toISOString();
@@ -428,7 +433,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const b=evidenceBars(),prompt=$("aiPrompt").value.trim(),a=visible();
     const result={
       schema:"trader.analyst.context.v1",created_at:new Date().toISOString(),purpose:"decision_support_only",
-      execution:"disabled",model:"not_connected",prompt,source:{kind:S.data.source,id:S.data.id,symbol:S.data.symbol,display_label:S.data.label,timeframe:S.data.timeframe},
+      execution:"disabled",model:"not_connected",interaction_mode:S.mode,prompt,source:{kind:S.data.source,id:S.data.id,symbol:S.data.symbol,display_label:S.data.label,timeframe:S.data.timeframe},
       replay:{enabled:S.replay,revealed_through_utc:iso(S.data.bars[a.end].time),future_candles_excluded_from_visible_bars:true,blind_trial:false},
       selected_window:{first_utc:b.length?iso(b[0].time):null,last_utc:b.length?iso(b[b.length-1].time):null,count:b.length},
       include:{...S.scopes},evidence:{},
@@ -563,7 +568,12 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     document.querySelectorAll("[data-scope]").forEach(b=>b.addEventListener("click",()=>{const name=b.dataset.scope;S.scopes[name]=!S.scopes[name];b.classList.toggle("active",S.scopes[name]);b.setAttribute("aria-pressed",String(S.scopes[name]));S.packet=null}));
     $("prepareContext").addEventListener("click",prepareContext);$("prepareStrategy").addEventListener("click",()=>{$("aiPrompt").value=$("aiPrompt").value||"Design a falsifiable strategy test.";prepareContext()});
     $("copyContext").addEventListener("click",copyPacket);
-    $("toggleAiBtn").addEventListener("click",()=>app.classList.toggle("show-ai"));
+    $("toggleAiBtn").addEventListener("click",()=>{if(window.matchMedia("(max-width:1050px)").matches){app.classList.toggle("show-ai")}else{app.classList.toggle("hide-ai")}requestAnimationFrame(resized)});
+    document.querySelectorAll("[data-ai-mode]").forEach(b=>b.addEventListener("click",()=>{
+      S.mode=b.dataset.aiMode;
+      document.querySelectorAll("[data-ai-mode]").forEach(x=>{const active=x.dataset.aiMode===S.mode;x.classList.toggle("active",active);x.setAttribute("aria-pressed",String(active))});
+      S.packet=null;toast(S.mode==="quiet"?"Quiet mode: only user-requested context.":S.mode==="assist"?"Assist mode prepared; no model calls or notifications enabled yet.":"Coach mode prepared; session coaching activates only with a connected model.");
+    }));
     $("importBtn").addEventListener("click",()=>$("importCsv").click());$("importCsv").addEventListener("change",importFile);
     $("resetDemo").addEventListener("click",()=>resetDataset(demo()));
     $("captureBtn").addEventListener("click",capture);$("captureSecondary").addEventListener("click",capture);
