@@ -237,6 +237,14 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .mes-report .mes-footer{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
 @media(max-width:1000px){.mes-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.mes-controls{grid-template-columns:1fr}.mes-report .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.mes-scanned{border-top:1px solid var(--hair);padding:13px 16px}
+.mes-scanned .matches{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.mes-scanned .hit{min-width:150px;max-width:210px;flex:1;background:#141f29;border:1px solid #30404a;border-radius:8px;padding:10px;text-align:left}
+.mes-scanned .hit:hover{border-color:#79aba3}
+.mes-scanned .hit strong{font-size:11px;display:block;margin-bottom:5px}
+.mes-scanned .hit small{font-size:10px;color:#9db0b9;line-height:1.6}
+.mes-scanned .hit .label{font:10px var(--mono);color:#c9bea4;margin-top:5px}
 </style>
 </head>
 <body>
@@ -397,7 +405,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
             <h3>Opening-range strategy experiments <span class="pill">v1</span></h3>
             <p class="small muted">08:30–11:00 America/Chicago · first 15-minute range · complete five-minute candles · 1 MES contract</p>
           </div>
-          <button id="runMes" class="btn primary">Run MES research</button>
+          <div class="action-row"><button id="scanMes" class="btn">Find MES setups</button><button id="runMes" class="btn primary">Run MES research</button></div>
         </div>
         <div class="mes-controls">
           <label class="label">Frozen rule
@@ -417,6 +425,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <label class="mes-confirm"><input id="mesConfirm" type="checkbox">
           <span>I checked that the selected CSV is <strong>MES</strong> five-minute data with UTC <strong>bar-start</strong> timestamps, correct contract/roll handling, and complete 08:30–11:00 CT sessions. I understand the tool cannot authenticate the source.</span>
         </label>
+        <div id="mesScanned" class="mes-scanned" aria-live="polite"><p class="small muted">Find historical MES setup confirmations without revealing their outcomes. Data-quality acknowledgement is required.</p></div>
         <div id="mesResult" class="mes-report" aria-live="polite">
           <p class="empty">Import an authorized MES five-minute CSV, confirm its timestamp convention and session quality, then run either preregistered rule. Synthetic candles and unverified fills do not establish trading edge.</p>
         </div>
@@ -473,7 +482,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,mesSignals:null,mesSignalPreview:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),
     scopes:{candles:true,marks:true,notes:true,history:false,experiments:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -1084,7 +1093,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
 
   function selectCandidate(candidate){
-    S.selectedCandidate=candidate;S.mesPreview=null;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
+    S.selectedCandidate=candidate;S.mesPreview=null;S.mesSignalPreview=null;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
     const end=S.replay?S.reveal:S.data.bars.length-1;
     S.viewportEnd=Math.min(end,candidate.index+Math.round(S.visible*.35));
     S.packet=null;
@@ -1245,10 +1254,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
   function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selectedDrawing=null;S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.viewportEnd=null;S.strategy=null;S.selectedCandidate=null;
     $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
-    S.experiment=null;S.mesRun=null;S.mesPreview=null;
+    S.experiment=null;S.mesRun=null;S.mesPreview=null;S.mesSignals=null;S.mesSignalPreview=null;
     $("mesConfirm").checked=false;
     $("simTick").value=data.source==="synthetic"?"0.25":"";
-    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();renderMesReport();}
+    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();renderMesReport();renderMesScans();}
   async function importFile(event){
     const files=[...(event.target.files||[])].slice(0,12);
     event.target.value="";
@@ -2007,6 +2016,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     document.querySelectorAll("[data-scope]").forEach(b=>b.addEventListener("click",()=>{const name=b.dataset.scope;S.scopes[name]=!S.scopes[name];b.classList.toggle("active",S.scopes[name]);b.setAttribute("aria-pressed",String(S.scopes[name]));S.packet=null}));
     $("runExperiment").addEventListener("click",runResearchExperiment);
     $("runMes").addEventListener("click",runMesResearch);
+    $("scanMes").addEventListener("click",runMesScan);
     $("mesRule").addEventListener("change",()=>{$("mesReward").disabled=$("mesRule").value==="FBR-001"});
     $("analyzeLocal").addEventListener("click",()=>requestLocalAnalysis(false));
     $("prepareContext").addEventListener("click",prepareContext);$("prepareStrategy").addEventListener("click",()=>{$("aiPrompt").value=$("aiPrompt").value||"Design a falsifiable strategy test.";prepareContext()});
@@ -2089,7 +2099,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderRunHistory();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();renderRunHistory();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
