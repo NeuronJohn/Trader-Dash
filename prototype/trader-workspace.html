@@ -495,6 +495,9 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
   const iso = ms => new Date(ms).toISOString();
+  const ctTime = ms => new Intl.DateTimeFormat("en-US",{
+    timeZone:"America/Chicago",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
+  }).format(new Date(ms))+" CT";
   const fmt=n => Number(n).toLocaleString(undefined,{maximumFractionDigits:3});
   function toast(message){const e=$("toast");e.textContent=message;e.classList.remove("hidden");clearTimeout(toast.timer);toast.timer=setTimeout(()=>e.classList.add("hidden"),3400)}
   function safeStr(value){return String(value==null?"":value)}
@@ -1801,7 +1804,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       for(const t of data.matches.slice(-16).reverse()){
         const btn=document.createElement("button");btn.type="button";btn.className="hit";
         btn.append(htmlText("strong",t.rule+" · "+t.side));
-        btn.append(htmlText("small",t.day+" · "+new Date(t.signalTime).toISOString().slice(11,16)+"Z"));
+        btn.append(htmlText("small",t.day+" · "+ctTime(t.signalTime)+" (confirmation close)"));
         btn.append(htmlText("div","Boundary "+Number(t.boundary).toFixed(2)+" · Invalid "+Number(t.structuralStop).toFixed(2),"label"));
         btn.addEventListener("click",()=>focusMesSignal(t));
         wrap.append(btn);
