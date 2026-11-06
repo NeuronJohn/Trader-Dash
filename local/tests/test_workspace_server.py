@@ -123,6 +123,19 @@ class ModelBoundaryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "structured JSON"):
             server.structured_analysis({"message": {"content": "This is a buy signal."}})
 
+    def test_fenced_json_from_local_ollama_is_parsed_without_extraction(self):
+        valid = {k: "Insufficient verified evidence" for k in (
+            "observation", "interpretation", "falsification",
+            "next_experiment", "limitations"
+        )}
+        fenced = "```json\\n" + json.dumps(valid) + "\\n```"
+        self.assertEqual(
+            server.structured_analysis({"message": {"content": fenced}})["observation"],
+            "Insufficient verified evidence"
+        )
+        with self.assertRaisesRegex(ValueError, "structured JSON"):
+            server.structured_analysis({"message": {"content": "Opinion first " + json.dumps(valid)}})
+
     def test_host_header_restriction(self):
         accepted = SimpleNamespace(headers={"Host": f"127.0.0.1:{server.PORT}"})
         rejected = SimpleNamespace(headers={"Host": "malicious.invalid"})
