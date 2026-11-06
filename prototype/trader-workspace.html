@@ -691,6 +691,144 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     }
     return out.slice(-200);
   }
+
+  // Deterministic first-pass research simulator.
+  // Important: OHLC candles cannot reveal intrabar order. When stop and target are
+  // both touched we choose the adverse stop. Costs are explicit tick-equivalents.
+  // A match is detected only after its confirmation candle fully closes.
+  function validateResearchBars(bars){
+    if(!Array.isArray(bars)||bars.length<45)throw Error("At least 45 chronological OHLC bars required");
+    for(let k=0;k<bars.length;k++){
+      const b=bars[k];
+      if(!Number.isFinite(b.time)||!["open","high","low","close"].every(q=>Number.isFinite(b[q])&&b[q]>0)||
+         b.high<Math.max(b.open,b.close,b.low)||b.low>Math.min(b.open,b.close,b.high))
+        throw Error("Invalid OHLC at bar "+k);
+      if(k&&b.time<=bars[k-1].time)throw Error("Data must be strictly chronological");
+    }
+  }
+  function simulateHistoricalResearch(bars, options={}){
+    validateResearchBars(bars);
+    const riskReward=Number(options.rewardR??2), maxHold=Math.floor(Number(options.maxHold??12));
+    const tick=Number(options.tickSize),slip=Number(options.slippageTicks??1),fee=Number(options.roundTripFeeTicks??1);
+    if(!(riskReward>=.5 && riskReward<=6)||!Number.isFinite(riskReward))throw Error("Target must be between 0.5 and 6 R");
+    if(!(maxHold>=1&&maxHold<=120))throw Error("Holding period must be 1–120 bars");
+    if(!(tick>0&&Number.isFinite(tick)))throw Error("Select a verified instrument tick size before modeling trades");
+    if(!Number.isFinite(slip)||slip<0||slip>50||!Number.isFinite(fee)||fee<0||fee>50)
+      throw Error("Cost assumptions must be finite and nonnegative tick equivalents");
+    const type=options.type||"all";
+    if(!["all","breakout","failure"].includes(type))throw Error("Unknown research pattern family");
+    const patterns=searchPatterns(bars,bars.length-1).filter(c=>type==="all"||c.type===type);
+    const out=[];
+    let occupiedUntil=-1;
+    const limit=bars.length-1;
+    const gapMedian=(()=>{
+      const diffs=[];
+      for(let i=1;i<Math.min(200,bars.length);i++){
+        const dt=bars[i].time-bars[i-1].time;if(dt>0)diffs.push(dt)
+      }
+      diffs.sort((a,b)=>a-b);
+      return diffs[Math.floor(diffs.length/2)]||300000;
+    })();
+    const dayLimit=options.maxPerDay??0;
+    const byDay=new Map();
+    for(const c of patterns){
+      const signal=c.index,entryIndex=signal+1;
+      // Never use a partially observed exit horizon near the end of a dataset.
+      if(entryIndex+maxHold-1>limit||signal<=occupiedUntil)continue;
+      const date=new Date(bars[entryIndex].time).toISOString().slice(0,10);
+      if(dayLimit>0&&(byDay.get(date)||0)>=dayLimit)continue;
+      // Do not bridge a large missing-data gap during the actual holding period.
+      let gap=false;
+      for(let j=signal+1;j<entryIndex+maxHold;j++)
+        if(bars[j].time-bars[j-1].time>gapMedian*2.5){gap=true;break}
+      if(gap)continue;
+      const side=c.side==="LONG"?1:-1;
+      const entry=bars[entryIndex].open+side*slip*tick;
+      const stop=c.invalidation;
+      const initialRisk=side*(entry-stop);
+      if(initialRisk<=tick*.25||!Number.isFinite(initialRisk))continue;
+      const target=entry+side*riskReward*initialRisk;
+      let exit=null,exitIndex=-1,reason="";
+      for(let j=entryIndex;j<entryIndex+maxHold;j++){
+        const b=bars[j];
+        // Stop is considered before target even if both are touched in one OHLC bar.
+        if(side===1){
+          if(b.open<=stop){exit=b.open-slip*tick;reason="stop_gap"}
+          else if(b.low<=stop){exit=stop-slip*tick;reason="stop"}
+          else if(b.open>=target){exit=target-slip*tick;reason="target_conservative"}
+          else if(b.high>=target){exit=target-slip*tick;reason="target"}
+        }else{
+          if(b.open>=stop){exit=b.open+slip*tick;reason="stop_gap"}
+          else if(b.high>=stop){exit=stop+slip*tick;reason="stop"}
+          else if(b.open<=target){exit=target+slip*tick;reason="target_conservative"}
+          else if(b.low<=target){exit=target+slip*tick;reason="target"}
+        }
+        if(exit!==null){exitIndex=j;break}
+      }
+      if(exit===null){
+        exitIndex=entryIndex+maxHold-1;
+        exit=bars[exitIndex].close-side*slip*tick;
+        reason="time_exit";
+      }
+      const grossR=side*(exit-entry)/initialRisk;
+      const feesR=fee*tick/initialRisk;
+      const netR=grossR-feesR;
+      if(!Number.isFinite(netR))continue;
+      out.push({
+        id:c.id,sourceRule:c.version,type:c.type,side:c.side,signalIndex:signal,
+        signalTime:bars[signal].time,entryIndex,entryTime:bars[entryIndex].time,
+        entry,stop,target,riskPrice:initialRisk,exit,exitIndex,
+        exitTime:bars[exitIndex].time,exitReason:reason,holdBars:exitIndex-entryIndex+1,
+        grossR,feeR:feesR,netR,
+        assumption:{targetR:riskReward,maxHold,tickSize:tick,slippageTicksPerSide:slip,roundTripFeeTicks:fee},
+      });
+      occupiedUntil=exitIndex;
+      byDay.set(date,(byDay.get(date)||0)+1);
+    }
+    // Fixed chronological split with a purged/embargoed boundary:
+    // no training episode overlaps holdout evaluation.
+    const splitIndex=Math.floor(bars.length*.7);
+    const embargo=Math.max(19,maxHold);
+    const train=out.filter(t=>t.exitIndex<splitIndex-embargo);
+    const holdout=out.filter(t=>t.signalIndex>=splitIndex+embargo);
+    const omitted=out.length-train.length-holdout.length;
+    const summary=trades=>{
+      let equity=0,peak=0,maxDrawdownR=0,winR=0,lossR=0,wins=0;
+      const results=[];
+      for(const t of trades){
+        equity+=t.netR;peak=Math.max(peak,equity);
+        maxDrawdownR=Math.max(maxDrawdownR,peak-equity);
+        if(t.netR>0){wins++;winR+=t.netR}
+        else if(t.netR<0)lossR+=-t.netR;
+        results.push(t.netR);
+      }
+      const n=trades.length;
+      return {
+        trades:n,wins,winRate:n?wins/n:null,
+        netR:equity,avgNetR:n?equity/n:null,
+        profitFactor:lossR?winR/lossR:null,
+        maxDrawdownR,medianNetR:n?[...results].sort((a,b)=>a-b)[Math.floor(n/2)]:null,
+        minNetR:n?Math.min(...results):null,maxNetR:n?Math.max(...results):null,
+      };
+    };
+    return {
+      schema:"trader.research.simulation.v1",status:"RESEARCH_ONLY_NOT_VERIFIED",
+      assumptions:{
+        price_model:"OHLC with stop-first ambiguous bars, next-open entry, slippage both sides",
+        profit_unit:"R normalized to initial price stop distance (not dollar account P/L)",
+        tickSize:tick,slippageTicksPerSide:slip,roundTripFeeTicks:fee,targetR:riskReward,maxHoldBars:maxHold,
+        rule:"rolling-17-bar-v1",type,fee_model:"round-trip tick-equivalent, manually calibrated",
+        split:"chronological 70/30 with embargo "+embargo+" bars; holdout not valid if repeatedly tuned",
+        sourceQuality:"requires separate verification",currencyConversion:"not modeled",
+      },
+      splitIndex,embargo,barCount:bars.length,rawSignalCount:patterns.length,
+      scheduledTrades:out.length,omittedBoundaryEpisodes:omitted,
+      full:summary(out),train:summary(train),holdout:summary(holdout),
+      trades:out,
+      qualification:"None. Requires authentic data, reviewed costs, independent validation and prospective testing.",
+    };
+  }
+
   function scanHistory(focusLatest=false){
     const limit=S.replay?S.reveal:S.data.bars.length-1;
     S.candidates=searchPatterns(S.data.bars,limit);
