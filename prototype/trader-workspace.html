@@ -251,6 +251,26 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .mes-audit .check{border:1px solid #30424b;background:#17252b;padding:6px 9px;border-radius:6px;font:10px var(--mono);color:#c4d8df}
 .mes-audit .check.warn{border-color:#6a5138;color:#e0c49c;background:#272118}
 .strategy-fold{margin-top:12px;padding:12px 15px}.strategy-fold>summary{cursor:pointer;font-size:12px;font-weight:670;color:#c6d8e0}.strategy-fold>summary .dim{font-size:11px;font-weight:400;margin-left:5px}.strategy-fold-body{margin-top:12px}.strategy-fold .experiment{margin-top:0}.strategy-fold .experiment-history{border:0;padding:5px 0 0}
+
+.paper-panel{margin-top:14px;overflow:hidden}
+.paper-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:0 16px 12px}
+.paper-metric{border:1px solid #283c43;border-radius:8px;background:#16232a;padding:12px;display:flex;flex-direction:column;gap:5px}
+.paper-metric strong{font:21px var(--mono);color:#d7eae5}
+.paper-metric span{font-size:10px;color:#91a6b1}
+.paper-note{margin:2px 16px 12px;background:#24221d;color:#d5c29d;font-size:11px;line-height:1.55;border-radius:7px;padding:9px 12px}
+.paper-cases{display:flex;flex-direction:column;gap:5px;padding:0 16px 15px;max-height:290px;overflow-y:auto}
+.paper-item{border:1px solid #30434b;border-radius:7px;background:#13212a;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:11px;text-align:left}
+.paper-item.selected{border-color:#85afa5;background:#1c3434}
+.paper-item strong{font-size:11px;color:#dde8e8}
+.paper-item small{display:block;font-size:10px;color:#90a3af;margin-top:4px}
+.paper-item .state{font:10px var(--mono);color:#d8c18a;text-align:right}
+.paper-case-detail{padding:14px 16px;border-top:1px solid #2b3b42}
+.paper-case-detail h4{font-size:12px;margin:0 0 8px}
+.paper-case-detail .line{display:flex;justify-content:space-between;gap:8px;padding:6px 0;font-size:11px;border-bottom:1px solid #273841}
+.paper-case-detail .line span:last-child{font:11px var(--mono);color:#bdd4d2}
+.paper-case-detail textarea{margin-top:8px;min-height:60px}
+.paper-case-detail .actions{margin-top:9px;display:flex;flex-wrap:wrap;gap:8px}
+@media(max-width:540px){.paper-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.paper-metric{padding:9px}.paper-metric strong{font-size:16px}}
 </style>
 </head>
 <body>
@@ -282,7 +302,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   <main class="main">
     <section id="view-workspace">
       <div class="workspace-title"><div><h1>Market workspace</h1><p>Find candidate setups, understand the structure, then decide what deserves a note.</p></div>
-      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" multiple class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo</button><button class="btn primary" id="scanTop">⌕ &nbsp; Find setups</button></div></div>
+      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" multiple class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo</button><button class="btn primary" id="scanTop">⌕ &nbsp; Find setups</button><button class="btn" id="capturePaper" title="Preserve the selected MES confirmation as a research checkpoint">Save MES case</button></div></div>
       <div class="panel chartbox">
         <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span><button class="btn subtle" id="latestCase" title="Jump to most recently detected historical candidate">No scan yet</button></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
         <div class="chart-toolbar">
@@ -405,6 +425,26 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
           <p class="empty">Import an authorized MES five-minute CSV, confirm its timestamp convention and session quality, then run either preregistered rule. Synthetic candles and unverified fills do not establish trading edge.</p>
         </div>
       </section>
+      <section class="panel paper-panel" id="paperLab">
+        <div class="research-head">
+          <div><div class="eyebrow">Evidence-first · Recorded before outcome · Read-only</div>
+          <h3>Paper research ledger</h3>
+          <p class="small muted">Capture one completed MES confirmation, preserve its pre-signal candles, then reconcile it against a later CSV. Replay and unverified timely observations never combine.</p></div>
+          <div class="action-row">
+            <button class="btn" id="paperCaptureLatest">Record latest confirmation</button>
+            <button class="btn" id="paperReconcile">Check outcomes</button>
+            <button class="btn" id="paperExport">Export log</button>
+          </div>
+        </div>
+        <div id="paperSummary" class="paper-summary">
+          <div class="paper-metric"><strong>0</strong><span>Recorded cases</span></div>
+          <div class="paper-metric"><strong>0</strong><span>Pending</span></div>
+          <div class="paper-metric"><strong>0</strong><span>Resolved</span></div>
+        </div>
+        <div class="paper-note">Imported CSV data is unverified. Timely observations are not authenticated live or broker-forward performance. The app does not monitor markets when closed.</div>
+        <div id="paperCases" class="paper-cases" aria-live="polite"><p class="empty">No setup checkpoints saved. Find a MES confirmation first.</p></div>
+        <div id="paperCaseDetail" class="paper-case-detail hidden"></div>
+      </section>
       <details class="strategy-fold panel" id="previousRuns"><summary>Saved research history <span class="dim">· experiments and exposures</span></summary><details class="experiment-history"><summary>Previous research runs <span class="dim" id="runHistoryCount">· 0</span></summary><div id="runHistory" class="run-history"></div></details></details>
       <details class="strategy-fold panel" id="hypothesisLibrary"><summary>Other research hypotheses <span class="dim">· more markets</span></summary><div class="strategy-fold-body">      <p class="lab-note">Choose a hypothesis to prepare an analysis packet. Exact triggers, entries, exits, fees, slippage, no-trade windows, and rejection criteria must be frozen before testing.</p>
       <div class="labgrid">
@@ -462,7 +502,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <button class="active" data-scope="candles" aria-pressed="true">Candles</button>
         <button class="active" data-scope="marks" aria-pressed="true">Annotations</button>
         <button class="active" data-scope="notes" aria-pressed="true">Draft notes</button>
-        <button data-scope="history" aria-pressed="false">Journal cases</button><button data-scope="experiments" aria-pressed="false">Experiment statistics</button>
+        <button data-scope="history" aria-pressed="false">Journal cases</button><button data-scope="experiments" aria-pressed="false">Experiment statistics</button><button data-scope="paper" aria-pressed="false">My paper research</button>
       </div><p class="small dim" style="margin-top:10px;line-height:1.7">Only selected sources enter a prepared context packet. Sensitive account credentials are never included.</p></div>
       </details>
       <details class="ai-section advanced"><summary>Local observations</summary><div id="aiObservations" style="margin-top:9px"></div></details>
@@ -478,6 +518,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 </div>
 <div class="toast hidden" role="status" id="toast"></div>
 <script src="session-engine.js"></script>
+<script src="paper-ledger.js"></script>
 <script>
 "use strict";
 (function(){
@@ -490,8 +531,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,mesSignals:null,mesSignalPreview:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),
-    scopes:{candles:true,marks:true,notes:true,history:false,experiments:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,mesSignals:null,mesSignalPreview:null,paperCases:[],paperSelected:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),
+    scopes:{candles:true,marks:true,notes:true,history:false,experiments:false,paper:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
   const iso = ms => new Date(ms).toISOString();
