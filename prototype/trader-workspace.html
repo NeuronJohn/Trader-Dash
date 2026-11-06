@@ -156,6 +156,61 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .toolset{display:flex;gap:4px;flex-wrap:wrap;align-items:center}.tool-separator{height:19px;border-left:1px solid #2d3a44;margin:0 4px}.chart-toolbar .btn{font-size:11px;padding:7px 8px}.chart-bottom{min-height:45px}.chart-overlay-status{top:8px;left:14px;font-size:10px;background:rgba(15,22,30,.85);border-radius:5px;padding:3px 6px}.research-panel{margin-top:13px;overflow:hidden}.research-head{padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.research-head h3{font-size:14px;margin:5px 0 4px}.research-head select{width:auto;min-width:130px;padding:7px 9px;font-size:11px}.scan-results{display:flex;gap:8px;overflow:auto;padding:0 16px 15px;scrollbar-color:#3b4e56 transparent}.scan-hit{min-width:170px;max-width:195px;flex:0 0 auto;background:#141f29;border:1px solid #2a3944;border-radius:9px;padding:11px;text-align:left;display:flex;flex-direction:column;gap:6px}.scan-hit:hover{border-color:#698e83}.scan-hit.selected{border-color:#8ac5b7;background:#1c3132}.scan-hit .kind{font-size:10px;color:#91a2b4}.scan-hit strong{font-size:12px;line-height:1.45}.scan-hit .at{font:10px var(--mono);color:#82939f}.scan-hit .dir{font-size:10px;color:#cfc5af}.research-detail{border-top:1px solid #25313d;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(230px,.85fr)}.research-explanation{padding:16px;min-height:138px}.research-explanation h4{font-size:13px;font-weight:700;margin:0 0 7px}.research-explanation p{font-size:11px;color:#a7b9c6;line-height:1.7}.research-explanation .facts{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.fact{padding:5px 7px;background:#1d2a34;border:1px solid #35424c;border-radius:6px;color:#cad5de;font:10px var(--mono)}.readiness{border-left:1px solid var(--hair);padding:14px 17px;background:#121a22}.ready-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #26313b;font-size:11px;padding:8px 0;color:#a9b8c4}.ready-pending{color:#d7b978;text-align:right}.ready-ok{color:#9fd7c9}.drawing-list{max-height:172px;overflow:auto;display:flex;flex-direction:column;gap:5px}.drawing-item{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:1px solid #2a3742;border-radius:7px;padding:7px 9px;background:#131e28;text-align:left;font-size:11px;color:#b9c8d3}.drawing-item.selected{border-color:#7caf9e;color:#d3eee4;background:#1a3232}.drawing-item.hidden-mark{opacity:.55}.drawing-editor{margin-top:11px;padding-top:11px;border-top:1px solid var(--hair)}.ai-candidate{padding-top:10px}.ai-candidate h4{font-size:13px;margin:0 0 8px}.ai-candidate .level{padding:7px 0;border-bottom:1px solid var(--hair);font:11px var(--mono);color:#bacad3;display:flex;justify-content:space-between}.ai-candidate .why{font-size:11px;line-height:1.7;color:#aabdc9;margin:10px 0}.ai-candidate .warning{font-size:11px;line-height:1.6;color:#d5ba88}.ai-section.advanced{border-top:1px solid #24313b;padding-top:12px}.ai-section.advanced summary{cursor:pointer;color:#98a9b6;font-size:11px;font-weight:650}.ai-section.advanced[open] summary{margin-bottom:12px;color:#d6e6e7}.chartwrap{min-height:390px}.chart-toolbar{row-gap:7px}.notice-small{border:1px solid #544a36;background:#242018;color:#d6bd91;padding:9px;border-radius:7px;font-size:11px;line-height:1.55}
 @media(max-width:950px){.research-detail{grid-template-columns:1fr}.readiness{border-left:0;border-top:1px solid var(--hair)}.chart-toolbar .spacer{display:none}}
 @media(max-width:640px){.chart-toolbar .btn{padding:6px}.toolset{gap:2px}.research-head{align-items:flex-start}.chart-bottom #chartHelp{display:none}.scan-hit{min-width:152px}}
+
+/* v0.3 Research simulation dashboard */
+.experiment{margin-top:14px;overflow:hidden}
+.experiment-fields{display:grid;grid-template-columns:repeat(3,minmax(135px,1fr));gap:13px 15px;padding:6px 16px 18px}
+.experiment-fields .label{font-size:11px}
+.experiment-fields .field{margin-top:7px;font-size:12px;padding:8px 10px}
+.experiment-results{border-top:1px solid var(--hair);padding:16px}
+.experiment-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:10px 0 13px}
+.experiment-stat{border:1px solid var(--edge);background:#131e28;border-radius:9px;padding:13px;min-width:0}
+.experiment-stat .value{font:19px var(--mono);font-weight:650;color:#e2eaf0;margin:8px 0 4px}
+.experiment-stat .value.negative{color:#e6a8ac}
+.experiment-stat .value.positive{color:#92d9bc}
+.experiment-stat .metric{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:#8a9baa}
+.experiment-stats .sub{font-size:10px;color:#8b9aaa}
+.report-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.report-header h4{font-size:13px}
+.report-warning{padding:11px 12px;border:1px solid #54452f;border-radius:8px;background:#221f19;color:#dbbb87;font-size:11px;line-height:1.65;margin:11px 0}
+.report-ok{padding:10px 12px;border:1px solid #365c55;background:#182b29;border-radius:8px;color:#b3dcd1;font-size:11px}
+.research-table{width:100%;border-collapse:collapse;font:11px var(--mono)}
+.research-table th{color:#8394a2;font-weight:600;text-align:left;font-family:var(--font);padding:9px 6px;border-bottom:1px solid #35414d}
+.research-table td{padding:10px 6px;border-bottom:1px solid #24323d;color:#bbcbd4}
+.research-table tr:hover td{background:#1c2832}
+.research-table .pos{color:#98d8ba}.research-table .neg{color:#e6a1a6}
+.result-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:13px}
+.results-scroll{overflow-x:auto;max-height:300px;overflow-y:auto}
+@media(max-width:900px){.experiment-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.experiment-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.experiment-fields{grid-template-columns:1fr}.experiment-stats{grid-template-columns:1fr 1fr}}
+
+.library-section{border-top:1px solid var(--hair);padding:11px 15px}
+.library-section>summary{cursor:pointer;font-size:12px;color:#c4d2db;font-weight:660}
+.library-section>summary::marker{color:#81b7a9}
+.library-head{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;margin:11px 0}
+.library-results{display:flex;gap:7px;flex-wrap:wrap;padding:3px 0 6px}
+.library-case{border:1px solid #30414a;border-radius:8px;background:#151f29;text-align:left;min-width:150px;padding:10px;display:flex;flex-direction:column;gap:4px}
+.library-case:hover{border-color:#86afa4}
+.library-case strong{font-size:11px;color:#d7e5eb}
+.library-case .muted{font-size:10px}
+
+.ai-model-answer{border:1px solid #3c5c56;border-radius:9px;background:#172728;margin-bottom:16px;padding:13px}
+.ai-model-answer h3{font-size:12px;color:#c2e6dc;margin-bottom:10px}
+.ai-model-answer h4{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#91b3ab;margin:13px 0 5px}
+.ai-model-answer p{font-size:11px;line-height:1.72;color:#d6e5e6;overflow-wrap:anywhere}
+.ai-model-answer .source{margin-top:11px;padding-top:9px;border-top:1px solid #38524d;font:10px var(--mono);color:#93aca7}
+.ai-model-answer.error{border-color:#72533a;background:#2b231d}
+.ai-model-answer.error h3{color:#efc89c}
+.ai-model-answer .busy{color:#9dc6b9;font-size:11px}
+#analyzeLocal:disabled{opacity:.43}
+
+.experiment-history{border-top:1px solid var(--hair);padding:13px 16px}
+.experiment-history summary{font-size:12px;color:#acbfc9;font-weight:650;cursor:pointer}
+.run-history{margin-top:12px;display:flex;flex-direction:column;gap:6px;max-height:275px;overflow-y:auto}
+.run-item{border:1px solid #31404a;background:#131f27;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 11px;text-align:left}
+.run-item strong{font-size:11px;font-weight:650}.run-item p{font-size:10px;color:#9aadb8;margin-top:3px}
+.run-item .outcome{font:11px var(--mono);white-space:nowrap}
+.run-item .outcome.neg{color:#e2a2a7}.run-item .outcome.pos{color:#93cbb2}
 </style>
 </head>
 <body>
@@ -164,7 +219,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     <div class="brand"><span class="brandlogo">T</span><span>TRADER<span style="color:#79938c"> / </span>LAB</span></div>
     <div class="toplabel"><span class="sep">/</span><strong id="breadcrumb">Workspace</strong><span class="sep">/</span><span class="muted" id="breadcrumbsuf">Chart research</span></div>
     <div class="spacer"></div>
-    <div class="topstatus"><span class="dot"></span> Local prototype <span style="color:#5f6a75">·</span> No execution</div>
+    <div class="topstatus"><span class="dot" id="runtimeDot"></span> <span id="runtimeStatus">Offline research</span> <span style="color:#5f6a75">·</span> No execution</div>
     <button class="top-btn" id="exportBtn">Export journal</button>
     <button class="top-btn" id="toggleAiBtn">Analyst panel</button>
   </header>
@@ -187,7 +242,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   <main class="main">
     <section id="view-workspace">
       <div class="workspace-title"><div><h1>Market workspace</h1><p>Find candidate setups, understand the structure, then decide what deserves a note.</p></div>
-      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo</button><button class="btn primary" id="scanTop">⌕ &nbsp; Find setups</button></div></div>
+      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" multiple class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo</button><button class="btn primary" id="scanTop">⌕ &nbsp; Find setups</button></div></div>
       <div class="panel chartbox">
         <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span><button class="btn subtle" id="latestCase" title="Jump to most recently detected historical candidate">No scan yet</button></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
         <div class="chart-toolbar">
@@ -228,6 +283,14 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
           <div class="action-row"><select id="scanFilter" aria-label="Setup type"><option value="all">All patterns</option><option value="breakout">Break + retest</option><option value="failure">Failed break</option></select><button class="btn" id="scanNow">↻ Scan history</button></div>
         </div>
         <div id="scanResults" class="scan-results" aria-live="polite"></div>
+        <details class="library-section" id="librarySection">
+          <summary>Market library <span class="mono" id="libraryCount">· no imported sources</span> <span class="dim small">— compare cases across saved CSV datasets</span></summary>
+          <div class="library-head">
+            <span class="small muted">Historical datasets only · Imported sources unverified · No live scanner</span>
+            <button class="btn" id="scanLibrary">Scan saved datasets</button>
+          </div>
+          <div id="libraryMatches" class="library-results"></div>
+        </details>
         <div class="research-detail">
           <div id="scanDetail" class="research-explanation"><p class="empty">Select a detected pattern to see its context, structural levels and what's still unverified.</p></div>
           <div class="readiness" id="readiness">
@@ -277,6 +340,30 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <article class="strategy" style="background:#141c24"><p class="eyebrow">Validation contract</p><h3>What constitutes evidence?</h3><p>Out-of-sample returns, independent time periods, realistic costs, net expectancy, drawdown survival, parameter stability, and forward-paper performance. A compelling chart alone is not evidence.</p><div class="foot"><span class="status">No benchmark runs</span></div></article>
       </div>
       <div class="minipanel" style="margin-top:13px"><div class="flex between"><h3 id="labDetailTitle">Choose a hypothesis</h3><button class="btn" id="prepareStrategy">Prepare AI research context</button></div><p id="labDetailText" class="empty">Choose one of the strategies above to view its experiment requirements.</p></div>
+
+      <section class="panel experiment" id="experimentPanel">
+        <div class="research-head">
+          <div>
+            <div class="eyebrow">Reproducible local experiment · Historical OHLC only</div>
+            <h3>Test a structural hypothesis</h3>
+            <p class="small muted">No future-bar signal inputs. Entry at next open; stop-first when OHLC order is ambiguous. Results are normalized R, not account profit.</p>
+          </div>
+          <button class="btn primary" id="runExperiment">Run simulation</button>
+        </div>
+        <div class="experiment-fields">
+          <label class="label">Pattern family<select id="simKind" class="field"><option value="all">All rolling-range patterns</option><option value="breakout">Break + retest only</option><option value="failure">Failed break only</option></select></label>
+          <label class="label">Tick size<input class="field mono" type="number" id="simTick" min="0.000001" step="any" placeholder="Required — per instrument"></label>
+          <label class="label">Slippage / side (ticks)<input class="field mono" type="number" id="simSlip" min="0" max="50" step=".5" value="1"></label>
+          <label class="label">Round-trip fees (tick-equivalent)<input class="field mono" type="number" id="simFee" min="0" max="50" step=".5" value="1"></label>
+          <label class="label">Target (initial risk multiples)<input class="field mono" type="number" id="simTarget" min=".5" max="6" step=".25" value="2"></label>
+          <label class="label">Maximum holding bars<input class="field mono" type="number" id="simHold" min="1" max="120" step="1" value="12"></label>
+        </div>
+        <div class="experiment-results" id="experimentResults">
+          <p class="empty">Choose assumptions, then run a deterministic, cost-adjusted historical simulation. Its results are educational until the market data and execution model are verified.</p>
+        </div>
+        <details class="experiment-history"><summary>Previous research runs <span class="dim" id="runHistoryCount">· 0</span></summary><div id="runHistory" class="run-history"></div></details>
+      </section>
+
     </section>
     <section id="view-journal" class="hidden">
       <div class="workspace-title"><div><h1>Visual journal</h1><p>Every snapshot should lead back to a decision and an explanation.</p></div><div class="action-row"><input id="archiveFile" type="file" accept=".json,application/json" class="hidden"><button class="btn" id="restoreArchiveBtn">Restore archive</button><button class="btn" id="goWorkspace">New snapshot</button><button class="btn" id="journalExport">Export archive</button></div></div>
@@ -287,8 +374,9 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     </section>
   </main>
   <aside class="assistant" id="assistant">
-    <div class="assistant-head"><div class="assistant-title"><h2>✦ &nbsp; AI Research Analyst</h2><span class="ai-state">MODEL OFFLINE</span></div><p>Scoped to your selected evidence. Nothing is sent to an external model in this foundation.</p><div class="ai-modes" role="group" aria-label="Analyst interaction mode"><button class="active" data-ai-mode="quiet" aria-pressed="true">Quiet</button><button data-ai-mode="assist" aria-pressed="false">Assist</button><button data-ai-mode="coach" aria-pressed="false">Coach</button></div></div>
+    <div class="assistant-head"><div class="assistant-title"><h2>✦ &nbsp; AI Research Analyst</h2><span class="ai-state" id="modelState">MODEL OFFLINE</span></div><p>Scoped to your selected evidence. Nothing is sent to an external model in this foundation.</p><div class="ai-modes" role="group" aria-label="Analyst interaction mode"><button class="active" data-ai-mode="quiet" aria-pressed="true">Quiet</button><button data-ai-mode="assist" aria-pressed="false">Assist</button><button data-ai-mode="coach" aria-pressed="false">Coach</button></div></div>
     <div class="ai-scroll">
+      <div id="aiModelAnswer" class="ai-model-answer hidden" aria-live="polite"></div>
       <div class="ai-section"><div class="flex between"><h3 style="margin:0">Selected candidate</h3><span class="eyebrow">Structure, not prediction</span></div><div id="aiCandidate" class="ai-candidate"><p class="empty">Historical rule matches appear here automatically; explore their structure before recording decisions.</p></div></div>
       <details class="ai-section advanced"><summary>Evidence & context controls</summary><div class="flex between" style="margin-bottom:12px"><h3 style="margin:0">Analysis context</h3><span class="eyebrow">Inspect before sending</span></div>
         <div class="context-row"><span class="k">Source</span><span class="v" id="aiSource">Demo / synthetic</span></div>
@@ -300,7 +388,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <button class="active" data-scope="candles" aria-pressed="true">Candles</button>
         <button class="active" data-scope="marks" aria-pressed="true">Annotations</button>
         <button class="active" data-scope="notes" aria-pressed="true">Draft notes</button>
-        <button data-scope="history" aria-pressed="false">Journal cases</button>
+        <button data-scope="history" aria-pressed="false">Journal cases</button><button data-scope="experiments" aria-pressed="false">Experiment statistics</button>
       </div><p class="small dim" style="margin-top:10px;line-height:1.7">Only selected sources enter a prepared context packet. Sensitive account credentials are never included.</p></div>
       </details>
       <details class="ai-section advanced"><summary>Local observations</summary><div id="aiObservations" style="margin-top:9px"></div></details>
@@ -309,7 +397,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     <div class="ai-composer">
       <div class="prompt-row"><button class="prompt" id="aiScanBtn">Find setups</button><button class="prompt" data-prompt="Review my selected chart context. Separate observations, uncertainties, and what could falsify an idea.">Review setup</button><button class="prompt" data-prompt="Identify decision-process mistakes supported by my notes and observed candle sequence. Do not invent trade history.">Audit decisions</button><button class="prompt" data-prompt="Propose a falsifiable strategy experiment with exact entry/exit/risk conditions and out-of-sample validation.">Design test</button></div>
       <label for="aiPrompt" class="label">Ask a grounded question</label><textarea id="aiPrompt" placeholder="What does this structure suggest I should investigate?"></textarea>
-      <div class="composer-footer"><span class="muted">Read-only · User-controlled context</span><button class="btn primary" id="prepareContext">Prepare context</button></div>
+      <div class="composer-footer"><span class="muted" id="modelHelp">Local AI connects through the optional Windows launcher</span><div class="action-row"><button class="btn" id="prepareContext">Prepare context</button><button class="btn primary" id="analyzeLocal" disabled>Analyze with Ollama</button></div></div>
     </div>
   </aside>
   <footer class="statusbar"><span id="footerMode">Research mode</span><span>Local storage</span><span>Ctrl + E to export</span><span class="right">Prototype v0.1 · No live market data · No orders</span></footer>
@@ -327,8 +415,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),
-    scopes:{candles:true,marks:true,notes:true,history:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),
+    scopes:{candles:true,marks:true,notes:true,history:false,experiments:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
   const iso = ms => new Date(ms).toISOString();
@@ -372,13 +460,16 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const symbol=safeStr(filename).replace(/\.[^.]+$/,"").slice(0,32);
     return {id:"csv:"+symbol+":"+bars.length+":"+bars[0].time+":"+bars[bars.length-1].time,symbol,timeframe:"source",source:"user-csv-unverified",label:"Imported CSV / source unverified",bars};
   }
-  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,2);
-    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets","drawings"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
+  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,3);
+    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets","drawings","experiments"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||Error("IndexedDB unavailable"));})}
   function dbAction(store,mode,op){return new Promise((resolve,reject)=>{if(!S.db)return reject(Error("Browser storage unavailable; export immediately"));
     const tx=S.db.transaction(store,mode),r=op(tx.objectStore(store));tx.oncomplete=()=>resolve(r.result);
     tx.onerror=()=>reject(tx.error||Error("Database error"));})}
-  async function loadSaved(){try{S.db=await openDB();S.snapshots=(await dbAction("snapshots","readonly",s=>s.getAll())).sort((a,b)=>b.at.localeCompare(a.at));const pref=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
+  async function loadSaved(){try{S.db=await openDB();S.snapshots=(await dbAction("snapshots","readonly",s=>s.getAll())).sort((a,b)=>b.at.localeCompare(a.at));
+    S.experimentRuns=(await dbAction("experiments","readonly",s=>s.getAll())).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+    S.holdoutExposures=new Set(S.experimentRuns.filter(e=>e.holdoutRevealedAt).map(e=>e.datasetId));
+    const pref=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
     if(pref.dataId){const d=await dbAction("datasets","readonly",s=>s.get(pref.dataId));if(d&&d.bars)S.data=d;}
   }catch(e){toast("Local persistence unavailable: "+e.message)}
   }
@@ -628,17 +719,22 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 
   // Candidate detector: close-of-bar information only. It never infers profitability.
   // Searches rolling ranges, NOT opening ranges, to avoid inventing session metadata.
-  function searchPatterns(bars, cutoff) {
+  function searchPatterns(bars, cutoff, maxResults=200) {
     const out=[];
     const last=Math.min(cutoff,bars.length-1);
     if(last<25)return out;
-    const deltas=[];
-    for(let k=1;k<Math.min(last,75);k++){const d=bars[k].time-bars[k-1].time;if(d>0)deltas.push(d)}
-    deltas.sort((a,b)=>a-b);
-    const typical=deltas[Math.floor(deltas.length/2)]||300000;
     const minSpacing=8;
     const seen=new Map();
     for(let i=23;i<=last;i++){
+      // Estimate expected bar spacing only from the history that would have
+      // existed at signal time. No peeking into future sessions or gaps.
+      const dt=[];
+      for(let j=Math.max(1,i-25);j<i;j++){
+        const gap=bars[j].time-bars[j-1].time;
+        if(gap>0)dt.push(gap);
+      }
+      dt.sort((a,b)=>a-b);
+      const typical=dt[Math.floor(dt.length/2)]||300000;
       if(bars[i].time-bars[i-1].time>typical*2.5 || bars[i-1].time-bars[i-2].time>typical*2.5)continue;
       const history=bars.slice(i-19,i-2);
       if(history.length<15)continue;
@@ -689,8 +785,148 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         out.push(c);
       }
     }
-    return out.slice(-200);
+    return Number.isFinite(maxResults)?out.slice(-maxResults):out;
   }
+
+  // Deterministic first-pass research simulator.
+  // Important: OHLC candles cannot reveal intrabar order. When stop and target are
+  // both touched we choose the adverse stop. Costs are explicit tick-equivalents.
+  // A match is detected only after its confirmation candle fully closes.
+  function validateResearchBars(bars){
+    if(!Array.isArray(bars)||bars.length<45)throw Error("At least 45 chronological OHLC bars required");
+    for(let k=0;k<bars.length;k++){
+      const b=bars[k];
+      if(!Number.isFinite(b.time)||!["open","high","low","close"].every(q=>Number.isFinite(b[q])&&b[q]>0)||
+         b.high<Math.max(b.open,b.close,b.low)||b.low>Math.min(b.open,b.close,b.high))
+        throw Error("Invalid OHLC at bar "+k);
+      if(k&&b.time<=bars[k-1].time)throw Error("Data must be strictly chronological");
+    }
+  }
+  function simulateHistoricalResearch(bars, options={}){
+    validateResearchBars(bars);
+    const riskReward=Number(options.rewardR??2), maxHold=Math.floor(Number(options.maxHold??12));
+    const tick=Number(options.tickSize),slip=Number(options.slippageTicks??1),fee=Number(options.roundTripFeeTicks??1);
+    if(!(riskReward>=.5 && riskReward<=6)||!Number.isFinite(riskReward))throw Error("Target must be between 0.5 and 6 R");
+    if(!(maxHold>=1&&maxHold<=120))throw Error("Holding period must be 1–120 bars");
+    if(!(tick>0&&Number.isFinite(tick)))throw Error("Select a verified instrument tick size before modeling trades");
+    if(!Number.isFinite(slip)||slip<0||slip>50||!Number.isFinite(fee)||fee<0||fee>50)
+      throw Error("Cost assumptions must be finite and nonnegative tick equivalents");
+    const type=options.type||"all";
+    if(!["all","breakout","failure"].includes(type))throw Error("Unknown research pattern family");
+    const patterns=searchPatterns(bars,bars.length-1,Infinity).filter(c=>type==="all"||c.type===type);
+    const out=[];
+    let occupiedUntil=-1;
+    const limit=bars.length-1;
+    const dayLimit=options.maxPerDay??0;
+    const byDay=new Map();
+    for(const c of patterns){
+      const signal=c.index,entryIndex=signal+1;
+      // Never use a partially observed exit horizon near the end of a dataset.
+      if(entryIndex+maxHold-1>limit||signal<=occupiedUntil)continue;
+      const date=new Date(bars[entryIndex].time).toISOString().slice(0,10);
+      if(dayLimit>0&&(byDay.get(date)||0)>=dayLimit)continue;
+      // Calibrate expected spacing from history available at signal time.
+      const diffs=[];
+      for(let j=Math.max(1,signal-25);j<=signal;j++){
+        const dt=bars[j].time-bars[j-1].time;
+        if(dt>0)diffs.push(dt);
+      }
+      diffs.sort((a,b)=>a-b);
+      const gapMedian=diffs[Math.floor(diffs.length/2)]||300000;
+      // Do not bridge a large missing-data gap during the holding period.
+      let gap=false;
+      for(let j=signal+1;j<entryIndex+maxHold;j++)
+        if(bars[j].time-bars[j-1].time>gapMedian*2.5){gap=true;break}
+      if(gap)continue;
+      const side=c.side==="LONG"?1:-1;
+      const entry=bars[entryIndex].open+side*slip*tick;
+      const stop=c.invalidation;
+      const initialRisk=side*(entry-stop);
+      if(initialRisk<=tick*.25||!Number.isFinite(initialRisk))continue;
+      const target=entry+side*riskReward*initialRisk;
+      let exit=null,exitIndex=-1,reason="";
+      for(let j=entryIndex;j<entryIndex+maxHold;j++){
+        const b=bars[j];
+        // Stop is considered before target even if both are touched in one OHLC bar.
+        if(side===1){
+          if(b.open<=stop){exit=b.open-slip*tick;reason="stop_gap"}
+          else if(b.low<=stop){exit=stop-slip*tick;reason="stop"}
+          else if(b.open>=target){exit=target-slip*tick;reason="target_conservative"}
+          else if(b.high>=target){exit=target-slip*tick;reason="target"}
+        }else{
+          if(b.open>=stop){exit=b.open+slip*tick;reason="stop_gap"}
+          else if(b.high>=stop){exit=stop+slip*tick;reason="stop"}
+          else if(b.open<=target){exit=target+slip*tick;reason="target_conservative"}
+          else if(b.low<=target){exit=target+slip*tick;reason="target"}
+        }
+        if(exit!==null){exitIndex=j;break}
+      }
+      if(exit===null){
+        exitIndex=entryIndex+maxHold-1;
+        exit=bars[exitIndex].close-side*slip*tick;
+        reason="time_exit";
+      }
+      const grossR=side*(exit-entry)/initialRisk;
+      const feesR=fee*tick/initialRisk;
+      const netR=grossR-feesR;
+      if(!Number.isFinite(netR))continue;
+      out.push({
+        id:c.id,sourceRule:c.version,type:c.type,side:c.side,signalIndex:signal,
+        signalTime:bars[signal].time,entryIndex,entryTime:bars[entryIndex].time,
+        entry,stop,target,riskPrice:initialRisk,exit,exitIndex,
+        exitTime:bars[exitIndex].time,exitReason:reason,holdBars:exitIndex-entryIndex+1,
+        grossR,feeR:feesR,netR,
+        assumption:{targetR:riskReward,maxHold,tickSize:tick,slippageTicksPerSide:slip,roundTripFeeTicks:fee},
+      });
+      occupiedUntil=exitIndex;
+      byDay.set(date,(byDay.get(date)||0)+1);
+    }
+    // Fixed chronological split with a purged/embargoed boundary:
+    // no training episode overlaps holdout evaluation.
+    const splitIndex=Math.floor(bars.length*.7);
+    const embargo=Math.max(19,maxHold);
+    const train=out.filter(t=>t.exitIndex<splitIndex-embargo);
+    const holdout=out.filter(t=>t.signalIndex>=splitIndex+embargo);
+    const omitted=out.length-train.length-holdout.length;
+    const summary=trades=>{
+      let equity=0,peak=0,maxDrawdownR=0,winR=0,lossR=0,wins=0;
+      const results=[];
+      for(const t of trades){
+        equity+=t.netR;peak=Math.max(peak,equity);
+        maxDrawdownR=Math.max(maxDrawdownR,peak-equity);
+        if(t.netR>0){wins++;winR+=t.netR}
+        else if(t.netR<0)lossR+=-t.netR;
+        results.push(t.netR);
+      }
+      const n=trades.length;
+      const ordered=[...results].sort((a,b)=>a-b);
+      const median=n?(n%2?ordered[(n-1)/2]:(ordered[n/2-1]+ordered[n/2])/2):null;
+      return {
+        trades:n,wins,winRate:n?wins/n:null,
+        netR:equity,avgNetR:n?equity/n:null,
+        profitFactor:lossR?winR/lossR:null,
+        maxDrawdownR,medianNetR:median,
+        minNetR:n?Math.min(...results):null,maxNetR:n?Math.max(...results):null,
+      };
+    };
+    return {
+      schema:"trader.research.simulation.v1",status:"RESEARCH_ONLY_NOT_VERIFIED",
+      assumptions:{
+        price_model:"OHLC with stop-first ambiguous bars, next-open entry, slippage both sides",
+        profit_unit:"R normalized to initial price stop distance (not dollar account P/L)",
+        tickSize:tick,slippageTicksPerSide:slip,roundTripFeeTicks:fee,targetR:riskReward,maxHoldBars:maxHold,
+        rule:"rolling-17-bar-v1",type,fee_model:"round-trip tick-equivalent, manually calibrated",
+        split:"chronological 70/30 with embargo "+embargo+" bars; holdout not valid if repeatedly tuned",
+        sourceQuality:"requires separate verification",currencyConversion:"not modeled",
+      },
+      splitIndex,embargo,barCount:bars.length,rawSignalCount:patterns.length,
+      scheduledTrades:out.length,omittedBoundaryEpisodes:omitted,
+      full:summary(out),train:summary(train),holdout:summary(holdout),
+      trades:out,
+      qualification:"None. Requires authentic data, reviewed costs, independent validation and prospective testing.",
+    };
+  }
+
   function scanHistory(focusLatest=false){
     const limit=S.replay?S.reveal:S.data.bars.length-1;
     S.candidates=searchPatterns(S.data.bars,limit);
@@ -710,6 +946,58 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     renderScanner();
     updateContext();
   }
+
+  async function refreshMarketLibrary(scan=true){
+    if(S.libraryBusy)return;
+    S.libraryBusy=true;
+    const host=$("libraryMatches");host.textContent="";
+    host.append(htmlText("p","Scanning saved historical instruments locally...","small muted"));
+    try{
+      const saved=S.db?await dbAction("datasets","readonly",store=>store.getAll()):[];
+      const unique=new Map();
+      if(S.data)unique.set(S.data.id,S.data);
+      for(const d of saved)if(d?.id&&Array.isArray(d.bars))unique.set(d.id,d);
+      S.dataLibrary=[...unique.values()].slice(0,16);
+      $("libraryCount").textContent="· "+S.dataLibrary.length+" available";
+      if(!scan)return;
+      const all=[];
+      for(const d of S.dataLibrary){
+        if(d.bars.length>=25){
+          const hits=searchPatterns(d.bars,d.bars.length-1).slice(-18);
+          for(const hit of hits)all.push({...hit,datasetId:d.id,symbol:d.symbol,
+            sourceKind:d.source,description:d.label});
+        }
+        // Keep UI responsive when scanning multiple 20,000-bar historical files.
+        await new Promise(resolve=>setTimeout(resolve,0));
+      }
+      S.libraryMatches=all.sort((a,b)=>b.at-a.at).slice(0,80);
+      renderLibraryMatches();
+    }catch(e){host.textContent="Market scan failed: "+e.message}
+    finally{S.libraryBusy=false}
+  }
+  function renderLibraryMatches(){
+    const host=$("libraryMatches");host.textContent="";
+    const matches=S.libraryMatches||[];
+    if(!matches.length){host.append(htmlText("p","No matching historical examples in saved datasets. This does not imply any strategy edge.","empty"));return}
+    for(const c of matches.slice(0,24)){
+      const b=document.createElement("button");b.type="button";b.className="library-case";
+      b.append(htmlText("strong",c.symbol+" · "+c.title),
+        htmlText("span",c.side+" · "+iso(c.at).slice(0,16).replace("T"," ")+"Z","muted"),
+        htmlText("span",c.sourceKind==="synthetic"?"Synthetic · tutorial only":"Imported CSV · unverified","muted"));
+      b.addEventListener("click",async()=>{
+        const d=S.dataLibrary.find(x=>x.id===c.datasetId);
+        if(!d){toast("Historical dataset unavailable");return}
+        if(S.data.id!==d.id){resetDataset(d);await loadDrawingSet();}
+        const match=searchPatterns(S.data.bars,S.data.bars.length-1).find(x=>x.id===c.id);
+        if(match){selectCandidate(match);setPage("workspace")}
+        else toast("Historical case no longer matches current source.");
+      });
+      host.append(b);
+    }
+    const count=htmlText("p",matches.length>24?"Showing newest 24 of "+matches.length+" matches. Use the active-chart scan for full context.":"Only structural historical patterns are shown; no profitability ranking.","small dim");
+    count.style.width="100%";host.append(count);
+  }
+
   function selectCandidate(candidate){
     S.selectedCandidate=candidate;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
     const end=S.replay?S.reveal:S.data.bars.length-1;
@@ -718,6 +1006,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("setupName").value=candidate.title+" · "+candidate.side+" · "+iso(candidate.at).slice(0,16)+"Z";
     updateContext();
     renderScanner();
+    scheduleLocalAssist();
   }
   function renderScanner(){
     const host=$("scanResults");host.textContent="";
@@ -830,6 +1119,17 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(S.scopes.notes)result.evidence.notes={setup:$("setupName").value,thesis:$("thesis").value};
     if(S.scopes.history && !S.replay)result.evidence.saved_cases=S.snapshots.slice(0,10).map(s=>({id:s.id,at:s.at,symbol:s.symbol,setup:s.setup,note:s.note,source:s.source}));
     if(S.scopes.history && S.replay)result.missing.push("Saved journal cases omitted from reveal mode to avoid retrospective outcome leakage");
+    if(S.scopes.experiments && S.experiment && S.experiment.datasetId===S.data.id && !S.replay){
+      const run=S.experiment;
+      result.evidence.research_simulation={
+        run_id:run.id,status:"RESEARCH_ONLY_NOT_VERIFIED",
+        assumptions:run.report.assumptions,
+        train:run.report.train,
+        reserved:run.holdoutRevealedAt?run.report.holdout:null,
+        reserved_unseen:!run.holdoutRevealedAt,
+        source_verified:false
+      };
+    }
     if(S.selectedCandidate)result.pattern_candidate={id:S.selectedCandidate.id,rule_version:S.selectedCandidate.version,kind:S.selectedCandidate.type,detected_at_utc:iso(S.selectedCandidate.at),direction:S.selectedCandidate.side,range_boundary:S.selectedCandidate.boundary,reference_close:S.selectedCandidate.trigger,illustrative_invalidation:S.selectedCandidate.invalidation,confirmation_checks:S.selectedCandidate.checks,profitability:"NOT_TESTED",outcome:"UNKNOWN"};
     if(S.strategy)result.strategy_candidate={id:S.strategy,name:strategyMap[S.strategy].name,detail:strategyMap[S.strategy].detail,validation:"not_tested"};
     return result;
@@ -849,19 +1149,28 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
   function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selectedDrawing=null;S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.viewportEnd=null;S.strategy=null;S.selectedCandidate=null;
     $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
-    savePrefs();scanHistory(true);loadDrawingSet();}
-  async function importFile(event){const file=event.target.files&&event.target.files[0];if(!file)return;
-    try{const raw=await file.text(), d=readCSV(raw,file.name);
-      if(typeof crypto!=="undefined" && crypto.subtle && typeof TextEncoder!=="undefined") {
-        const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(d.symbol+"\n"+raw));
-        d.id="csv-sha256:"+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
-      } else d.id="csv-local:"+id();
-      if(S.db)await dbAction("datasets","readwrite",store=>store.put(d));
-      resetDataset(d);toast("Imported "+d.bars.length+" candles. Source remains unverified.");
-    }catch(e){toast("Import error: "+e.message)}
+    S.experiment=null;$("simTick").value=data.source==="synthetic"?"0.25":"";
+    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();}
+  async function importFile(event){
+    const files=[...(event.target.files||[])].slice(0,12);
     event.target.value="";
+    if(!files.length)return;
+    let completed=0, last=null, issues=[];
+    for(const file of files){
+      try{
+        const raw=await file.text(),d=readCSV(raw,file.name);
+        if(typeof crypto!=="undefined"&&crypto.subtle&&typeof TextEncoder!=="undefined"){
+          const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(d.symbol+"\n"+raw));
+          d.id="csv-sha256:"+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
+        }else d.id="csv-local:"+id();
+        if(S.db)await dbAction("datasets","readwrite",store=>store.put(d));
+        last=d;completed++;
+      }catch(e){issues.push(file.name+": "+e.message)}
+      await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    if(last){resetDataset(last);refreshMarketLibrary(true);}
+    toast(completed+" dataset(s) imported. "+(issues.length?issues.length+" failed: "+issues[0]:"All sources remain unverified."));
   }
-
   function chartLimit(){return S.replay?S.reveal:S.data.bars.length-1}
   function scrollChart(deltaBars){
     const limit=chartLimit(),now=visible().end;
@@ -978,7 +1287,16 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       setup:$("setupName").value.trim(),note:$("thesis").value.trim(),
       selected_range:S.selection?[...S.selection]:null,window:{start_utc:iso(a.bars[0].time),end_utc:iso(a.bars[a.bars.length-1].time)},
       candles:b.map(x=>({...x})),drawings:activeDrawings().map(x=>({...x})),
-      image:canvas.toDataURL("image/png"),review:"",experiment_id:S.strategy||null
+      image:canvas.toDataURL("image/png"),review:"",experiment_id:S.experiment?.id||S.strategy||null,
+      selected_candidate:S.selectedCandidate?{
+        id:S.selectedCandidate.id,version:S.selectedCandidate.version,
+        detected_at:iso(S.selectedCandidate.at),family:S.selectedCandidate.type,
+        structural_direction:S.selectedCandidate.side,
+        boundary:S.selectedCandidate.boundary,
+        confirmation_close:S.selectedCandidate.trigger,
+        illustrative_invalidation:S.selectedCandidate.invalidation,
+        profitability:"NOT_VERIFIED",
+      }:null
     };
     try{await dbAction("snapshots","readwrite",s=>s.put(entry));S.snapshots.unshift(entry);S.selectedSnapshot=entry.id;updateContext();toast("Snapshot saved to visual journal.");}
     catch(e){toast("Snapshot not stored: "+e.message)}
@@ -989,14 +1307,15 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     try {
       const datasets=S.db?await dbAction("datasets","readonly",store=>store.getAll()):[];
       const drawings=S.db?await dbAction("drawings","readonly",store=>store.getAll()):[];
+      const experiments=S.db?await dbAction("experiments","readonly",store=>store.getAll()):S.experimentRuns;
       if(S.data.source!=="synthetic"&&!datasets.some(x=>x.id===S.data.id))datasets.push(S.data);
       if(!drawings.some(x=>x.id===S.data.id))drawings.push({id:S.data.id,list:S.drawings,updated_at:new Date().toISOString()});
-      const out={schema:"trader.html.foundation.v2",exported_at:new Date().toISOString(),
-        disclaimer:"Demo / imported unverified data; not live broker fills",snapshots:S.snapshots.map(x=>({...x})),datasets,drawings,
+      const out={schema:"trader.html.foundation.v3",exported_at:new Date().toISOString(),
+        disclaimer:"Demo / imported unverified data; not live broker fills",snapshots:S.snapshots.map(x=>({...x})),datasets,drawings,experiments,
         replay_drawings:S.replay?S.replayDrawings.map(x=>({...x})):[],
         draft:{setup:$("setupName").value,thesis:$("thesis").value},active_context:S.packet?{...S.packet,evidence:undefined}:null};
       downloadText(JSON.stringify(out,null,2),"trader-research-archive-"+new Date().toISOString().slice(0,10)+".json");
-      toast("Full chart archive exported. Restore UI still pending — keep this file safe.");
+      toast("Research archive exported: charts, drawings, snapshots and saved experiment runs.");
     } catch(e){toast("Archive failed: "+e.message)}
   }
   async function restoreArchive(event){
@@ -1006,12 +1325,13 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(file.size>25000000){toast("Archive too large (25 MB maximum in this prototype).");return}
     try{
       const archive=JSON.parse(await file.text());
-      if(!["trader.html.foundation.v1","trader.html.foundation.v2"].includes(archive.schema))
+      if(!["trader.html.foundation.v1","trader.html.foundation.v2","trader.html.foundation.v3"].includes(archive.schema))
         throw Error("Unsupported research archive schema");
       const datasets=Array.isArray(archive.datasets)?archive.datasets:[];
       const snapshots=Array.isArray(archive.snapshots)?archive.snapshots:[];
       const drawings=Array.isArray(archive.drawings)?archive.drawings:[];
-      if(datasets.length>100||snapshots.length>750||drawings.length>100)throw Error("Archive exceeds safe record limits");
+      const experiments=Array.isArray(archive.experiments)?archive.experiments:[];
+      if(datasets.length>100||snapshots.length>750||drawings.length>100||experiments.length>250)throw Error("Archive exceeds safe record limits");
       for(const d of datasets){
         if(typeof d.id!=="string"||d.id.length>180||!Array.isArray(d.bars)||d.bars.length<5||d.bars.length>20000)throw Error("Malformed historical dataset");
         for(let i=0;i<d.bars.length;i++){
@@ -1031,17 +1351,30 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
            x.list.some(mark=>!mark || typeof mark.id!=="string" || !["level","note","line","rectangle","arrow","brush"].includes(mark.type)||
            (mark.points&&(!Array.isArray(mark.points)||mark.points.length>3000))))throw Error("Malformed drawing layer");
       }
-      if(!window.confirm("Import "+snapshots.length+" snapshots, "+datasets.length+" datasets, and "+drawings.length+" drawing layers into this browser? Matching IDs will be replaced."))return;
+      for(const r of experiments){
+        if(typeof r.id!=="string"||r.id.length>180||typeof r.datasetId!=="string"||
+           typeof r.createdAt!=="string"||!r.options||typeof r.options!=="object"||
+           !r.report||typeof r.report!=="object"||r.report.status!=="RESEARCH_ONLY_NOT_VERIFIED"||
+           !Array.isArray(r.report.trades)||r.report.trades.length>20000)
+          throw Error("Invalid historical research run");
+      }
+      if(!window.confirm("Import "+snapshots.length+" snapshots, "+datasets.length+" datasets, "+
+        drawings.length+" drawing layers, and "+experiments.length+
+        " research runs? Matching IDs will be replaced."))return;
       // One atomic write transaction: malformed or quota-failing batches leave existing records intact.
       await new Promise((resolve,reject)=>{
-        const tx=S.db.transaction(["datasets","snapshots","drawings"],"readwrite");
+        const tx=S.db.transaction(["datasets","snapshots","drawings","experiments"],"readwrite");
         datasets.forEach(item=>tx.objectStore("datasets").put(item));
         snapshots.forEach(item=>tx.objectStore("snapshots").put(item));
         drawings.forEach(item=>tx.objectStore("drawings").put(item));
+        experiments.forEach(item=>tx.objectStore("experiments").put(item));
         tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error("Restore failed"));tx.onabort=()=>reject(tx.error||Error("Restore aborted"));
       });
       S.snapshots=(await dbAction("snapshots","readonly",store=>store.getAll())).sort((a,b)=>b.at.localeCompare(a.at));
-      S.selectedSnapshot=null;await loadDrawingSet();renderJournal();updateContext();
+      S.selectedSnapshot=null;
+      S.experimentRuns=(await dbAction("experiments","readonly",store=>store.getAll())).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+      S.holdoutExposures=new Set(S.experimentRuns.filter(e=>e.holdoutRevealedAt).map(e=>e.datasetId));
+      await loadDrawingSet();renderJournal();renderRunHistory();updateContext();
       toast("Archive restored locally. Import sources remain unverified.");
     }catch(e){toast("Restore rejected: "+e.message)}
   }
@@ -1078,6 +1411,307 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       catch(e){toast("Delete failed: "+e.message)}});
     row.append(save,remove);aside.append(eyebrow,head,original,label,notes,row);target.append(img,aside);
   }
+
+
+  function displayModelAnalysis(data){
+    const host=$("aiModelAnswer");host.textContent="";host.classList.remove("hidden","error");
+    const analysis=data?.analysis||{};
+    host.append(htmlText("h3","Local AI · Evidence review (not independently verified)"));
+    const fields=[
+      ["Observed",analysis.observation],["Possible interpretation",analysis.interpretation],
+      ["How to falsify",analysis.falsification],["Test next",analysis.next_experiment],
+      ["Limitations",analysis.limitations]
+    ];
+    for(const [label,body] of fields){
+      host.append(htmlText("h4",label),htmlText("p",body||"No observation supplied."));
+    }
+    host.append(htmlText("div",String(data.model||"local")+
+      " · "+String(data.source_id||"source unknown").slice(0,60)+
+      " · "+Number(data.elapsed_seconds||0).toFixed(1)+" s · READ ONLY","source"));
+  }
+  function displayModelMessage(title,message,failed=false){
+    const host=$("aiModelAnswer");host.textContent="";host.classList.remove("hidden");
+    host.classList.toggle("error",failed);
+    host.append(htmlText("h3",title),htmlText("p",message));
+  }
+  async function checkLocalRuntime(){
+    try{
+      const response=await fetch("/api/session",{method:"GET",credentials:"same-origin",cache:"no-store"});
+      if(!response.ok)throw Error("No local research server");
+      const data=await response.json();
+      if(!data.ok||!data.token)throw Error("Missing research session");
+      S.runtime={token:data.token,ready:Boolean(data.ollama?.reachable&&data.ollama?.model_available),model:data.ollama?.model||null};
+      $("runtimeStatus").textContent="Local research service";
+      $("runtimeDot").style.background="#63bba2";
+      if(S.runtime.ready){
+        $("modelState").textContent="OLLAMA READY";
+        $("modelState").classList.add("connected");
+        $("modelHelp").textContent="Local only · No paid AI calls";
+        $("analyzeLocal").disabled=false;
+      }else{
+        $("modelState").textContent=data.ollama?.reachable?"MODEL NOT FOUND":"OLLAMA OFFLINE";
+        $("modelHelp").textContent=data.ollama?.reachable?
+          "Install "+S.runtime.model+" in Ollama to enable analysis":"Start Ollama to enable local chart analysis";
+        $("analyzeLocal").disabled=true;
+      }
+    }catch(e){
+      S.runtime={token:null,ready:false,model:null};
+      $("runtimeStatus").textContent="Browser-only demo";
+      $("modelState").textContent="MODEL OFFLINE";
+      $("modelHelp").textContent="Open using the local launcher to connect Ollama";
+      $("analyzeLocal").disabled=true;
+    }
+  }
+  function analysisKey(){
+    const bars=evidenceBars();
+    return JSON.stringify([
+      S.data?.id,S.selectedCandidate?.id||"none",
+      S.replay?S.reveal:"all",S.selection,bars.map(c=>c.time),
+      S.scopes,S.scopes.marks?activeDrawings():null,
+      S.scopes.notes?[$("setupName").value,$("thesis").value]:null,
+      S.scopes.experiments?S.experiment?.id:null,
+      $("aiPrompt").value.trim(),S.mode,
+    ]);
+  }
+  async function requestLocalAnalysis(fromAssist=false){
+    if(!S.runtime.ready){
+      if(!fromAssist)toast("Ollama is not connected. Start the local launcher and check the selected model.");
+      return;
+    }
+    if(!fromAssist && !$("aiPrompt").value.trim()){
+      $("aiPrompt").value="Review the selected historical structural pattern. Separate observed facts from tentative hypotheses, and propose a test that could falsify the idea. No trading instructions.";
+    }
+    if(!$("aiPrompt").value.trim())return;
+    const key=analysisKey(),serial=++S.localAnalysisSerial;
+    $("analyzeLocal").disabled=true;
+    displayModelMessage("Local analysis in progress","Examining the selected bar history and visible research context. No trade is being placed.");
+    try{
+      const p=packet();
+      const cacheKey=JSON.stringify([S.runtime.model,p.source.id,p.replay,p.selected_window,p.pattern_candidate,p.evidence,p.prompt]);
+      if(S.modelCache.has(cacheKey)){
+        displayModelAnalysis(S.modelCache.get(cacheKey));
+        return;
+      }
+      const response=await fetch("/api/analyst",{
+        method:"POST",credentials:"same-origin",
+        headers:{"Content-Type":"application/json","X-Trader-Token":S.runtime.token},
+        body:JSON.stringify(p),
+      });
+      const answer=await response.json();
+      if(serial!==S.localAnalysisSerial || key!==analysisKey())return;
+      if(!response.ok||!answer.ok)throw Error(String(answer.error||"Local model analysis failed"));
+      if(answer.source_id!==S.data.id)throw Error("Model response was for a different dataset");
+      if(S.modelCache.size>=25)S.modelCache.clear();
+      S.modelCache.set(cacheKey,answer);
+      displayModelAnalysis(answer);
+    }catch(e){
+      if(serial!==S.localAnalysisSerial)return;
+      displayModelMessage("Local analyst unavailable",String(e.message||e),true);
+    }finally{
+      if(serial===S.localAnalysisSerial)$("analyzeLocal").disabled=!S.runtime.ready;
+    }
+  }
+  function scheduleLocalAssist(){
+    if(S.assistTimer)clearTimeout(S.assistTimer);
+    // Assist mode provides optional local analysis for a consciously selected
+    // candidate only; scans do not trigger dozens of model jobs.
+    if(S.mode!=="assist"||!S.runtime.ready||!S.selectedCandidate)return;
+    S.assistTimer=setTimeout(()=>{
+      if(S.mode!=="assist"||!S.selectedCandidate)return;
+      $("aiPrompt").value="Summarize the selected historical pattern: observed facts, competing explanations, and the most informative next experiment. Be concise and do not treat this as a live trading signal.";
+      requestLocalAnalysis(true);
+    },850);
+  }
+
+  // The reserved chronological evaluation window is deliberately not shown
+  // until the user explicitly reveals it. Repeated tuning after reveal
+  // contaminates the meaning of that historical reserve.
+  function numberText(value,digits=2){return value==null||!Number.isFinite(value)?"—":(value>=0?"+":"")+value.toFixed(digits)}
+  function htmlText(tag,value,cls){
+    const el=document.createElement(tag);el.textContent=String(value);
+    if(cls)el.className=cls;
+    return el;
+  }
+  function currentSimulationOptions(){
+    const tickRaw=$("simTick").value;
+    if(!tickRaw || !(Number(tickRaw)>0))throw Error("Enter the correct instrument tick size; do not guess from the chart.");
+    return {
+      tickSize:Number(tickRaw),slippageTicks:Number($("simSlip").value),
+      roundTripFeeTicks:Number($("simFee").value),rewardR:Number($("simTarget").value),
+      maxHold:Number($("simHold").value),type:$("simKind").value
+    };
+  }
+  async function runResearchExperiment(){
+    if(!S.data) return;
+    try{
+      const options=currentSimulationOptions();
+      const report=simulateHistoricalResearch(S.data.bars,options);
+      const token={
+        id:id(),datasetId:S.data.id,datasetSymbol:S.data.symbol,source:S.data.source,
+        createdAt:new Date().toISOString(),options,report,holdoutRevealedAt:null
+      };
+      if(S.experimentRuns.length>=250)throw Error("Research history is full; export your archive before adding more runs.");
+      S.experiment=token;
+      S.experimentRuns.unshift({...token,report:{...report,full:null,holdout:null,
+        scheduledTrades:null,omittedBoundaryEpisodes:null,
+        trades:report.trades.filter(t=>t.exitIndex<report.splitIndex-report.embargo)}});
+      if(S.db){
+        const safe=S.experimentRuns[0];
+        await dbAction("experiments","readwrite",store=>store.put(safe));
+      }
+      renderExperiment();renderRunHistory();
+      toast("Simulation completed with recorded assumptions. This is not live performance.");
+    }catch(e){toast("Cannot simulate: "+e.message)}
+  }
+
+  function renderRunHistory(){
+    const host=$("runHistory");host.textContent="";
+    const entries=S.experimentRuns||[];
+    $("runHistoryCount").textContent="· "+entries.length;
+    if(!entries.length){host.append(htmlText("p","No saved research runs yet. Run a simulation to start an auditable experiment history.","empty"));return}
+    for(const entry of entries.slice(0,40)){
+      const button=document.createElement("button");button.type="button";button.className="run-item";
+      const left=document.createElement("div");
+      left.append(htmlText("strong",(entry.datasetSymbol||"Market")+" · "+(entry.options?.type||"all")+" patterns"));
+      const when=entry.createdAt?new Date(entry.createdAt).toLocaleString():"Unknown date";
+      left.append(htmlText("p",when+" · Target "+Number(entry.options?.rewardR||0)+"R · "+
+        (entry.holdoutRevealedAt?"Reserve examined":"Reserve hidden")));
+      const mean=entry.report?.train?.avgNetR;
+      const right=htmlText("span",numberText(mean)+"R avg", "outcome "+(mean==null?"":mean<0?"neg":"pos"));
+      button.append(left,right);
+      button.addEventListener("click",()=>loadExperimentRun(entry.id));
+      host.append(button);
+    }
+  }
+  async function loadExperimentRun(runId){
+    const saved=S.experimentRuns.find(e=>e.id===runId);if(!saved)return;
+    try{
+      if(S.data.id!==saved.datasetId){
+        let d=S.dataLibrary.find(x=>x.id===saved.datasetId);
+        if(!d&&S.db)d=await dbAction("datasets","readonly",store=>store.get(saved.datasetId));
+        if(!d)throw Error("Original dataset is unavailable; restore or reimport it");
+        resetDataset(d);
+      }
+      const o=saved.options;
+      $("simKind").value=o.type;$("simTick").value=o.tickSize;
+      $("simSlip").value=o.slippageTicks;$("simFee").value=o.roundTripFeeTicks;
+      $("simTarget").value=o.rewardR;$("simHold").value=o.maxHold;
+      const report=simulateHistoricalResearch(S.data.bars,o);
+      S.experiment={...saved,report};
+      renderExperiment();
+      document.getElementById("experimentPanel").scrollIntoView?.({block:"start",behavior:"smooth"});
+      toast("Loaded saved assumptions and recomputed the original experiment locally.");
+    }catch(e){toast("Could not open experiment: "+e.message)}
+  }
+
+  function statNode(name,value,description){
+    const box=document.createElement("div");box.className="experiment-stat";
+    box.append(htmlText("div",name,"metric"));
+    const val=htmlText("div",value,"value"+(typeof value==="string"&&value.startsWith("-")?" negative":typeof value==="string"&&value.startsWith("+")?" positive":""));
+    box.append(val,htmlText("div",description,"sub"));
+    return box;
+  }
+  function renderExperiment(){
+    const host=$("experimentResults");host.textContent="";
+    const record=S.experiment;
+    if(!record){host.append(htmlText("p","Set the cost parameters and run a historical simulation. No strategy is approved for trading.","empty"));return}
+    const {report}=record,wasSeen=S.holdoutExposures.has(record.datasetId);
+    const head=document.createElement("div");head.className="report-header";
+    head.append(htmlText("h4",record.datasetSymbol+" · "+record.options.type+" · rolling-17-bar-v1"),
+      htmlText("span","Research only · "+(record.source==="synthetic"?"SYNTHETIC":"CSV UNVERIFIED"),"eyebrow"));
+    host.append(head);
+    const stats=document.createElement("div");stats.className="experiment-stats";
+    const train=report.train;
+    stats.append(
+      statNode("Training trades",String(train.trades),report.rawSignalCount+" raw rule matches"),
+      statNode("Training average net R",numberText(train.avgNetR)+"R","After manually assumed tick costs"),
+      statNode("Training max drawdown",train.trades?train.maxDrawdownR.toFixed(2)+"R":"—","Historical sequence, not future risk"),
+    );
+    host.append(stats);
+    const message=document.createElement("div");message.className="report-warning";
+    message.textContent=record.source==="synthetic"?
+      "These simulated candles are artificial. No result can establish a real-market edge. Even on real prices, costs, stop gaps, sessions and execution need independent verification.":
+      "CSV origin is unverified. Tick assumptions are user-supplied; no live bid/ask spreads, fees, rollover or broker fills are checked. Do not interpret this as qualified performance.";
+    host.append(message);
+    const split=document.createElement("div");split.className="report-header";
+    split.append(htmlText("h4","Chronological reserved period"));
+    if(!record.holdoutRevealedAt){
+      const reveal=document.createElement("button");reveal.className="btn";reveal.textContent="Reveal reserved results";
+      reveal.addEventListener("click",()=>revealHoldout());
+      split.append(reveal);
+    }else split.append(htmlText("span","Revealed · "+new Date(record.holdoutRevealedAt).toLocaleString(),"small dim"));
+    host.append(split);
+    if(wasSeen){
+      const notice=document.createElement("p");notice.className="report-warning";
+      notice.textContent="This dataset's reserved period has already been examined. Changing parameters and retesting it is NOT independent out-of-sample validation. Use new untouched historical data for future validation.";
+      host.append(notice);
+    }
+    if(record.holdoutRevealedAt){
+      const held=report.holdout, heldStat=document.createElement("div");heldStat.className="experiment-stats";
+      heldStat.append(
+        statNode("Reserved trades",String(held.trades),"Purged chronological window"),
+        statNode("Reserved average net R",numberText(held.avgNetR)+"R","Not independently blind after exposure"),
+        statNode("Reserved max drawdown",held.trades?held.maxDrawdownR.toFixed(2)+"R":"—","Not a risk guarantee")
+      );
+      host.append(heldStat);
+    }else host.append(htmlText("p","Results deliberately hidden. Reveal once to inspect the later time window. Repeated changes using the same revealed data invalidate its role as an untouched test.","small muted"));
+    const title=htmlText("h4","Simulated episodes · "+(record.holdoutRevealedAt?"visible periods":"training period"),"");
+    title.style.margin="16px 0 10px";host.append(title);
+    const rows=report.trades.filter(t=>record.holdoutRevealedAt||
+      t.exitIndex<report.splitIndex-report.embargo).slice(0,100);
+    const wrap=document.createElement("div");wrap.className="results-scroll";
+    const table=document.createElement("table");table.className="research-table";
+    const h=document.createElement("thead"),tr=document.createElement("tr");
+    for(const name of ["Detected UTC","Pattern","Side","Exit","Net R","Inspect"]){
+      tr.append(htmlText("th",name));
+    }
+    h.append(tr);table.append(h);
+    const body=document.createElement("tbody");
+    for(const t of rows){
+      const row=document.createElement("tr");
+      row.append(htmlText("td",iso(t.signalTime).slice(5,16).replace("T"," ")+"Z"));
+      row.append(htmlText("td",t.type==="failure"?"Failed break":"Break + retest"));
+      row.append(htmlText("td",t.side));
+      row.append(htmlText("td",t.exitReason.replaceAll("_"," ")));
+      row.append(htmlText("td",numberText(t.netR)+"R",t.netR>=0?"pos":"neg"));
+      const cell=document.createElement("td"),view=document.createElement("button");view.className="subtle-link";view.textContent="Chart";
+      view.addEventListener("click",()=>{
+        if(S.data.id!==record.datasetId){toast("Load "+record.datasetSymbol+" to inspect this event.");return}
+        const match=searchPatterns(S.data.bars,S.replay?S.reveal:S.data.bars.length-1).find(c=>c.id===t.id);
+        if(match){selectCandidate(match);setPage("workspace");}else toast("This historical match is beyond the replay cutoff.");
+      });
+      cell.append(view);row.append(cell);body.append(row);
+    }
+    if(!rows.length){const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=6;
+      cell.textContent="No closed trades in this window under these explicit parameters.";row.append(cell);body.append(row)}
+    table.append(body);wrap.append(table);host.append(wrap);
+    const notes=document.createElement("div");notes.className="result-actions";
+    const exportBtn=document.createElement("button");exportBtn.className="btn";exportBtn.textContent="Export report JSON";
+    exportBtn.addEventListener("click",()=>downloadText(JSON.stringify({
+      schema:"trader.research.export.v1",source:record.source,dataset_id:record.datasetId,
+      assumptions:report.assumptions,created_at:record.createdAt,report:record.holdoutRevealedAt?report:{
+        ...report,holdout:null,trades:report.trades.filter(t=>t.exitIndex<report.splitIndex-report.embargo)
+      },
+      excludedReservedResults:!record.holdoutRevealedAt,
+    },null,2),"research-"+record.id+".json"));
+    notes.append(exportBtn,htmlText("span","The simulation uses a structural price stop, not verified exchange fills.","small muted"));
+    host.append(notes);
+  }
+  async function revealHoldout(){
+    const record=S.experiment;if(!record||record.holdoutRevealedAt)return;
+    if(!window.confirm("Reveal the reserved chronological window? After seeing these results, tuning and retesting on the same period is no longer independent validation."))return;
+    record.holdoutRevealedAt=new Date().toISOString();
+    S.holdoutExposures.add(record.datasetId);
+    const index=S.experimentRuns.findIndex(t=>t.id===record.id);
+    const safe={...record,report:record.report};
+    if(index>=0)S.experimentRuns[index]=safe;
+    try{
+      if(S.db)await dbAction("experiments","readwrite",store=>store.put(safe));
+      renderExperiment();renderRunHistory();
+      toast("Reserved results revealed and exposure recorded for this dataset.");
+    }catch(e){toast("Exposure could not be recorded: "+e.message)}
+  }
+
   function prepareStrategy(key){S.strategy=key;const p=strategyMap[key];$("labDetailTitle").textContent=p.name;$("labDetailText").textContent=p.detail;
     $("aiPrompt").value="Design an auditable research plan for "+p.name+". Define the objective entry/exit rules, data requirements, cost model, blind testing split, and failure criteria. Treat this hypothesis as unvalidated.";
     toast("Strategy hypothesis loaded into analyst research context.");
@@ -1088,19 +1722,22 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     document.querySelectorAll("[data-strategy]").forEach(b=>b.addEventListener("click",()=>prepareStrategy(b.dataset.strategy)));
     document.querySelectorAll("[data-prompt]").forEach(b=>b.addEventListener("click",()=>{$("aiPrompt").value=b.dataset.prompt;$("aiPrompt").focus()}));
     document.querySelectorAll("[data-scope]").forEach(b=>b.addEventListener("click",()=>{const name=b.dataset.scope;S.scopes[name]=!S.scopes[name];b.classList.toggle("active",S.scopes[name]);b.setAttribute("aria-pressed",String(S.scopes[name]));S.packet=null}));
+    $("runExperiment").addEventListener("click",runResearchExperiment);
+    $("analyzeLocal").addEventListener("click",()=>requestLocalAnalysis(false));
     $("prepareContext").addEventListener("click",prepareContext);$("prepareStrategy").addEventListener("click",()=>{$("aiPrompt").value=$("aiPrompt").value||"Design a falsifiable strategy test.";prepareContext()});
     $("copyContext").addEventListener("click",copyPacket);
     $("toggleAiBtn").addEventListener("click",()=>{if(window.matchMedia("(max-width:1050px)").matches){app.classList.toggle("show-ai")}else{app.classList.toggle("hide-ai")}requestAnimationFrame(resized)});
     document.querySelectorAll("[data-ai-mode]").forEach(b=>b.addEventListener("click",()=>{
       S.mode=b.dataset.aiMode;
       document.querySelectorAll("[data-ai-mode]").forEach(x=>{const active=x.dataset.aiMode===S.mode;x.classList.toggle("active",active);x.setAttribute("aria-pressed",String(active))});
-      S.packet=null;toast(S.mode==="quiet"?"Quiet mode: only user-requested context.":S.mode==="assist"?"Assist mode prepared; no model calls or notifications enabled yet.":"Coach mode prepared; session coaching activates only with a connected model.");
+      S.packet=null;if(S.assistTimer)clearTimeout(S.assistTimer);if(S.mode==="assist")scheduleLocalAssist();toast(S.mode==="quiet"?"Quiet mode: only user-requested context.":S.mode==="assist"?"Assist mode prepared; no model calls or notifications enabled yet.":"Coach mode prepared; session coaching activates only with a connected model.");
     }));
     $("importBtn").addEventListener("click",()=>$("importCsv").click());$("importCsv").addEventListener("change",importFile);
     $("resetDemo").addEventListener("click",()=>resetDataset(demo()));
     $("captureSecondary").addEventListener("click",capture);
     $("scanTop").addEventListener("click",()=>{scanHistory(true);toast(S.candidates.length+" historical candidate patterns found. None are verified trading signals.");});
     $("scanNow").addEventListener("click",()=>{scanHistory(true);toast("Historical scan refreshed.");});
+    $("scanLibrary").addEventListener("click",()=>refreshMarketLibrary(true));
     $("aiScanBtn").addEventListener("click",()=>{setPage("workspace");scanHistory(true);toast("Candidate search is local and rule-based, not an active AI model.");});
     $("scanFilter").addEventListener("change",()=>{const kind=$("scanFilter").value;const matching=S.candidates.filter(c=>kind==="all"||c.type===kind);
       if(!S.selectedCandidate||!matching.some(c=>c.id===S.selectedCandidate.id)){
@@ -1167,7 +1804,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();scanHistory(true);resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderRunHistory();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>

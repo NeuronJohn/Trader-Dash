@@ -1,64 +1,44 @@
-# Trader-Dash — Chart Studio + Evidence Analyst
+# Trader / Lab — Trading Research Workspace
 
-**Development branch:** `foundation/ai-chart-analyst` (draft, unmerged). A clean, browser-local frontend for recording and reviewing decisions, now with a functional chart workstation.
+This repository is being developed as a local-first, chart-first trading research assistant. It is **not** a broker-connected trading application, a verified profitable strategy, or an execution bot.
 
-## Try locally
+## Open the current research prototype
 
-Requires Node and npm. No paid API account is required for this stage.
+On the working branch **foundation/research-engine-backtest-v3**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
+
+If Python is not installed, open `prototype/trader-workspace.html` directly in Edge/Chrome. It still supports a synthetic demonstration chart, imported historical CSVs, annotations, a market library, local pattern discovery, a basic strategy simulator, journal snapshots and exports, but **not local Ollama AI**.
+
+The desktop launcher optionally connects to a pre-existing **local** Ollama model (default `qwen3.5:9b`). The model only receives approved research context through the localhost proxy. It is not a verified price analyst, execution tool, or paid cloud service. Its claims must be independently checked.
+
+## What has been built
+
+- Professional dark-mode HTML trading workspace and earlier React/Tailwind discipline app.
+- Price-anchored chart drawings with selection, movement, deletion and per-dataset local persistence.
+- Historical rule-based setup finder and cross-dataset scanning of imported CSVs.
+- Exploratory cost-adjusted OHLC R-multiple research simulator with next-open entries, conservative stop ordering, chronological split/embargo, and saved experiment versions.
+- Visual chart journal, structured research notes, screenshots, archive export and restore.
+- Evidence-scoped AI context panel with optional local Ollama analysis through a secure loopback-only server.
+
+## Getting started and implementation details
+
+Read [Research Engine v0.3](docs/RESEARCH_ENGINE_V3.md) for user instructions and exact limitations.
+
+The complete product roadmap is in [Trader / Lab Master Plan](docs/TRADER_LAB_MASTER_PLAN.md).
+
+The parent React work is in `src/`. The single-file HTML app in `prototype/` is an interaction/reference implementation; it is not the final production renderer. Do not maintain both forever: the intended next step is to port the approved interface into React and add trustworthy read-only broker/data adapters.
+
+## Testing
 
 ```bash
-npm ci
 npm test
+python -m unittest discover -s local/tests -p "test_*.py"
 npm run build
-npm run dev
 ```
 
-Open the development URL shown by Vite. The **Charts** tab is the default workspace; **Analyst** shows evidence-based statistics from manual trade records. Legacy Prep/Journal/Review/Calendar/Playbook/Tools remain available.
+No paid GitHub Actions need to be run. The simulator, Ollama proxy and tests are still development code and require full browser/runtime validation before release.
 
-### Work with candles
+## Safety / data warning
 
-Charts defaults to **DEMO / SYNTHETIC** candles. These are **not historical market prices** and must never be used to claim strategy profitability. To use genuine data, click **Import OHLC CSV** and select a file from your authorized market-data provider.
+The app cannot currently view your brokerage balances, know order fills or fees, or place trades. Imported CSV source authenticity is unknown. Historical OHLC backtests cannot reproduce all intrabar fills or future slippage. The user's Topstep and separately funded FX accounts must not be aggregated or activated until their individual rules and risk limits are verified. Exports must be backed up; clearing browser storage can delete local records.
 
-Accepted header and example:
-
-```csv
-time,open,high,low,close,volume
-2026-10-01T13:30:00Z,100,101,99,100.5,120
-2026-10-01T13:35:00Z,100.5,102,100,101,85
-2026-10-01T13:40:00Z,101,103,100,102,140
-2026-10-01T13:45:00Z,102,104,101,103,90
-2026-10-01T13:50:00Z,103,103.5,101,101.5,95
-```
-
-- Required columns: `time` (or `timestamp`, `datetime`, `dateutc`), `open`, `high`, `low`, `close`. `volume` is optional.
-- Timestamps must use ISO 8601 with explicit UTC `Z` or offset (e.g. `2026-10-01T08:30:00-05:00`), or Unix seconds/milliseconds. Timezone-naive timestamps are rejected.
-- CSV checks finite, positive OHLC values; high/low consistency; duplicate timestamps; size limit; and creates a SHA-256 source fingerprint.
-- Imported datasets remain in **this browser's IndexedDB** and are isolated from the demo and other datasets.
-- Market-data licensing, session adjustment, corporate actions (if any), provider quality and symbol matching still require independent verification.
-
-### Annotate, capture and review
-
-1. Choose **Inspect**, **Price level**, **Trendline** (two clicks), **Draw** (click-drag), or **Note pin**.
-2. Select a specific chart drawing to edit its text or remove it.
-3. Optionally link a manual trade from the legacy journal; enter a note; choose **Capture snapshot**.
-4. Pick the saved snapshot from the right library, add detailed review notes, or write a pin label and click **Place note pin**, then click the image.
-5. Export an **annotated PNG**, a snapshot JSON record, or use **Backup archive** for an export of the chart-store records.
-
-A snapshot preserves the **original SVG chart**, source label, original context, visible OHLC bars, drawing definitions and creation timestamp. Later note pins and review text are stored alongside that immutable original. No broker or exchange controls are attached to this studio.
-
-### Visual replay
-
-Check **Historical reveal** to constrain the displayed candles to the chosen past position, then step forward by one or ten candles. This is chart-only reveal practice; it is **not** a fill simulator or validated backtester. Other previously saved snapshots can still exist outside the replay window, so do not claim this is a controlled blind experiment.
-
-### Storage and privacy
-
-- The existing v13 journal remains in browser `localStorage` at its original key; this branch does not remove or migrate that history.
-- Candles, drawings and snapshots live in browser `IndexedDB` named `trader-dash-chart-studio`.
-- Browser profile changes, storage clearing or private browsing can delete your data. Export backups frequently. There is no archive import UI yet: the JSON exports are for preservation and future migration.
-- There is currently no encrypted backup, synchronization, live brokerage connection, candle feed, OpenAI/Ollama inference, paid model use, or automatic trade capture. The **Analyst** tab is deterministic analysis, not connected AI.
-
-## Next engineering milestone
-
-Build a local FastAPI bridge for authorized market-data sources, safe read-only order/fill imports, reproducible historical replay and an optional AI analyst with timestamp-grounded context. Then add a separate strategy lab that validates fixed versions across out-of-sample historical data, costs, slippage, and Topstep risk rules. No real-money order execution before kill-switch and risk guard testing.
-
-See `docs/AI_ANALYST_PRODUCT_SPEC.md` for the full product contract.
+**Do not use this research prototype as the basis for placing real-money trades without independently validated data, strategy results and risk controls.**

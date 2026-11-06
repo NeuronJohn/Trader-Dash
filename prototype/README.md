@@ -1,4 +1,4 @@
-# Trader / Lab — Research Workspace v0.2
+# Trader / Lab — Research Workspace v0.3
 
 This directory contains a single-file, self-contained browser prototype of the new professional Trader-Dash research workspace.
 
@@ -9,6 +9,21 @@ This directory contains a single-file, self-contained browser prototype of the n
 4. Explore Workspace, Strategy lab and Visual journal.
 
 You can also run a local static server from the repository: python -m http.server 8080, then open http://localhost:8080/prototype/trader-workspace.html.
+
+
+## New in v0.3
+
+**One-click local launch**: From the repository root on Windows, double-click `Start-Trader-Research.cmd`. This starts a localhost-only Python web server and opens the HTML in your browser. The app remains functional offline if you open this HTML directly. Launching from localhost gives local browser storage a stable origin.
+
+**Research engine**: Import up to 12 CSVs at once, open Market library and scan multiple saved datasets, then select a historical candidate to see its chart structure and missing evidence. This is not continuous online market monitoring.
+
+**Simulation**: Under Strategy laboratory, choose a pattern family, specify the instrument tick size and model transaction costs, run the OHLC simulator and inspect the training results. Reserved chronological results are hidden until you choose to reveal them. Reports are saved in Previous research runs; exported JSON archives now include experiment records. Repeatedly tuning on an exposed reserve period makes it unsuitable for further independent evaluation.
+
+**Local AI**: The optional localhost server checks your local Ollama installation (default model `qwen3.5:9b`). The Analyst panel can send explicitly selected candles/annotations/notes, with opt-in prior journal cases and experiment statistics, to the local model for read-only commentary. Its claims are not independently verified, and no broker actions or cloud services exist.
+
+**Testing**: From the repository root, run `npm test`, `python -m unittest discover -s local/tests -p "test_*.py"`, and `npm run build`. The current changes are developmental and still need full Edge/Chrome visual and interactive smoke testing.
+
+See [Research Engine v0.3](../docs/RESEARCH_ENGINE_V3.md) for full instructions, assumptions, limitations, and the development roadmap.
 
 ## Demo workflow
 - The chart initially shows clearly labeled SYNTHETIC candles, and the local scanner automatically selects the latest historical rolling-range pattern it recognizes. None of the demo matches are real market evidence.
