@@ -1454,8 +1454,15 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     }
   }
   function analysisKey(){
-    return [S.data?.id,S.selectedCandidate?.id||"none",S.replay?S.reveal:"all",
-      $("aiPrompt").value.trim(),S.mode].join("|");
+    const bars=evidenceBars();
+    return JSON.stringify([
+      S.data?.id,S.selectedCandidate?.id||"none",
+      S.replay?S.reveal:"all",S.selection,bars.map(c=>c.time),
+      S.scopes,S.scopes.marks?activeDrawings():null,
+      S.scopes.notes?[$("setupName").value,$("thesis").value]:null,
+      S.scopes.experiments?S.experiment?.id:null,
+      $("aiPrompt").value.trim(),S.mode,
+    ]);
   }
   async function requestLocalAnalysis(fromAssist=false){
     if(!S.runtime.ready){
