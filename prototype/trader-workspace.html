@@ -1287,7 +1287,16 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       setup:$("setupName").value.trim(),note:$("thesis").value.trim(),
       selected_range:S.selection?[...S.selection]:null,window:{start_utc:iso(a.bars[0].time),end_utc:iso(a.bars[a.bars.length-1].time)},
       candles:b.map(x=>({...x})),drawings:activeDrawings().map(x=>({...x})),
-      image:canvas.toDataURL("image/png"),review:"",experiment_id:S.strategy||null
+      image:canvas.toDataURL("image/png"),review:"",experiment_id:S.experiment?.id||S.strategy||null,
+      selected_candidate:S.selectedCandidate?{
+        id:S.selectedCandidate.id,version:S.selectedCandidate.version,
+        detected_at:iso(S.selectedCandidate.at),family:S.selectedCandidate.type,
+        structural_direction:S.selectedCandidate.side,
+        boundary:S.selectedCandidate.boundary,
+        confirmation_close:S.selectedCandidate.trigger,
+        illustrative_invalidation:S.selectedCandidate.invalidation,
+        profitability:"NOT_VERIFIED",
+      }:null
     };
     try{await dbAction("snapshots","readwrite",s=>s.put(entry));S.snapshots.unshift(entry);S.selectedSnapshot=entry.id;updateContext();toast("Snapshot saved to visual journal.");}
     catch(e){toast("Snapshot not stored: "+e.message)}
