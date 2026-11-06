@@ -1114,7 +1114,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("zoomIn").addEventListener("click",()=>zoomAt(S.visible-20,.5));
     $("panLeft").addEventListener("click",()=>scrollChart(-Math.max(1,Math.round(S.visible*.3))));
     $("panRight").addEventListener("click",()=>scrollChart(Math.max(1,Math.round(S.visible*.3))));
-    $("undoMark").addEventListener("click",()=>{const m=markArray().at(-1);if(m)removeMark(m.id)});
+    $("undoMark").addEventListener("click",()=>{const m=activeDrawings().at(-1);if(m)removeMark(m.id)});
     $("replayToggle").addEventListener("change",e=>{
       S.replay=e.target.checked;
       if(S.replay){S.replayDrawings=[];S.reveal=Math.min(79,S.data.bars.length-1);S.viewportEnd=S.reveal;}
