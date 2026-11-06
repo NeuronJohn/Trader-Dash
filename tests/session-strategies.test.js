@@ -129,3 +129,35 @@ test("does not manufacture sessions from unlabeled or corrupt input",()=>{
   assert.throws(()=>run(b.map((x,i)=>i===8?{...x,time:x.time+1}:x),opts()),/Invalid or unsorted/);
   assert.throws(()=>run(b,opts("WRONG")),/Unknown strategy/);
 });
+
+test("signal scanner reveals only completed historical confirmation, not future outcome",()=>{
+  const bars=fixture();
+  const cutoff=bars[5].time+300000;
+  const partial=E.scanSignals(bars.slice(0,6),{rule:"ORP-001",asOfUtc:cutoff});
+  assert.equal(partial.matches.length,1);
+  const signal=partial.matches[0];
+  assert.equal(signal.signalTime,cutoff);
+  assert.equal(signal.earliestNextBarStart,cutoff);
+  assert.equal(signal.status,"HISTORICAL_RESEARCH_MATCH_NOT_A_TRADE");
+  assert.equal(signal.executedTrades,undefined);
+  assert.equal("netR" in signal,false);
+  assert.equal(E.scanSignals(bars,{rule:"ORP-001",asOfUtc:cutoff-1}).matches.length,0);
+});
+test("mutating future candles does not alter past detected signals",()=>{
+  const bars=fixture();
+  const cutoff=bars[5].time+300000;
+  const original=E.scanSignals(bars,{rule:"ORP-001",asOfUtc:cutoff});
+  const modified=bars.map((b,i)=>i<=5?b:{
+    ...b,open:10000,high:10100,low:9999.75,close:10050
+  });
+  assert.deepEqual(E.scanSignals(modified,{rule:"ORP-001",asOfUtc:cutoff}),original);
+});
+test("partial failed-breakout signal requires return and next completed confirmation",()=>{
+  const bars=fixture("2026-07-07",false,"FBR");
+  const at=bars[5].time+300000;
+  assert.equal(E.scanSignals(bars,{rule:"FBR-001",asOfUtc:at-1}).matches.length,0);
+  const matches=E.scanSignals(bars,{rule:"FBR-001",asOfUtc:at}).matches;
+  assert.equal(matches.length,1);
+  assert.equal(matches[0].side,"SHORT");
+  assert.equal(matches[0].structuralStop,6011.5);
+});
