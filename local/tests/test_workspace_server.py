@@ -128,7 +128,7 @@ class ModelBoundaryTests(unittest.TestCase):
             "observation", "interpretation", "falsification",
             "next_experiment", "limitations"
         )}
-        fenced = "```json\\n" + json.dumps(valid) + "\\n```"
+        fenced = "```json\n" + json.dumps(valid) + "\n```"
         self.assertEqual(
             server.structured_analysis({"message": {"content": fenced}})["observation"],
             "Insufficient verified evidence"
