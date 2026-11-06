@@ -328,7 +328,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,replay:false,reveal:0,hover:null,selection:null,drag:null,
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,
     scopes:{candles:true,marks:true,notes:true,history:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -423,6 +423,138 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(S.hover){const h=S.hover,x=xFor(h.index,m),y=yFor(h.price,m);line(x,m.T,x,m.h-m.B,"#829caa",.85,[3,5]);line(m.L,y,m.w-m.R,y,"#829caa",.85,[3,5]);}
     ctx.restore();ctx.restore();
   }
+
+  // Candidate detector: close-of-bar information only. It never infers profitability.
+  // Searches rolling ranges, NOT opening ranges, to avoid inventing session metadata.
+  function searchPatterns(bars, cutoff) {
+    const out=[];
+    const last=Math.min(cutoff,bars.length-1);
+    if(last<25)return out;
+    const deltas=[];
+    for(let k=1;k<Math.min(last,75);k++){const d=bars[k].time-bars[k-1].time;if(d>0)deltas.push(d)}
+    deltas.sort((a,b)=>a-b);
+    const typical=deltas[Math.floor(deltas.length/2)]||300000;
+    const minSpacing=8;
+    const seen=new Map();
+    for(let i=23;i<=last;i++){
+      if(bars[i].time-bars[i-1].time>typical*2.5 || bars[i-1].time-bars[i-2].time>typical*2.5)continue;
+      const history=bars.slice(i-19,i-2);
+      if(history.length<15)continue;
+      const h=Math.max(...history.map(b=>b.high)),l=Math.min(...history.map(b=>b.low));
+      let atr=0;
+      for(let j=i-18;j<i-2;j++){
+        const c=bars[j],prior=bars[j-1].close;
+        atr+=Math.max(c.high-c.low,Math.abs(c.high-prior),Math.abs(c.low-prior));
+      }
+      atr/=16;
+      const buffer=Math.max(atr*.09,(h-l)*.002);
+      const breakout=bars[i-2],pullback=bars[i-1],confirmation=bars[i];
+      const candidates=[];
+      const base={index:i,at:confirmation.time,rangeHigh:h,rangeLow:l,atr,lookbackStart:i-19,
+        breakIndex:i-2,retestIndex:i-1,confirmationIndex:i,version:"rolling-17-bar-v1"};
+      if(breakout.close>h+buffer && pullback.low<=h+atr*.6 && pullback.close>=h-atr*.42 && confirmation.close>pullback.high && confirmation.close>h){
+        const invalidation=Math.min(breakout.low,pullback.low)-buffer;
+        if(confirmation.close>invalidation)
+          candidates.push({...base,id:"breakout-long-"+i,type:"breakout",title:"Break + retest",side:"LONG",boundary:h,trigger:confirmation.close,invalidation,
+            why:"Closed beyond the prior 17-bar high, retested near the boundary, and closed above the pullback high.",
+            checks:["Prior 17-bar resistance breached on a completed candle","Retest returned near the original boundary","Confirmation closed above retest high"]});
+      }
+      if(breakout.close<l-buffer && pullback.high>=l-atr*.6 && pullback.close<=l+atr*.42 && confirmation.close<pullback.low && confirmation.close<l){
+        const invalidation=Math.max(breakout.high,pullback.high)+buffer;
+        if(confirmation.close<invalidation)
+          candidates.push({...base,id:"breakout-short-"+i,type:"breakout",title:"Break + retest",side:"SHORT",boundary:l,trigger:confirmation.close,invalidation,
+            why:"Closed beneath the prior 17-bar low, retested the boundary, and closed below the pullback low.",
+            checks:["Prior 17-bar support breached on a completed candle","Retest returned near the original boundary","Confirmation closed below retest low"]});
+      }
+      if(breakout.high>h+buffer && pullback.close<h && confirmation.close<pullback.low && confirmation.close<h){
+        const invalidation=Math.max(breakout.high,pullback.high)+buffer;
+        if(invalidation>confirmation.close)
+          candidates.push({...base,id:"failure-short-"+i,type:"failure",title:"Failed upper break",side:"SHORT",boundary:h,trigger:confirmation.close,invalidation,
+            why:"Price tested above the prior 17-bar high, returned into the range, then closed below the return bar's low.",
+            checks:["Upper boundary was exceeded","Next completed candle closed inside the previous range","Confirmation closed below the return candle low"]});
+      }
+      if(breakout.low<l-buffer && pullback.close>l && confirmation.close>pullback.high && confirmation.close>l){
+        const invalidation=Math.min(breakout.low,pullback.low)-buffer;
+        if(invalidation<confirmation.close)
+          candidates.push({...base,id:"failure-long-"+i,type:"failure",title:"Failed lower break",side:"LONG",boundary:l,trigger:confirmation.close,invalidation,
+            why:"Price tested below the prior 17-bar low, returned into the range, then closed above the return bar's high.",
+            checks:["Lower boundary was exceeded","Next completed candle closed inside the previous range","Confirmation closed above the return candle high"]});
+      }
+      for(const c of candidates){
+        const key=c.type+":"+c.side;
+        if(i-(seen.get(key)??-999)<minSpacing)continue;
+        seen.set(key,i);
+        out.push(c);
+      }
+    }
+    return out.slice(-200);
+  }
+  function scanHistory(){
+    const limit=S.replay?S.reveal:S.data.bars.length-1;
+    S.candidates=searchPatterns(S.data.bars,limit);
+    if(S.selectedCandidate && !S.candidates.some(c=>c.id===S.selectedCandidate.id))S.selectedCandidate=null;
+    renderScanner();
+    updateContext();
+  }
+  function selectCandidate(candidate){
+    S.selectedCandidate=candidate;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
+    const end=S.replay?S.reveal:S.data.bars.length-1;
+    S.viewportEnd=Math.min(end,candidate.index+Math.round(S.visible*.35));
+    S.packet=null;
+    $("setupName").value=candidate.title+" · "+candidate.side+" · "+iso(candidate.at).slice(0,16)+"Z";
+    updateContext();
+    renderScanner();
+  }
+  function renderScanner(){
+    const host=$("scanResults");host.textContent="";
+    const filter=$("scanFilter").value, filtered=(S.candidates||[]).filter(c=>filter==="all"||filter===c.type).slice(-50).reverse();
+    $("scanCount").textContent=" · "+filtered.length+(S.candidates.length>50?" shown":"")+" candidates";
+    $("scanSummary").textContent=(S.data.source==="synthetic"?"Synthetic demonstration · ":"Imported historical candles (not verified) · ")+
+      "Rule-based matches, not backtested performance. No live monitoring.";
+    if(!filtered.length){const p=document.createElement("p");p.className="empty";p.textContent="No matching patterns in this dataset/window. This is a valid result—do not force trades. Try another data period or pattern family.";host.append(p)}
+    for(const c of filtered){
+      const b=document.createElement("button");b.type="button";b.className="scan-hit"+(S.selectedCandidate?.id===c.id?" selected":"");
+      const k=document.createElement("span");k.className="kind";k.textContent=c.type==="breakout"?"CONTINUATION · 17-BAR RANGE":"FAILURE · 17-BAR RANGE";
+      const title=document.createElement("strong");title.textContent=c.title;
+      const date=document.createElement("span");date.className="at";date.textContent=iso(c.at).slice(0,16).replace("T"," ")+"Z";
+      const dir=document.createElement("span");dir.className="dir";dir.textContent=c.side+" · historical pattern";
+      b.append(k,title,date,dir);b.addEventListener("click",()=>selectCandidate(c));host.append(b);
+    }
+    const d=$("scanDetail"),ai=$("aiCandidate");d.textContent="";ai.textContent="";
+    $("readyPattern").textContent=S.selectedCandidate?"Rule match":"Choose a case";
+    $("readyPattern").className=S.selectedCandidate?"ready-ok":"ready-pending";
+    $("readyData").textContent=S.data.source==="synthetic"?"Synthetic only":"CSV not authenticated";
+    if(!S.selectedCandidate){
+      const p=document.createElement("p");p.className="empty";p.textContent="Pick a candidate. You'll see what rule matched, exactly where it occurred, and what evidence is still needed.";d.append(p);
+      const q=document.createElement("p");q.className="empty";q.textContent="Select a case to get a compact breakdown and chart overlay.";ai.append(q);return;
+    }
+    const c=S.selectedCandidate;
+    const heading=document.createElement("h4");heading.textContent=c.title+" · "+c.side+" · historical example";
+    const desc=document.createElement("p");desc.textContent=c.why;
+    const factRow=document.createElement("div");factRow.className="facts";
+    for(const [label,value] of [["Boundary",fmt(c.boundary)],["Confirmation close",fmt(c.trigger)],["Structural invalidation",fmt(c.invalidation)],["Distance",fmt(Math.abs(c.trigger-c.invalidation))]]){
+      const el=document.createElement("span");el.className="fact";el.textContent=label+": "+value;factRow.append(el);
+    }
+    const warning=document.createElement("p");warning.className="small dim";warning.style.marginTop="10px";
+    warning.textContent="Confirmation close is not an executable fill. Direction and invalidation illustrate structure only; fees, spreads, actual orders and results are unknown.";
+    const go=document.createElement("button");go.type="button";go.className="btn";go.style.marginTop="11px";go.textContent="Prepare research question";go.addEventListener("click",()=>{
+      $("aiPrompt").value="Review this "+c.title+" "+c.side+" example. Check all "+c.checks.length+" pattern conditions, compare alternative explanations, and propose a falsifiable experiment. Do not claim this was profitable.";
+      S.packet=null;toast("Research question prepared. No model invoked.");
+    });
+    d.append(heading,desc,factRow,warning,go);
+    const h=document.createElement("h4");h.textContent=c.title+" · "+c.side;
+    ai.append(h);
+    for(const [label,value] of [["As of",iso(c.at).slice(0,16)+"Z"],["Range boundary",fmt(c.boundary)],["Confirmation",fmt(c.trigger)],["Invalidation",fmt(c.invalidation)]]){
+      const row=document.createElement("div");row.className="level";
+      const a=document.createElement("span");a.textContent=label;
+      const b=document.createElement("span");b.textContent=value;row.append(a,b);ai.append(row);
+    }
+    const why=document.createElement("p");why.className="why";why.textContent=c.why;ai.append(why);
+    const caution=document.createElement("p");caution.className="warning";
+    caution.textContent=S.data.source==="synthetic"?"Synthetic example. No real market evidence.":"Historical structural match only. No out-of-sample edge or executable signal.";
+    ai.append(caution);
+  }
+
   function updateContext(){const a=visible(),bars=a.bars;
     $("chartSymbol").textContent=S.data.symbol+ " · "+(S.data.source==="synthetic"?"Practice":"Imported data");
     $("chartPeriod").textContent=S.data.timeframe;$("chartCount").textContent=S.data.bars.length+" bars";
