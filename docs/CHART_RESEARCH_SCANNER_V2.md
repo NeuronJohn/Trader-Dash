@@ -17,7 +17,7 @@
 - Separate Cursor, Range and Edit interaction modes.
 - Multiple levels, lines, rectangles, arrows, brush strokes and note markers can coexist.
 - Select a drawing by clicking it in Edit mode or using the list; move it by dragging, give it a label, hide/show it, remove it individually, or undo the latest drawing.
-- Price/time coordinates retained across zoom changes. Unsnapshotted drawings persist per dataset in browser IndexedDB version 2.
+- Price/time coordinates retained across zoom changes. Unsnapshotted drawings persist per dataset in browser IndexedDB version 2 and are included in JSON archive export/restore.
 - Temporary replay annotations are separated from full-history annotations. Rewinding past a replay drawing's creation hides it.
 
 ### Automatic historical setup discovery
@@ -42,7 +42,7 @@ This remains a standalone HTML UX and research prototype. The parent branch hold
 ## Build phases
 
 ### Phase 1 — UI and data integrity
-Run real Edge/Chrome screenshot tests at 24, 35, 90 and 180 bars; check time-axis spacing, zoom-anchor behavior, selection, touch/pointer interactions, undo/delete/hide, browser IndexedDB reopen, and snapshot integrity. Implement lossless archive restore and exports that include standalone drawings. Port the approved layout into React rather than maintain a separate production HTML app.
+Run real Edge/Chrome screenshot tests at 24, 35, 90 and 180 bars; check time-axis spacing, zoom-anchor behavior, selection, touch/pointer interactions, undo/delete/hide, browser IndexedDB reopen, and snapshot integrity. Standalone JSON export now includes datasets, snapshots and drawing layers; basic atomic restore implemented. Test round-trip behavior across browsers, large snapshots, quota limits and migration before production. Port the approved layout into React rather than maintain a separate production HTML app.
 
 ### Phase 2 — Genuine multi-market searching
 Implement a local Python scanner service with a strategy-rule registry, exchange/session-aware timestamps, instrument tick metadata, data-quality gates, bar-close event stream and per-market/timeframe watchlists. Allow automatic searches across authorized historical feeds and new closed candles without requiring an AI call for every bar. Keep all matches, including invalidated candidates, to prevent cherry-picking. Allow Quiet, Assist and Coach modes to control alert frequency.
