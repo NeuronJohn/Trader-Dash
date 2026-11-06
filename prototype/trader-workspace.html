@@ -282,7 +282,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],tool:"inspect",visible:90,replay:false,reveal:0,hover:null,selection:null,drag:null,
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,replay:false,reveal:0,hover:null,selection:null,drag:null,
     scopes:{candles:true,marks:true,notes:true,history:false},snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -338,6 +338,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }catch(e){toast("Local persistence unavailable: "+e.message)}
   }
   function savePrefs(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({dataId:S.data.id}))}catch(e){toast("Preferences not saved; export your work")}}
+  function activeDrawings(){return S.replay?S.replayDrawings.filter(mark=>mark.createdReveal<=S.reveal):S.drawings}
   function visible(){const max=S.replay?S.reveal:S.data.bars.length-1;return {start:Math.max(0,max-S.visible+1),end:max,bars:S.data.bars.slice(Math.max(0,max-S.visible+1),max+1)}}
   const canvas=$("chart"),ctx=canvas.getContext("2d");
   const geom={};
@@ -368,7 +369,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       line(x,yFor(b.high,m),x,yFor(b.low,m),color,Math.max(1,Math.min(1.5,m.step*.12)));
       ctx.fillStyle=color;const y1=yFor(Math.max(b.open,b.close),m),y2=yFor(Math.min(b.open,b.close),m);ctx.fillRect(x-Math.max(1.5,m.step*.32),y1,Math.max(3,Math.min(12,m.step*.64)),Math.max(1.2,y2-y1));
     });
-    for(const mark of S.drawings){if(mark.type==="level"){const y=yFor(mark.price,m);line(m.L,y,m.w-m.R,y,"#d6b773",1.2,[7,4]);ctx.fillStyle="#e7c88c";ctx.fillText("LEVEL",m.L+10,y-8)}
+    for(const mark of activeDrawings()){if(mark.type==="level"){const y=yFor(mark.price,m);line(m.L,y,m.w-m.R,y,"#d6b773",1.2,[7,4]);ctx.fillStyle="#e7c88c";ctx.fillText("LEVEL",m.L+10,y-8)}
       if(mark.type==="note"&&mark.index>=m.a.start&&mark.index<=m.a.end){const x=xFor(mark.index,m),y=yFor(mark.price,m);ctx.beginPath();ctx.fillStyle="#d7b978";ctx.arc(x,y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle="#1f2020";ctx.font="bold 10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono");ctx.fillText("N",x-3,y+1);ctx.font="10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono")}
     }
     if(S.selection){let l=xFor(Math.max(m.a.start,S.selection[0]),m),r=xFor(Math.min(m.a.end,S.selection[1]),m);if(r>=l){ctx.fillStyle="rgba(114,176,160,.14)";ctx.fillRect(l,m.T,r-l+m.step,m.plotH);line(l,m.T,l,m.h-m.B,"#95caba",1,[4,3]);line(r+m.step,m.T,r+m.step,m.h-m.B,"#95caba",1,[4,3])}}
@@ -385,8 +386,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("sourceTag").textContent=demo?"SYNTHETIC":"USER CSV";
     $("sourceTag").classList.toggle("imported",!demo);
     $("feedStatus").textContent=demo?"Synthetic / training only":"Imported CSV / unverified";
-    $("markCount").textContent=S.drawings.length;
-    $("aiMarks").textContent=S.drawings.length+" attached";
+    $("markCount").textContent=activeDrawings().length;
+    $("aiMarks").textContent=activeDrawings().length+" attached";
     $("aiSource").textContent=S.data.source==="synthetic"?"Synthetic demo":"Imported / unverified";
     $("aiSymbol").textContent=S.data.symbol;
     $("aiCases").textContent=S.snapshots.length+" snapshots";
@@ -428,15 +429,16 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const result={
       schema:"trader.analyst.context.v1",created_at:new Date().toISOString(),purpose:"decision_support_only",
       execution:"disabled",model:"not_connected",prompt,source:{kind:S.data.source,id:S.data.id,symbol:S.data.symbol,display_label:S.data.label,timeframe:S.data.timeframe},
-      replay:{enabled:S.replay,revealed_through_utc:iso(S.data.bars[a.end].time),future_candles_excluded:true},
+      replay:{enabled:S.replay,revealed_through_utc:iso(S.data.bars[a.end].time),future_candles_excluded_from_visible_bars:true,blind_trial:false},
       selected_window:{first_utc:b.length?iso(b[0].time):null,last_utc:b.length?iso(b[b.length-1].time):null,count:b.length},
       include:{...S.scopes},evidence:{},
       missing:["Broker fills and costs not connected","Market data provider not verified","Strategy performance not validated","Live AI model unavailable"]
     };
     if(S.scopes.candles)result.evidence.candles=b.map(c=>({...c,time_utc:iso(c.time)}));
-    if(S.scopes.marks)result.evidence.drawings=S.drawings.filter(d=>d.type==="level"||(d.index>=a.start&&d.index<=a.end));
+    if(S.scopes.marks)result.evidence.drawings=activeDrawings().filter(d=>d.type==="level"||(d.index>=a.start&&d.index<=a.end));
     if(S.scopes.notes)result.evidence.notes={setup:$("setupName").value,thesis:$("thesis").value};
-    if(S.scopes.history)result.evidence.saved_cases=S.snapshots.slice(0,10).map(s=>({id:s.id,at:s.at,symbol:s.symbol,setup:s.setup,note:s.note,source:s.source}));
+    if(S.scopes.history && !S.replay)result.evidence.saved_cases=S.snapshots.slice(0,10).map(s=>({id:s.id,at:s.at,symbol:s.symbol,setup:s.setup,note:s.note,source:s.source}));
+    if(S.scopes.history && S.replay)result.missing.push("Saved journal cases omitted from reveal mode to avoid retrospective outcome leakage");
     if(S.strategy)result.strategy_candidate={id:S.strategy,name:strategyMap[S.strategy].name,detail:strategyMap[S.strategy].detail,validation:"not_tested"};
     return result;
   }
@@ -453,11 +455,15 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     try{await navigator.clipboard.writeText(text);toast("Full context packet copied.");}
     catch(e){const temp=document.createElement("textarea");temp.value=text;document.body.appendChild(temp);temp.select();const ok=document.execCommand("copy");temp.remove();toast(ok?"Full packet copied.":"Clipboard blocked; export your journal or use the preview.");}
   }
-  function resetDataset(data){S.data=data;S.drawings=[];S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.strategy=null;
+  function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.strategy=null;
     $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
     savePrefs();updateContext();}
   async function importFile(event){const file=event.target.files&&event.target.files[0];if(!file)return;
-    try{const d=readCSV(await file.text(),file.name);
+    try{const raw=await file.text(), d=readCSV(raw,file.name);
+      if(typeof crypto!=="undefined" && crypto.subtle && typeof TextEncoder!=="undefined") {
+        const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(d.symbol+"\n"+raw));
+        d.id="csv-sha256:"+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
+      } else d.id="csv-local:"+id();
       if(S.db)await dbAction("datasets","readwrite",store=>store.put(d));
       resetDataset(d);toast("Imported "+d.bars.length+" candles. Source remains unverified.");
     }catch(e){toast("Import error: "+e.message)}
@@ -478,8 +484,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     S.selection=[lo,hi];S.drag=null;S.packet=null;updateContext();
     try{canvas.releasePointerCapture?.(event.pointerId)}catch(e){}}
   function handleClick(event){const p=dataFromEvent(event);if(!p||S.tool==="select")return;
-    if(S.tool==="level"){S.drawings.push({id:id(),type:"level",price:Number(p.price.toFixed(4)),at:iso(S.data.bars[p.index].time)});toast("Price level added.")}
-    if(S.tool==="note"){const draft=$("thesis").value.trim().slice(0,130);S.drawings.push({id:id(),type:"note",index:p.index,price:Number(p.price.toFixed(4)),text:draft||"Review this candle",at:iso(S.data.bars[p.index].time)});toast("Note marker attached to this candle.")}
+    if(S.tool==="level"){(S.replay?S.replayDrawings:S.drawings).push({id:id(),type:"level",price:Number(p.price.toFixed(4)),createdReveal:S.reveal,at:iso(S.data.bars[p.index].time)});toast("Price level added.")}
+    if(S.tool==="note"){const draft=$("thesis").value.trim().slice(0,130);(S.replay?S.replayDrawings:S.drawings).push({id:id(),type:"note",index:p.index,price:Number(p.price.toFixed(4)),text:draft||"Review this candle",createdReveal:S.reveal,at:iso(S.data.bars[p.index].time)});toast("Note marker attached to this candle.")}
     if(S.tool!=="inspect"){S.packet=null;updateContext()}
   }
   function setTool(t){S.tool=t;document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("tool-active",b.dataset.tool===t));toast(t==="select"?"Drag across candles to select a range.":t==="level"?"Click a price to add a horizontal level.":t==="note"?"Click a candle to add a note marker.":"Inspect candles by hovering.")}
@@ -496,7 +502,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       source_id:S.data.id,timeframe:S.data.timeframe,
       setup:$("setupName").value.trim(),note:$("thesis").value.trim(),
       selected_range:S.selection?[...S.selection]:null,window:{start_utc:iso(a.bars[0].time),end_utc:iso(a.bars[a.bars.length-1].time)},
-      candles:b.map(x=>({...x})),drawings:S.drawings.map(x=>({...x})),
+      candles:b.map(x=>({...x})),drawings:activeDrawings().map(x=>({...x})),
       image:canvas.toDataURL("image/png"),review:"",experiment_id:S.strategy||null
     };
     try{await dbAction("snapshots","readwrite",s=>s.put(entry));S.snapshots.unshift(entry);S.selectedSnapshot=entry.id;updateContext();toast("Snapshot saved to visual journal.");}
@@ -566,8 +572,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("goWorkspace").addEventListener("click",()=>setPage("workspace"));
     $("zoomOut").addEventListener("click",()=>{S.visible=clamp(S.visible+25,30,180);S.selection=null;updateContext()});
     $("zoomIn").addEventListener("click",()=>{S.visible=clamp(S.visible-25,30,180);S.selection=null;updateContext()});
-    $("undoMark").addEventListener("click",()=>{S.drawings.pop();updateContext()});
-    $("replayToggle").addEventListener("change",e=>{S.replay=e.target.checked;S.reveal=Math.min(79,S.data.bars.length-1);S.selection=null;updateContext()});
+    $("undoMark").addEventListener("click",()=>{(S.replay?S.replayDrawings:S.drawings).pop();updateContext()});
+    $("replayToggle").addEventListener("change",e=>{S.replay=e.target.checked;if(S.replay)S.replayDrawings=[];S.reveal=Math.min(79,S.data.bars.length-1);S.selection=null;S.packet=null;updateContext()});
     $("replayBack").addEventListener("click",()=>{S.reveal=clamp(S.reveal-1,Math.min(39,S.data.bars.length-1),S.data.bars.length-1);S.selection=null;updateContext()});
     $("replayNext").addEventListener("click",()=>{S.reveal=clamp(S.reveal+1,0,S.data.bars.length-1);S.selection=null;updateContext()});
     $("replayTen").addEventListener("click",()=>{S.reveal=clamp(S.reveal+10,0,S.data.bars.length-1);S.selection=null;updateContext()});
