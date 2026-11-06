@@ -1,14 +1,29 @@
 # Trader / Lab — Trading Research Workspace
 
-This repository is being developed as a local-first, chart-first trading research assistant. It is **not** a broker-connected trading application, a verified profitable strategy, or an execution bot.
+This repository is being developed as a local-first, chart-first trading research assistant, now including session-aware historical MES strategy experiments. It is **not** a broker-connected trading application, a verified profitable strategy, or an execution bot.
 
 ## Open the current research prototype
 
-On the working branch **foundation/research-engine-backtest-v3**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
+On the working branch **foundation/mes-session-strategies-v4**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
 
 If Python is not installed, open `prototype/trader-workspace.html` directly in Edge/Chrome. It still supports a synthetic demonstration chart, imported historical CSVs, annotations, a market library, local pattern discovery, a basic strategy simulator, journal snapshots and exports, but **not local Ollama AI**.
 
 The desktop launcher optionally connects to a pre-existing **local** Ollama model (default `qwen3.5:9b`). The model only receives approved research context through the localhost proxy. It is not a verified price analyst, execution tool, or paid cloud service. Its claims must be independently checked.
+
+## Session-aware MES research — v0.4
+
+The Strategy Lab now puts two **MES five-minute cash-session research strategies** first:
+
+- ORP-001: First opening-range breakout, first controlled pullback, next-bar confirmation.
+- FBR-001: Opening-range failed breakout, return-and-reversal confirmation.
+
+Both use Chicago time with DST, verified-format five-minute start timestamps, strict tick alignment and conservative cost-aware simulated execution. The source audit checks for complete research windows but cannot verify a CSV provider or a contract rollover.
+
+Use **Find MES setups** for a *confirmation-only*, historical reveal workflow that conceals future bars until you step forward. Use **Run MES research** separately for exploratory modeled P/L and R, with hidden reserved results and exposure history. No result implies a verified strategy or real brokerage fill.
+
+Read [MES Session Strategies v0.4](docs/MES_SESSION_STRATEGIES_V4.md) for the precise rules, safe import requirements, testing steps and limitations.
+
+**Download the full branch** to use this feature: the browser app now loads the adjacent `prototype/session-engine.js` module. A standalone HTML file without that sibling script will still show older functions, but the MES strategies will not activate.
 
 ## What has been built
 

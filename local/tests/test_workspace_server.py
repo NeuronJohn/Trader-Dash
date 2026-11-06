@@ -83,6 +83,32 @@ class ContextTests(unittest.TestCase):
         self.assertEqual(len(result["draft_notes"]["thesis"]), 2000)
 
 
+    def test_optional_mes_signal_is_not_treated_as_a_real_fill(self):
+        payload = context()
+        payload["evidence"]["mes_session_signal"] = {
+            "status": "HISTORICAL_RESEARCH_MATCH_NOT_A_TRADE",
+            "rule": "ORP-001", "version": "MES-SESSION-v1",
+            "day": "2026-10-05", "side": "LONG",
+            "signal_bar_start_utc": "2026-10-05T13:30:00Z",
+            "confirmation_close_utc": "2026-10-05T13:35:00Z",
+            "boundary": 6000.25, "structural_invalidation": 5999.25,
+            "later_bars_visible": False, "fills": {"fake": 123},
+        }
+        payload["evidence"]["session_research"] = {
+            "status": "UNVERIFIED_RESEARCH_ONLY",
+            "rule": "ORP-001", "version": "MES-SESSION-v1",
+            "train": {"count": 10, "expectancyR": -0.5, "netUsd": -30},
+            "reserve": {"trades": 999, "netUsd": 1000000},
+            "reserve_unseen": True,
+        }
+        result = server.validate_context(payload)
+        self.assertEqual(result["mes_signal"]["assumed_fills"], None)
+        self.assertEqual(result["mes_signal"]["status"], "HISTORICAL_RESEARCH_MATCH_NOT_A_TRADE")
+        self.assertEqual(result["mes_session_experiment"]["train_expectancy_R"], -0.5)
+        self.assertEqual(result["mes_session_experiment"]["trading_qualification"], "NONE")
+        self.assertNotIn("reserve", result["mes_session_experiment"])
+
+
 class ModelBoundaryTests(unittest.TestCase):
     def test_requires_exact_structured_response(self):
         valid = {
