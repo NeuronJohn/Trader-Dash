@@ -1534,7 +1534,9 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       };
       if(S.experimentRuns.length>=250)throw Error("Research history is full; export your archive before adding more runs.");
       S.experiment=token;
-      S.experimentRuns.unshift({...token,report:{...report,holdout:null,trades:report.trades.filter(t=>t.exitIndex<report.splitIndex-report.embargo)}});
+      S.experimentRuns.unshift({...token,report:{...report,full:null,holdout:null,
+        scheduledTrades:null,omittedBoundaryEpisodes:null,
+        trades:report.trades.filter(t=>t.exitIndex<report.splitIndex-report.embargo)}});
       if(S.db){
         const safe=S.experimentRuns[0];
         await dbAction("experiments","readwrite",store=>store.put(safe));
