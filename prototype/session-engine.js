@@ -36,8 +36,8 @@
     const t = n / TICK;
     return (mode === "floor" ? Math.floor(t + 1e-7) : Math.ceil(t - 1e-7)) * TICK;
   };
-  function requiredBars(bars) {
-    if (!Array.isArray(bars) || bars.length < SESSION_BARS) throw Error("Need at least 30 five-minute MES candles");
+  function requiredBars(bars, minBars=SESSION_BARS) {
+    if (!Array.isArray(bars) || bars.length < minBars) throw Error("Need at least "+minBars+" five-minute MES candles");
     let prev = -Infinity;
     for (let i = 0; i < bars.length; i++) {
       const b = bars[i];
@@ -84,12 +84,12 @@
   function orpCandidate(s) {
     const b=s.bars,{high,low}=priorRange(b);
     let breakout = null, direction = 0;
-    for(let i=3;i<24;i++){
+    for(let i=3;i<Math.min(24,b.length);i++){
       if(b[i].close>high){breakout=i;direction=1;break}
       if(b[i].close<low){breakout=i;direction=-1;break}
     }
     if(breakout==null)return {reason:"No first opening-range breakout during entry window"};
-    for(let i=breakout+1;i<=Math.min(breakout+6,21);i++){
+    for(let i=breakout+1;i<=Math.min(breakout+6,21,b.length-2);i++){
       // The first structurally eligible retest consumes the opportunity even
       // if next-bar confirmation fails, avoiding selective second attempts.
       const retest=direction===1
@@ -115,7 +115,7 @@
   }
   function fbrCandidate(s) {
     const b=s.bars,{high,low}=priorRange(b);
-    for(let i=3;i<23;i++){
+    for(let i=3;i<Math.min(23,b.length);i++){
       let side=0;
       const upper=b[i].high>=high+2*TICK,lower=b[i].low<=low-2*TICK;
       // If both sides were swept on one OHLC bar, no defensible event order
@@ -125,7 +125,7 @@
       else if(lower)side=1;
       if(!side)continue;
       // First excursion gets at most 3 bars to return into the opening range.
-      for(let ret=i;ret<=Math.min(i+2,22);ret++){
+      for(let ret=i;ret<=Math.min(i+2,22,b.length-2);ret++){
         const returned=side===-1?b[ret].close<high:b[ret].close>low;
         if(!returned)continue;
         const confirm=ret+1,entry=confirm+1;
@@ -148,6 +148,65 @@
     }
     return {reason:"No opening-range excursion within early entry window"};
   }
+  // A purely historical, outcome-blind discovery method: it reads only
+  // fully closed bars at or before the explicitly supplied UTC as-of time.
+  // Never labels an observation as an executable or profitable trade.
+  function scanSignals(bars, opts={}) {
+    requiredBars(bars,3);
+    const rule=opts.rule||"ORP-001";
+    if(!Object.prototype.hasOwnProperty.call(RULES,rule))throw Error("Unsupported discovery rule");
+    const defaultCutoff=bars[bars.length-1].time+BAR_MS;
+    const asOfUtc=opts.asOfUtc===undefined?defaultCutoff:Number(opts.asOfUtc);
+    if(!Number.isFinite(asOfUtc))throw Error("A finite UTC cutoff is required");
+    const groups=new Map();
+    for(const b of bars){
+      // Data at bar START cannot be considered observed until its close.
+      if(b.time+BAR_MS>asOfUtc)continue;
+      const p=toParts(b.time);
+      if(p.weekday==="Sat"||p.weekday==="Sun"||p.minute<WINDOW_START||p.minute>=ENTRY_END)continue;
+      const slot=(p.minute-WINDOW_START)/5;
+      const d=groups.get(p.day)||new Map();
+      if(d.has(slot))d.set(slot,null);
+      else d.set(slot,b);
+      groups.set(p.day,d);
+    }
+    const observed=[],excluded=[];
+    for(const [day,m] of [...groups].sort(([a],[b])=>a.localeCompare(b))){
+      if(m.size<5 || ![0,1,2].every(j=>m.get(j))){
+        excluded.push({day,reason:"Opening-range candles missing"});continue;
+      }
+      const end=Math.max(...m.keys()),dayBars=[];
+      let valid=true;
+      for(let i=0;i<=end;i++){
+        const b=m.get(i);
+        if(!b || (i>0 && b.time-dayBars[i-1].time!==BAR_MS)){valid=false;break}
+        dayBars.push(b);
+      }
+      if(!valid){excluded.push({day,reason:"Gap or duplicate in observed session"});continue}
+      const session={day,bars:dayBars};
+      const candidate=rule==="ORP-001"?orpCandidate(session):fbrCandidate(session);
+      if(candidate.rule){
+        observed.push({
+          day,rule: candidate.rule,ruleVersion:VERSION,side:candidate.side,
+          signalTime:dayBars[candidate.signalIndex].time+BAR_MS,
+          signalBarStart:dayBars[candidate.signalIndex].time,
+          earliestNextBarStart:dayBars[candidate.signalIndex].time+BAR_MS,
+          boundary:candidate.boundary,structuralStop:candidate.stop,
+          rangeHigh:candidate.rangeHigh,rangeLow:candidate.rangeLow,
+          explanation:candidate.explanation,
+          status:"HISTORICAL_RESEARCH_MATCH_NOT_A_TRADE",
+          note:"No entry price, outcome, broker fill, or validated expectancy is inferred",
+        });
+      }
+    }
+    return {
+      version:VERSION,rule,asOfUtc,
+      matches:observed,excluded,
+      sourceValidated:false,executedTrades:0,
+      warning:"Historical pattern matches are not live prices or trade recommendations",
+    };
+  }
+
   function evaluate(s,c,options) {
     if(!c || !c.rule)return null;
     const direction=c.side==="LONG"?1:-1;
@@ -257,5 +316,5 @@
       qualification:"None. Historic data provider, fees, contract roll, actual fills and out-of-sample sample size unverified.",
     };
   }
-  root.TraderSessionEngine=Object.freeze({version:VERSION,rules:RULES,run,metrics,sessionsFromBars,orpCandidate,fbrCandidate});
+  root.TraderSessionEngine=Object.freeze({version:VERSION,rules:RULES,run,scanSignals,metrics,sessionsFromBars,orpCandidate,fbrCandidate});
 })(typeof globalThis !== "undefined" ? globalThis : this);
