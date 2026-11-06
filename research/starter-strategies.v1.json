@@ -1,0 +1,142 @@
+{
+  "schema": "traderlab.strategy-slate.v1",
+  "status": "CANDIDATE_RULES_NOT_BACKTESTED",
+  "warning": "Research hypotheses only. None has proven positive expectancy. Do not use as live order instructions.",
+  "created_at": "2026-11-05",
+  "common": {
+    "chronology": "Signals formed only using fully closed historical bars; order fills simulated no earlier than next eligible bar; no future data at decision time.",
+    "fees": "Broker-realized commissions, spreads and slippage verified per instrument/account; scenario-test higher costs and delayed fills.",
+    "max_trades_per_session": 1,
+    "risk": "Risk amount determined by user-defined affordable loss and contract/unit economics; no automatic fixed dollar risk.",
+    "data_requirements": "Timestamped, provider-licensed OHLC/ticks; correct exchange/session calendar, news event schedule, instrument metadata and DST.",
+    "no_trade_events": "High impact scheduled releases designated before the test; assess conservative exclusion windows separately.",
+    "validation": "Chronological train/validation/untouched holdout, across multiple regimes, parameter perturbations and prospective paper test. No use of holdout to tune.",
+    "evaluation": [
+      "net_expectancy_R",
+      "gross_and_net_PnL",
+      "sample_size",
+      "confidence_interval",
+      "max_drawdown_R",
+      "longest_loss_streak",
+      "profit_factor",
+      "time_under_water",
+      "cost_sensitivity",
+      "Topstep_drawdown_survival"
+    ]
+  },
+  "strategies": [
+    {
+      "id": "ORP-001",
+      "name": "Opening-range continuation, first pullback",
+      "venue": "micro_futures",
+      "markets": [
+        "MES"
+      ],
+      "signal_timeframe": "5m",
+      "session_tz": "America/Chicago",
+      "hypothesis": "Following a clean initial-session break, an ordered retest/reclaim may outperform immediate breakout entries.",
+      "rules": {
+        "opening_range": {
+          "start": "08:30",
+          "end_exclusive": "08:45",
+          "high": "highest_high",
+          "low": "lowest_low"
+        },
+        "entry_window": {
+          "start": "08:45",
+          "end_exclusive": "10:30"
+        },
+        "long": {
+          "break": "First completed 5m close strictly above opening_range.high",
+          "pullback": "Within six subsequent fully closed 5m bars, first bar low <= range high and close >= range high",
+          "confirm": "Next completed 5m close above pullback bar high",
+          "order": "Enter at next available bar open, with cost/slippage model"
+        },
+        "short": "Exact long-rule mirror below range low",
+        "stop": "One MES tick beyond the pullback bar extreme; model stop gaps and non-guaranteed fills",
+        "exit": "Stop or 2 times initial risk reward target, whichever happens first; otherwise close by 11:00 CT",
+        "max_daily_entries": 1,
+        "direction_filter": "None in baseline; a higher-timeframe trend filter is a separate preregistered variant, not changed midtest"
+      },
+      "reject_if": [
+        "Net out-of-sample expectancy <= 0 after costs",
+        "Disproportionate results from a few dates",
+        "Drawdown violates realistic allowed loss for intended account",
+        "Performance collapses under reasonable slippage variation"
+      ]
+    },
+    {
+      "id": "FBR-001",
+      "name": "Opening-range failed breakout reversal",
+      "venue": "micro_futures",
+      "markets": [
+        "MES"
+      ],
+      "signal_timeframe": "5m",
+      "session_tz": "America/Chicago",
+      "hypothesis": "Return into a failed initial-session excursion may sometimes create measured reversal opportunities.",
+      "rules": {
+        "opening_range": {
+          "start": "08:30",
+          "end_exclusive": "08:45",
+          "high": "highest_high",
+          "low": "lowest_low"
+        },
+        "entry_window": {
+          "start": "08:45",
+          "end_exclusive": "10:30"
+        },
+        "short": {
+          "excursion": "A completed candle high exceeds range high by at least 2 instrument ticks",
+          "return": "That candle or one of the next two completed candles closes back below range high",
+          "confirm": "Following completed candle closes below return candle low",
+          "order": "Enter at next available bar open using slippage model"
+        },
+        "long": "Exact short-rule mirror below opening range low",
+        "stop": "Two instrument ticks beyond the excursion extreme",
+        "exit": "Target the opening-range midpoint; skip when midpoint reward from entry is less than initial risk; time exit at 11:00 CT",
+        "max_daily_entries": 1
+      },
+      "reject_if": [
+        "Insufficient sample or significance after costs",
+        "Return/retest definition too sensitive to a 1-tick change",
+        "Strong adverse selection around scheduled news",
+        "Fails untouched holdout or risk-survival tests"
+      ]
+    },
+    {
+      "id": "FXC-001",
+      "name": "EUR/USD session compression expansion",
+      "venue": "retail_spot_fx",
+      "markets": [
+        "EUR_USD"
+      ],
+      "signal_timeframe": "5m",
+      "session_tz": "America/New_York",
+      "hypothesis": "Unusually narrow intrahour price range followed by a full-bar close outside that range may be informative in liquid hours.",
+      "rules": {
+        "window": {
+          "start": "08:00",
+          "end_exclusive": "11:00"
+        },
+        "contraction": "Latest 12 fully closed 5m candles total high-low range below 20th percentile of the prior 20 comparable session-hour rolling ranges, without using today future data",
+        "trigger": "Completed 5m bar closes above contraction high for long or below contraction low for short",
+        "order": "Next bar open, quoted on executable bid/ask with documented spread assumptions",
+        "stop": "Beyond opposite compression range extreme",
+        "exit": "Stop or 1.5 times initial risk target; otherwise exit before 11:00 NY time",
+        "spread_filter": "Skip if contemporaneous executable spread exceeds its prior 20-session 75th-percentile at that session time",
+        "max_daily_entries": 1
+      },
+      "reject_if": [
+        "Data lacks bid/ask spread or time-zone provenance",
+        "Out-of-sample results nonpositive after spread, financing if applicable and slippage",
+        "Signals too infrequent for meaningful inference",
+        "Advantage vanishes after conservative stress costs"
+      ]
+    }
+  ],
+  "selection_policy": {
+    "first_to_implement": "ORP-001",
+    "reason": "Simpler session definitions and fill accounting on micro futures; build auditable MES baseline first before widening to MNQ and cross-market variants."
+  }
+}
