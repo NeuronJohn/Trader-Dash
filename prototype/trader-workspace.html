@@ -899,11 +899,13 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         results.push(t.netR);
       }
       const n=trades.length;
+      const ordered=[...results].sort((a,b)=>a-b);
+      const median=n?(n%2?ordered[(n-1)/2]:(ordered[n/2-1]+ordered[n/2])/2):null;
       return {
         trades:n,wins,winRate:n?wins/n:null,
         netR:equity,avgNetR:n?equity/n:null,
         profitFactor:lossR?winR/lossR:null,
-        maxDrawdownR,medianNetR:n?[...results].sort((a,b)=>a-b)[Math.floor(n/2)]:null,
+        maxDrawdownR,medianNetR:median,
         minNetR:n?Math.min(...results):null,maxNetR:n?Math.max(...results):null,
       };
     };
