@@ -556,6 +556,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       highs.push(S.mesPreview.entry,S.mesPreview.stop,S.mesPreview.target);
       lows.push(S.mesPreview.entry,S.mesPreview.stop,S.mesPreview.target);
     }
+    if(S.mesSignalPreview&&a.bars.some(x=>x.time===S.mesSignalPreview.signalBarStart)){
+      highs.push(S.mesSignalPreview.boundary,S.mesSignalPreview.structuralStop);
+      lows.push(S.mesSignalPreview.boundary,S.mesSignalPreview.structuralStop);
+    }
     const maxPrice=Math.max(...highs),minPrice=Math.min(...lows);
     const padding=Math.max((maxPrice-minPrice)*.10,Math.abs(maxPrice)*.00003,.005);
     const max=maxPrice+padding,min=minPrice-padding,plotW=width-padR-padL,plotH=height-padT-padB;
@@ -612,6 +616,26 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       line(x,yFor(b.high,m),x,yFor(b.low,m),color,Math.max(1,Math.min(1.5,bodyWidth*.12)));
       const hiY=yFor(Math.max(b.open,b.close),m),loY=yFor(Math.min(b.open,b.close),m);
       ctx.fillStyle=color;ctx.fillRect(x-bodyWidth/2,hiY,bodyWidth,Math.max(1.35,loY-hiY));
+    }
+    if(S.mesSignalPreview){
+      const q=S.mesSignalPreview;
+      const idx=S.data.bars.findIndex(x=>x.time===q.signalBarStart);
+      if(idx>=m.a.start && idx<=m.a.end){
+        const startX=Math.max(m.L,xFor(Math.max(0,idx-13),m));
+        const endX=Math.min(m.w-m.R,xFor(idx,m)+m.step*.5);
+        for(const l of [
+          {name:"RANGE BOUNDARY",price:q.boundary,color:"#b2d9d0"},
+          {name:"INVALIDATION REF",price:q.structuralStop,color:"#d7a0a0"}
+        ]){
+          const y=yFor(l.price,m);
+          line(startX,y,Math.max(startX+2,endX),y,l.color,1.4,[5,4]);
+          ctx.fillStyle=l.color;ctx.textAlign="left";
+          ctx.fillText(l.name,Math.min(startX+8,m.w-m.R-132),
+            clamp(y-11,m.T+12,m.h-m.B-12));
+        }
+        ctx.fillStyle="#badbce";ctx.textAlign="left";
+        ctx.fillText("HISTORICAL CONFIRMATION — NO ENTRY/OUTCOME",m.L+9,m.T+16);
+      }
     }
     if(S.mesPreview){
       const t=S.mesPreview;
@@ -1243,7 +1267,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         confirmation_close_utc:iso(sig.signalTime),
         boundary:sig.boundary,structural_invalidation:sig.structuralStop,
         status:"HISTORICAL_RESEARCH_MATCH_NOT_A_TRADE",
-        future_outcome_included:false
+        later_bars_visible:S.replay && S.reveal>S.data.bars.findIndex(x=>x.time===sig.signalBarStart)
       };
     }
     if(S.selectedCandidate)result.pattern_candidate={id:S.selectedCandidate.id,rule_version:S.selectedCandidate.version,kind:S.selectedCandidate.type,detected_at_utc:iso(S.selectedCandidate.at),direction:S.selectedCandidate.side,range_boundary:S.selectedCandidate.boundary,reference_close:S.selectedCandidate.trigger,illustrative_invalidation:S.selectedCandidate.invalidation,confirmation_checks:S.selectedCandidate.checks,profitability:"NOT_TESTED",outcome:"UNKNOWN"};
