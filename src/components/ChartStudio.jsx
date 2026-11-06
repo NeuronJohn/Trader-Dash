@@ -85,6 +85,7 @@ export default function ChartStudio({trades = []}) {
   const fileRef = useRef(null);
   const loadCounter = useRef(0);
   const saveQueue = useRef(Promise.resolve());
+  const annotationQueue = useRef(Promise.resolve());
   const snapshotRef = useRef([]);
   const endIndex = replay ? Math.min(replayEnd,dataset.candles.length-1) : dataset.candles.length-1;
   const firstVisible = Math.max(0,endIndex-windowSize+1);
@@ -122,7 +123,9 @@ export default function ChartStudio({trades = []}) {
 
   function saveAnnotations(next) {
     setAnnotations(next);
-    putChartRecord("annotations",{id:dataset.id,list:next,updatedAt:nowIso()}).catch(e=>setError("Could not save drawings: "+e.message));
+    const record={id:dataset.id,list:next,updatedAt:nowIso()};
+    annotationQueue.current=annotationQueue.current.catch(()=>{}).then(()=>putChartRecord("annotations",record))
+      .catch(e=>setError("Could not save drawings: "+e.message));
   }
   function addAnnotation(shape) {saveAnnotations([...annotations,shape]);}
   function editAnnotation(id,changes) {saveAnnotations(annotations.map(a=>a.id===id?{...a,...changes}:a));}
@@ -191,6 +194,7 @@ export default function ChartStudio({trades = []}) {
   async function deleteSnapshot(id) {
     if(!window.confirm("Permanently delete this snapshot and its notes?"))return;
     try {
+      await saveQueue.current.catch(()=>{});
       await removeChartRecord("snapshots",id);
       const next=snapshotRef.current.filter(s=>s.id!==id);
       snapshotRef.current=next;setSnapshots(next);
