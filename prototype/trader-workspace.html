@@ -385,15 +385,18 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
   function savePrefs(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({dataId:S.data.id}))}catch(e){toast("Preferences not saved; export your work")}}
   function activeDrawings(){return S.replay?S.replayDrawings.filter(mark=>mark.createdReveal<=S.reveal):S.drawings}
-  function visible(){const max=S.replay?S.reveal:S.data.bars.length-1;return {start:Math.max(0,max-S.visible+1),end:max,bars:S.data.bars.slice(Math.max(0,max-S.visible+1),max+1)}}
+  function visible(){const limit=S.replay?S.reveal:S.data.bars.length-1;const end=clamp(S.viewportEnd==null?limit:S.viewportEnd,0,limit);const start=Math.max(0,end-S.visible+1);
+    return {start,end,bars:S.data.bars.slice(start,end+1)};
+  }
   const canvas=$("chart"),ctx=canvas.getContext("2d");
   const geom={};
   function resized(){const rect=$("chartWrap").getBoundingClientRect();if(rect.width<10)return;const dpr=Math.min(devicePixelRatio||1,2);
     canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr);canvas.style.width=rect.width+"px";canvas.style.height=rect.height+"px";
     ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
-  function chartMeta(){const width=canvas.clientWidth||700,height=canvas.clientHeight||400,padR=73,padL=11,padT=24,padB=35;
-    const a=visible(),maxPrice=Math.max(...a.bars.map(x=>x.high)),minPrice=Math.min(...a.bars.map(x=>x.low)),padding=Math.max((maxPrice-minPrice)*.12,.15);
-    const max=maxPrice+padding,min=minPrice-padding, plotW=width-padR-padL,plotH=height-padT-padB;
+  function chartMeta(){const width=canvas.clientWidth||700,height=canvas.clientHeight||400,padR=84,padL=15,padT=28,padB=45;
+    const a=visible(),maxPrice=Math.max(...a.bars.map(x=>x.high)),minPrice=Math.min(...a.bars.map(x=>x.low));
+    const padding=Math.max((maxPrice-minPrice)*.10,Math.abs(maxPrice)*.00003,.005);
+    const max=maxPrice+padding,min=minPrice-padding,plotW=width-padR-padL,plotH=height-padT-padB;
     return {a,w:width,h:height,L:padL,T:padT,R:padR,B:padB,plotW,plotH,max,min,step:plotW/Math.max(a.bars.length,1)}
   }
   function xFor(i,m){return m.L+(i-m.a.start+.5)*m.step}
@@ -403,25 +406,127 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   function dataFromEvent(event){const r=canvas.getBoundingClientRect(),x=event.clientX-r.left,y=event.clientY-r.top,m=chartMeta();if(x<m.L||x>m.w-m.R||y<m.T||y>m.h-m.B)return null;
     return {index:ixFrom(x,m),price:priceFrom(y,m),x,y,m}}
   function line(x1,y1,x2,y2,color,width=1,dash=[]){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore()}
-  function draw(){if(!S.data||!canvas.clientWidth)return;const m=chartMeta();Object.assign(geom,m);ctx.clearRect(0,0,m.w,m.h);ctx.fillStyle="#0f161e";ctx.fillRect(0,0,m.w,m.h);
-    ctx.save();ctx.fillStyle="#111c25";ctx.fillRect(m.L,m.T,m.plotW,m.plotH);
-    ctx.textBaseline="middle";ctx.font="10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono");
+  function drawingPoints(mark){
+    if(mark.type==="brush")return mark.points||[];
+    if(["line","rectangle","arrow"].includes(mark.type))return [mark.p1,mark.p2].filter(Boolean);
+    if(mark.type==="note")return [{index:mark.index,price:mark.price}];
+    return [];
+  }
+  function shapePath(points,m,close=false){
+    if(!points?.length)return;
+    ctx.beginPath();points.forEach((p,i)=>{const x=xFor(p.index,m),y=yFor(p.price,m);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y)});
+    if(close)ctx.closePath();
+  }
+  function draw(){
+    if(!S.data||!canvas.clientWidth)return;
+    const m=chartMeta();Object.assign(geom,m);
+    ctx.clearRect(0,0,m.w,m.h);ctx.fillStyle="#0c131b";ctx.fillRect(0,0,m.w,m.h);
+    ctx.fillStyle="#0f1a23";ctx.fillRect(m.L,m.T,m.plotW,m.plotH);
+    ctx.font="11px ui-monospace,Consolas,monospace";ctx.textBaseline="middle";
     const range=m.max-m.min;
-    for(let t=0;t<=5;t++){const p=m.min+range*t/5,y=yFor(p,m);line(m.L,y,m.w-m.R,y,"#293845",1,[2,5]);ctx.fillStyle="#9aa9b7";ctx.fillText(p.toFixed(range<10?3:2),m.w-m.R+9,y)}
-    const marks=6,step=Math.max(1,Math.floor(m.a.bars.length/marks));
-    m.a.bars.forEach((b,j)=>{if(j%step===0){const x=xFor(m.a.start+j,m);line(x,m.T,x,m.h-m.B,"#21303d",.6,[2,8]);ctx.fillStyle="#7e93a2";ctx.fillText(iso(b.time).slice(5,16).replace("T"," ")+ "Z",Math.min(m.w-130,x+3),m.h-16)}});
-    ctx.save();ctx.beginPath();ctx.rect(m.L,m.T,m.plotW,m.plotH);ctx.clip();
-    m.a.bars.forEach((b,j)=>{const i=m.a.start+j,x=xFor(i,m),up=b.close>=b.open,color=up?"#50c19f":"#e38085";
-      line(x,yFor(b.high,m),x,yFor(b.low,m),color,Math.max(1,Math.min(1.5,m.step*.12)));
-      ctx.fillStyle=color;const y1=yFor(Math.max(b.open,b.close),m),y2=yFor(Math.min(b.open,b.close),m);ctx.fillRect(x-Math.max(1.5,m.step*.32),y1,Math.max(3,Math.min(12,m.step*.64)),Math.max(1.2,y2-y1));
-    });
-    for(const mark of activeDrawings()){if(mark.type==="level"){const y=yFor(mark.price,m);line(m.L,y,m.w-m.R,y,"#d6b773",1.2,[7,4]);ctx.fillStyle="#e7c88c";ctx.fillText("LEVEL",m.L+10,y-8)}
-      if(mark.type==="note"&&mark.index>=m.a.start&&mark.index<=m.a.end){const x=xFor(mark.index,m),y=yFor(mark.price,m);ctx.beginPath();ctx.fillStyle="#d7b978";ctx.arc(x,y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle="#1f2020";ctx.font="bold 10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono");ctx.fillText("N",x-3,y+1);ctx.font="10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono")}
+    const digits=range<.05?5:range<1?4:range<20?3:2;
+    ctx.textAlign="left";
+    for(let t=0;t<=5;t++){
+      const p=m.min+range*t/5,y=yFor(p,m);
+      line(m.L,y,m.w-m.R,y,"#293744",.75,[2,5]);
+      ctx.fillStyle="#9aa8b6";ctx.fillText(p.toFixed(digits),m.w-m.R+11,y);
     }
-    if(S.selection){let l=xFor(Math.max(m.a.start,S.selection[0]),m),r=xFor(Math.min(m.a.end,S.selection[1]),m);if(r>=l){ctx.fillStyle="rgba(114,176,160,.14)";ctx.fillRect(l,m.T,r-l+m.step,m.plotH);line(l,m.T,l,m.h-m.B,"#95caba",1,[4,3]);line(r+m.step,m.T,r+m.step,m.h-m.B,"#95caba",1,[4,3])}}
-    if(S.drag&&S.tool==="select"){const l=xFor(S.drag.start,m),r=xFor(S.drag.end,m);ctx.fillStyle="rgba(114,176,160,.12)";ctx.fillRect(Math.min(l,r),m.T,Math.abs(r-l)||m.step,m.plotH)}
-    if(S.hover){const h=S.hover,x=xFor(h.index,m),y=yFor(h.price,m);line(x,m.T,x,m.h-m.B,"#829caa",.85,[3,5]);line(m.L,y,m.w-m.R,y,"#829caa",.85,[3,5]);}
-    ctx.restore();ctx.restore();
+    const maxLabels=Math.max(2,Math.floor(m.plotW/136));
+    const interval=Math.max(1,Math.ceil(m.a.bars.length/maxLabels));
+    ctx.textAlign="center";
+    for(let j=0;j<m.a.bars.length;j+=interval){
+      const bar=m.a.bars[j],x=xFor(m.a.start+j,m);
+      line(x,m.T,x,m.h-m.B,"#263440",.6,[2,8]);
+      ctx.fillStyle="#899cab";
+      const label=iso(bar.time).slice(5,16).replace("T"," ")+"Z";
+      const safeX=clamp(x,m.L+57,m.w-m.R-57);
+      if(Math.abs(safeX-x)<27)ctx.fillText(label,safeX,m.h-21);
+    }
+    ctx.save();ctx.beginPath();ctx.rect(m.L,m.T,m.plotW,m.plotH);ctx.clip();
+    for(let j=0;j<m.a.bars.length;j++){
+      const b=m.a.bars[j],x=xFor(m.a.start+j,m);
+      const up=b.close>=b.open,color=up?"#57c5a4":"#e18389";
+      const bodyWidth=Math.max(2,Math.min(21,m.step*.7));
+      line(x,yFor(b.high,m),x,yFor(b.low,m),color,Math.max(1,Math.min(1.5,bodyWidth*.12)));
+      const hiY=yFor(Math.max(b.open,b.close),m),loY=yFor(Math.min(b.open,b.close),m);
+      ctx.fillStyle=color;ctx.fillRect(x-bodyWidth/2,hiY,bodyWidth,Math.max(1.35,loY-hiY));
+    }
+    // Highlight a research candidate without presenting it as a trading signal.
+    if(S.selectedCandidate){
+      const c=S.selectedCandidate;
+      if(c.index>=m.a.start-6&&c.lookbackStart<=m.a.end){
+        const x1=xFor(c.lookbackStart,m),x2=xFor(c.index,m),x3=xFor(c.breakIndex,m);
+        ctx.fillStyle="rgba(91,169,154,.08)";
+        ctx.fillRect(Math.max(m.L,x1),m.T,Math.max(0,Math.min(m.w-m.R,x2)-Math.max(m.L,x1)),m.plotH);
+        line(x1,yFor(c.boundary,m),x2,yFor(c.boundary,m),"#79b9b2",1.25,[5,4]);
+        const invalidY=yFor(c.invalidation,m);
+        line(x3,invalidY,x2,invalidY,"#d29f85",1.15,[3,5]);
+        const ix=xFor(c.index,m),iy=yFor(c.trigger,m);
+        ctx.beginPath();ctx.arc(ix,iy,6,0,Math.PI*2);ctx.fillStyle="#b7e6d5";ctx.fill();
+        ctx.strokeStyle="#263e3a";ctx.lineWidth=2;ctx.stroke();
+        ctx.textAlign="left";ctx.fillStyle="#bde3db";ctx.fillText("MATCH",clamp(ix+11,m.L+5,m.w-m.R-68),clamp(iy-12,m.T+13,m.h-m.B-12));
+      }
+    }
+    for(const mark of activeDrawings()){
+      if(mark.hidden)continue;
+      const selected=mark.id===S.selectedDrawing;
+      const ink=selected?"#e6ead9":"#d7bd81";
+      ctx.save();ctx.strokeStyle=ink;ctx.fillStyle=ink;ctx.lineWidth=selected?2.5:1.8;ctx.lineJoin="round";ctx.lineCap="round";
+      if(mark.type==="level"){
+        const y=yFor(mark.price,m);ctx.setLineDash([6,4]);line(m.L,y,m.w-m.R,y,ink,selected?2.5:1.5,[6,4]);
+        ctx.setLineDash([]);ctx.textAlign="left";ctx.fillText((mark.label||"LEVEL").slice(0,25),m.L+8,clamp(y-11,m.T+13,m.h-m.B-10));
+      }
+      if(mark.type==="note"&&mark.index>=m.a.start&&mark.index<=m.a.end){
+        const x=xFor(mark.index,m),y=yFor(mark.price,m);
+        ctx.beginPath();ctx.arc(x,y,selected?9:7.5,0,Math.PI*2);ctx.fill();ctx.fillStyle="#152026";ctx.font="bold 11px ui-sans-serif";ctx.textAlign="center";ctx.fillText("N",x,y+.5);
+        if(mark.label){ctx.font="11px ui-sans-serif";ctx.fillStyle="#e3cc9f";ctx.textAlign="left";ctx.fillText(mark.label.slice(0,30),x+13,clamp(y-12,m.T+12,m.h-m.B-10));}
+      }
+      if(mark.type==="line"||mark.type==="arrow"){
+        if(mark.p1&&mark.p2){
+          const ax=xFor(mark.p1.index,m),ay=yFor(mark.p1.price,m),bx=xFor(mark.p2.index,m),by=yFor(mark.p2.price,m);
+          line(ax,ay,bx,by,ink,selected?2.6:1.9);
+          if(mark.type==="arrow"){const angle=Math.atan2(by-ay,bx-ax),L=12;
+            line(bx,by,bx-L*Math.cos(angle-.52),by-L*Math.sin(angle-.52),ink,2);
+            line(bx,by,bx-L*Math.cos(angle+.52),by-L*Math.sin(angle+.52),ink,2);}
+        }
+      }
+      if(mark.type==="rectangle"&&mark.p1&&mark.p2){
+        const x1=xFor(mark.p1.index,m),y1=yFor(mark.p1.price,m),x2=xFor(mark.p2.index,m),y2=yFor(mark.p2.price,m);
+        const l=Math.min(x1,x2),t=Math.min(y1,y2),w=Math.abs(x2-x1),h=Math.abs(y2-y1);
+        ctx.fillStyle="rgba(220,183,112,.09)";ctx.fillRect(l,t,w,h);ctx.strokeRect(l,t,w,h);
+      }
+      if(mark.type==="brush"&&mark.points?.length>1){shapePath(mark.points,m);ctx.stroke()}
+      if(selected&&mark.type!=="level"&&mark.type!=="brush"){
+        for(const p of drawingPoints(mark)){const x=xFor(p.index,m),y=yFor(p.price,m);
+          ctx.fillStyle="#f0ebcd";ctx.fillRect(x-3,y-3,6,6)}
+      }
+      ctx.restore();
+    }
+    if(S.selection){
+      const lo=Math.max(m.a.start,Math.min(...S.selection)),hi=Math.min(m.a.end,Math.max(...S.selection));
+      if(hi>=lo){const l=xFor(lo,m)-m.step/2,r=xFor(hi,m)+m.step/2;
+        ctx.fillStyle="rgba(114,176,160,.13)";ctx.fillRect(l,m.T,Math.max(1,r-l),m.plotH);
+        line(l,m.T,l,m.h-m.B,"#8fc8bb",1,[4,4]);line(r,m.T,r,m.h-m.B,"#8fc8bb",1,[4,4]);}
+    }
+    if(S.drag?.kind==="range"){
+      const lo=Math.min(S.drag.start,S.drag.end),hi=Math.max(S.drag.start,S.drag.end);
+      const l=xFor(lo,m)-m.step/2,r=xFor(hi,m)+m.step/2;
+      ctx.fillStyle="rgba(114,176,160,.17)";ctx.fillRect(l,m.T,Math.max(1,r-l),m.plotH);
+    }
+    if(S.drag?.kind==="new" && S.drag.preview){
+      const mark=S.drag.preview;
+      ctx.save();ctx.strokeStyle="#e5d4ab";ctx.lineWidth=1.8;ctx.setLineDash([4,3]);
+      if(mark.type==="brush"){shapePath(mark.points,m);ctx.stroke()}
+      else if(mark.type==="rectangle"){ctx.strokeRect(Math.min(xFor(mark.p1.index,m),xFor(mark.p2.index,m)),Math.min(yFor(mark.p1.price,m),yFor(mark.p2.price,m)),Math.abs(xFor(mark.p2.index,m)-xFor(mark.p1.index,m)),Math.abs(yFor(mark.p2.price,m)-yFor(mark.p1.price,m)))}
+      else if(mark.p1&&mark.p2){line(xFor(mark.p1.index,m),yFor(mark.p1.price,m),xFor(mark.p2.index,m),yFor(mark.p2.price,m),"#e5d4ab",1.8,[4,3])}
+      ctx.restore();
+    }
+    if(S.hover){
+      const x=xFor(S.hover.index,m),y=yFor(S.hover.price,m);
+      line(x,m.T,x,m.h-m.B,"#89a5ad",.8,[4,5]);
+      line(m.L,y,m.w-m.R,y,"#89a5ad",.8,[4,5]);
+    }
+    ctx.restore();
   }
 
   // Candidate detector: close-of-bar information only. It never infers profitability.
