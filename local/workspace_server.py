@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "prototype" / "trader-workspace.html"
 TOKEN = secrets.token_urlsafe(32)
 MAX_BODY = 120_000
+ANALYST_GATE = threading.BoundedSemaphore(1)
 ALLOWED_MODELS = re.compile(r"^[a-zA-Z0-9_.:/-]{1,80}$")
 if not ALLOWED_MODELS.fullmatch(MODEL):
     raise SystemExit("Invalid TRADER_OLLAMA_MODEL value")
@@ -156,6 +157,20 @@ def validate_context(payload: object) -> dict:
                 "time": d.get("at") if isinstance(d.get("at"), str) else None,
                 "price": d.get("price") if isinstance(d.get("price"), (int, float)) else None,
             })
+    saved_cases = evidence.get("saved_cases", [])
+    if not isinstance(saved_cases, list):
+        saved_cases = []
+    safe_cases = []
+    for case in saved_cases[:8]:
+        if isinstance(case, dict):
+            safe_cases.append({
+                "id": compact_text(case.get("id"), 120),
+                "date": compact_text(case.get("at"), 40),
+                "symbol": compact_text(case.get("symbol"), 40),
+                "setup": compact_text(case.get("setup"), 130),
+                "user_note": compact_text(case.get("note"), 800),
+                "source": compact_text(case.get("source"), 35),
+            })
     notes = evidence.get("notes", {})
     if not isinstance(notes, dict):
         notes = {}
@@ -186,6 +201,7 @@ def validate_context(payload: object) -> dict:
             "thesis": compact_text(notes.get("thesis"), 2000),
         },
         "candidate": candidate,
+        "user_selected_prior_cases": safe_cases,
         "disclaimers": [
             "Historical structural matches have not been tested for edge",
             "No connected broker fills, bid/ask spread, margin, or verified prices",
@@ -284,17 +300,23 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(raw)
             evidence = validate_context(payload)
             started = time.monotonic()
-            result = ollama_request("/api/chat", payload={
-                "model": MODEL,
-                "stream": False,
-                "format": "json",
-                "options": {"temperature": 0.2, "num_predict": 900},
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": json.dumps(evidence, separators=(",", ":"))},
-                ],
-            }, timeout=180)
-            analysis = structured_analysis(result)
+            if not ANALYST_GATE.acquire(blocking=False):
+                self._reply(429, {"ok": False, "error": "Local analyst is already processing a request"})
+                return
+            try:
+                result = ollama_request("/api/chat", payload={
+                    "model": MODEL,
+                    "stream": False,
+                    "format": "json",
+                    "options": {"temperature": 0.2, "num_predict": 900},
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": json.dumps(evidence, separators=(",", ":"))},
+                    ],
+                }, timeout=180)
+                analysis = structured_analysis(result)
+            finally:
+                ANALYST_GATE.release()
             self._reply(200, {
                 "ok": True, "mode": "local_ollama", "model": MODEL, "analysis": analysis,
                 "execution": False, "cloud_calls": 0,
