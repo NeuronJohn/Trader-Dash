@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Trader / Research Workspace — Foundation</title>
+<style>
+:root{--bg:#090d12;--shell:#0d1219;--panel:#111820;--panel2:#141d27;--raised:#19232e;--edge:#25313d;--hair:#1d2731;--text:#edf1f5;--muted:#9aa7b5;--dim:#718091;--accent:#9bcfc4;--teal:#46b99c;--red:#e17d82;--amber:#d7b978;--font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:13px/1.45 var(--font)}
+button,input,select,textarea{font:inherit}button{cursor:pointer;color:inherit}button:disabled{opacity:.35;cursor:not-allowed}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #6fa99d;outline-offset:2px}
+svg{display:block}h1,h2,h3,p{margin:0}strong{font-weight:640}
+.mono{font-family:var(--mono)}.muted{color:var(--muted)}.dim{color:var(--dim)}.small{font-size:11px}.eyebrow{font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:.13em;color:var(--dim)}.hidden{display:none!important}
+.app{height:100dvh;display:grid;grid-template-columns:208px minmax(430px,1fr) 338px;grid-template-rows:58px minmax(0,1fr) 30px;min-width:0}
+.topbar{grid-column:1/-1;display:flex;align-items:center;gap:18px;border-bottom:1px solid var(--hair);padding:0 19px;background:#0e141c}
+.brand{width:187px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:750;letter-spacing:-.035em;white-space:nowrap}
+.brandlogo{height:26px;width:26px;border:1px solid #577e76;border-radius:8px;color:#aeddd3;display:grid;place-items:center;font-size:15px}
+.toplabel{display:flex;align-items:center;gap:10px;min-width:0}
+.toplabel strong{font-size:12px;font-weight:600}
+.toplabel .sep{color:#566370}
+.spacer{flex:1}
+.topstatus{display:flex;align-items:center;gap:7px;color:#aeb8c4;font-size:11px;white-space:nowrap}
+.dot{height:6px;width:6px;border-radius:50%;background:var(--amber)}
+.top-btn{border:1px solid var(--edge);background:var(--panel);border-radius:8px;padding:7px 11px;font-size:11px}
+.top-btn:hover{border-color:#415363}
+.sidebar{grid-column:1;grid-row:2;min-height:0;background:#0d131b;border-right:1px solid var(--hair);display:flex;flex-direction:column;padding:18px 11px}
+.sidehead{padding:0 10px 11px}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav button{border:1px solid transparent;background:transparent;border-radius:8px;display:flex;align-items:center;gap:11px;text-align:left;padding:11px 13px;color:#9aa8b7;font-size:12px}
+.nav button:hover{background:#17212c;color:var(--text)}
+.nav button.active{background:#1b2932;border-color:#2a3d43;color:#c9ebe3;font-weight:600}
+.nav .ic{display:grid;place-items:center;width:17px;font-size:16px;font-weight:450}
+.hr{height:1px;background:var(--hair);margin:16px 4px}
+.sidebox{padding:0 10px}
+.marketline{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--hair)}
+.marketsym{font-weight:650;font-size:12px}
+.marketsub{font-size:10px;color:var(--dim);margin-top:2px}
+.mktbadge{font:10px var(--mono);color:#a7b8c8}
+.sidebottom{margin-top:auto;padding:12px 10px 1px}
+.sidebottom .note{font-size:11px;color:var(--dim);line-height:1.7}
+.main{grid-column:2;grid-row:2;min-height:0;min-width:0;overflow-y:auto;padding:19px 22px 26px;scrollbar-color:#34414c transparent}
+.assistant{grid-column:3;grid-row:2;min-height:0;background:#101720;border-left:1px solid var(--hair);display:flex;flex-direction:column}
+.app.hide-ai{grid-template-columns:208px minmax(430px,1fr) 0}
+.app.hide-ai .assistant{display:none}
+.ai-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:11px;background:#0e141a;border:1px solid #26333d;border-radius:8px;padding:3px}
+.ai-modes button{border:0;background:transparent;border-radius:5px;padding:7px 3px;font-size:10px;color:#8e9fac}
+.ai-modes button.active{background:#243b3a;color:#d2ede5;font-weight:700}
+.statusbar{grid-column:1/-1;grid-row:3;border-top:1px solid var(--hair);display:flex;align-items:center;gap:18px;padding:0 17px;font-size:10px;color:#81909f;background:#0e141a}
+.statusbar .right{margin-left:auto}
+.workspace-title{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin:1px 0 19px}
+.workspace-title h1{font-size:21px;font-weight:630;letter-spacing:-.04em}
+.workspace-title p{margin-top:5px;color:var(--muted);font-size:12px}
+.action-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.btn{border:1px solid var(--edge);background:var(--panel2);padding:8px 11px;border-radius:8px;font-size:11px;font-weight:580;white-space:nowrap}
+.btn:hover{background:#1e2c37;border-color:#425464}
+.btn.primary{background:#b3d9cd;color:#132824;border-color:#b3d9cd;font-weight:750}
+.btn.primary:hover{background:#c7e8dc}
+.btn.subtle{background:transparent}
+.btn.active{background:#234039;border-color:#547b70;color:#d4efe6}
+.btn.danger{color:#eeb0b4}
+.btn.icon{font-size:14px;min-width:31px;padding:6px 9px}
+.panel{border:1px solid var(--edge);border-radius:11px;background:var(--panel)}
+.chartbox{overflow:hidden}
+.chart-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--hair)}
+.instrument-name{font-weight:740;font-size:15px}
+.instrument-meta{display:flex;align-items:center;gap:9px;font:11px var(--mono);color:#91a0af}
+.sourcetag{border:1px solid #654e33;color:#e3c894;background:#302619;padding:4px 7px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.045em}
+.sourcetag.imported{border-color:#355c65;color:#a4d1d5;background:#182c34}
+.chart-toolbar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--hair);background:#111922}
+.chart-toolbar .btn{padding:7px 10px}
+.chart-toolbar .tool-active{background:#24433d;color:#d6f2e8;border-color:#4b7168}
+.chartwrap{height:min(55vh,510px);min-height:330px;position:relative;background:#0f161e}
+canvas{display:block;width:100%;height:100%;cursor:crosshair}
+.chart-overlay-status{position:absolute;left:16px;top:13px;pointer-events:none;color:#c7d3de;font:11px var(--mono);text-shadow:0 1px 4px #0b1119}
+.chart-overlay-status strong{color:#eaf2f8}
+.chart-overlay-foot{position:absolute;bottom:9px;left:14px;pointer-events:none;color:#7c90a2;font:10px var(--mono)}
+.chart-bottom{padding:11px 15px;display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:10px;border-top:1px solid var(--hair)}
+.replay-controls{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px}
+.replay-controls input{accent-color:var(--accent)}
+.replay-controls button{padding:5px 9px}
+.detail-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.78fr);gap:13px;margin-top:13px}
+.minipanel{border:1px solid var(--edge);border-radius:10px;background:#111820;padding:15px}
+.minipanel h3{font-size:12px;font-weight:680;margin-bottom:12px}
+.label{display:block;color:#9dacb9;font-size:11px;margin-bottom:6px}
+.field,textarea,select{border:1px solid #31404c;background:#0e151d;color:var(--text);border-radius:8px;padding:10px 11px;width:100%;min-width:0}
+.field::placeholder,textarea::placeholder{color:#697989}
+textarea{resize:vertical;min-height:72px}
+.fieldrow{display:flex;gap:9px;align-items:center}
+.divider{height:1px;background:var(--hair);margin:13px 0}
+.flex{display:flex;align-items:center;gap:8px}
+.between{justify-content:space-between}
+.empty{color:#708393;font-size:12px;line-height:1.7;padding:10px 0}
+.numberbox{font:20px var(--mono);color:#dce6eb}
+.summary-stripe{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 15px}
+.summary-item{border:1px solid var(--edge);border-radius:9px;padding:13px;background:#111820}
+.summary-item .value{font:20px var(--mono);font-weight:600;margin-top:6px}
+.summary-item .hint{font-size:10px;color:var(--dim);margin-top:5px}
+.assistant-head{padding:17px 18px 13px;border-bottom:1px solid var(--hair)}
+.assistant-title{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.assistant-title h2{font-size:14px;font-weight:700;letter-spacing:-.02em}
+.ai-state{font-size:10px;padding:4px 6px;border:1px solid #5b4d34;border-radius:5px;color:#ddc38f}
+.ai-state.connected{color:#b9e3d6;border-color:#3f665a}
+.assistant-head p{margin-top:8px;font-size:11px;color:#91a2af;line-height:1.7}
+.ai-scroll{min-height:0;overflow:auto;flex:1;padding:18px 17px}
+.ai-section{margin-bottom:22px}
+.ai-section h3{font-size:11px;font-weight:700;margin-bottom:11px}
+.context-row{display:flex;align-items:start;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #1e2933;font-size:11px}
+.context-row .k{color:#899bab}
+.context-row .v{text-align:right;color:#dae3e9;max-width:170px;overflow-wrap:anywhere}
+.scope{display:flex;flex-wrap:wrap;gap:6px}
+.scope button{border:1px solid #34414c;background:#151f2a;border-radius:6px;font-size:10px;padding:7px 9px;color:#aab9c7}
+.scope button.active{border-color:#537569;background:#1d3733;color:#c8e9df}
+.ai-item{border:1px solid var(--edge);border-radius:9px;padding:11px 12px;margin-bottom:9px;background:#131d26}
+.ai-item .cat{color:#a3b6c2;font-size:10px;text-transform:uppercase;letter-spacing:.09em}
+.ai-item .body{margin-top:6px;font-size:11px;color:#ced7df;line-height:1.7}
+.ai-item.warn{border-color:#514435;background:#201d19}
+.ai-composer{border-top:1px solid var(--hair);padding:14px 16px 17px;background:#111922}
+.ai-composer textarea{min-height:89px;max-height:170px;font-size:12px;line-height:1.6}
+.prompt-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.prompt{background:transparent;border:1px solid #34414b;border-radius:20px;padding:6px 9px;color:#aebdc9;font-size:10px}
+.prompt:hover{border-color:#6c8b87;color:#d9ebe6}
+.composer-footer{margin-top:10px;display:flex;align-items:center;gap:7px;justify-content:space-between}
+.composer-footer .muted{font-size:10px}
+.msg{padding:8px 10px;margin:7px 0;border-radius:7px;background:#1b2a32;font-size:11px;line-height:1.7;color:#b8dbd0}
+.notice{border:1px solid #67563d;background:#2a241b;color:#e1c48f;border-radius:9px;font-size:11px;line-height:1.65;padding:12px;margin:10px 0}
+.labgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.strategy{border:1px solid var(--edge);background:#111820;border-radius:11px;padding:18px;min-height:210px;display:flex;flex-direction:column}
+.strategy h3{font-size:14px;font-weight:690;margin:11px 0 7px}
+.strategy p{font-size:12px;color:#9eaebd;line-height:1.7}
+.strategy .foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:20px}
+.strategy .status{font-size:10px;color:#c2ae82;border:1px solid #554832;border-radius:5px;padding:4px 6px}
+.stage{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.stage i{font-size:10px;font-weight:750;display:grid;place-items:center;font-style:normal;border:1px solid #39564e;color:#b7dccc;width:24px;height:24px;border-radius:7px}
+.lab-note{font-size:12px;color:#a0adba;line-height:1.7;margin:15px 0 4px}
+.journal-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.snap{border:1px solid var(--edge);background:var(--panel);border-radius:10px;padding:10px;text-align:left;overflow:hidden}
+.snap:hover{border-color:#68837f}
+.snap img{width:100%;height:156px;object-fit:cover;display:block;border-radius:6px;background:#0c141b}
+.snap .snapmeta{padding:10px 3px 2px}
+.snap .snapmeta strong{font-size:12px}
+.snap .snapmeta p{color:var(--dim);font-size:11px;margin-top:6px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.journal-preview{padding:13px;margin-top:14px;display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px}
+.journal-preview img{width:100%;border:1px solid var(--edge);border-radius:8px}
+.subtle-link{border:0;background:none;color:#a8d3ca;font-size:11px;text-decoration:underline;padding:3px}
+.pill{padding:4px 7px;background:#21332f;border-radius:5px;font-size:10px;color:#bedfd4}
+.review-block{white-space:pre-wrap;color:#b4c3ce;font-size:12px;line-height:1.7}
+.toast{position:fixed;left:50%;bottom:53px;transform:translateX(-50%);z-index:10;padding:10px 15px;border:1px solid #536c64;border-radius:9px;background:#192b29;color:#dcf3eb;box-shadow:0 12px 40px #0008;font-size:12px;max-width:min(500px,94vw)}
+kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;font:10px var(--mono)}
+@media(max-width:1250px){.app{grid-template-columns:170px minmax(350px,1fr) 305px}.app.hide-ai{grid-template-columns:170px minmax(350px,1fr) 0}.brand{width:145px}.main{padding:16px}.detail-grid{grid-template-columns:1fr}.assistant-head{padding:15px}.ai-scroll{padding:14px}}
+@media(max-width:1050px){.app,.app.hide-ai{grid-template-columns:165px minmax(0,1fr);grid-template-rows:55px minmax(0,1fr) 32px}.assistant{grid-column:2;grid-row:2;position:relative;border-left:0;border-top:1px solid var(--hair);height:420px;min-height:0}.main{grid-column:2;grid-row:2;overflow:auto;padding-bottom:445px}.assistant{display:none}.app.show-ai .assistant{display:flex;position:fixed;z-index:4;right:0;top:55px;bottom:30px;height:auto;width:min(350px,calc(100vw - 165px));box-shadow:-16px 0 50px #0008}.app.show-ai .main{padding-bottom:26px}.topstatus{display:none}.chartwrap{height:420px}}
+@media(max-width:640px){.app,.app.hide-ai{grid-template-columns:1fr;grid-template-rows:54px minmax(0,1fr) 29px}.sidebar{display:none}.main{grid-column:1;grid-row:2;padding:15px}.brand{width:auto}.toplabel{display:none}.topbar{padding:0 12px}.workspace-title{flex-direction:column}.chartwrap{height:370px;min-height:300px}.summary-stripe{grid-template-columns:1fr 1fr}.labgrid,.journal-list,.journal-preview{grid-template-columns:1fr}.app.show-ai .assistant{width:100vw;top:54px;bottom:29px}.statusbar{gap:8px}.statusbar .right{display:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand"><span class="brandlogo">T</span><span>TRADER<span style="color:#79938c"> / </span>LAB</span></div>
+    <div class="toplabel"><span class="sep">/</span><strong id="breadcrumb">Workspace</strong><span class="sep">/</span><span class="muted" id="breadcrumbsuf">Chart research</span></div>
+    <div class="spacer"></div>
+    <div class="topstatus"><span class="dot"></span> Local prototype <span style="color:#5f6a75">·</span> No execution</div>
+    <button class="top-btn" id="exportBtn">Export journal</button>
+    <button class="top-btn" id="toggleAiBtn">Analyst panel</button>
+  </header>
+  <aside class="sidebar">
+    <div class="sidehead eyebrow">Research</div>
+    <nav class="nav">
+      <button class="active" data-view="workspace"><span class="ic">▤</span> Workspace</button>
+      <button data-view="lab"><span class="ic">◇</span> Strategy lab</button>
+      <button data-view="journal"><span class="ic">▦</span> Visual journal</button>
+    </nav>
+    <div class="hr"></div>
+    <div class="sidebox">
+      <p class="eyebrow">Selected market</p>
+      <div class="marketline"><div><div class="marketsym" id="sideSymbol">DEMO</div><div class="marketsub" id="sideMarketSub">Synthetic candles</div></div><span class="mktbadge">5m</span></div>
+      <div class="marketline"><div><div class="marketsym">Topstep / Futures</div><div class="marketsub">Broker not linked</div></div><span class="mktbadge">OFF</span></div>
+      <div class="marketline"><div><div class="marketsym">Spot FX</div><div class="marketsub">Broker not linked</div></div><span class="mktbadge">OFF</span></div>
+    </div>
+    <div class="sidebottom"><p class="eyebrow" style="margin-bottom:8px">Workspace rules</p><p class="note">Research first. Importable evidence. Every conclusion is traceable. No order routing in this prototype.</p></div>
+  </aside>
+  <main class="main">
+    <section id="view-workspace">
+      <div class="workspace-title"><div><h1>Market workspace</h1><p>Study price, annotate decisions, and capture the evidence.</p></div>
+      <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo data</button><button class="btn primary" id="captureBtn">Capture snapshot</button></div></div>
+      <div class="panel chartbox">
+        <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
+        <div class="chart-toolbar">
+          <button class="btn tool-active" data-tool="inspect">⌖ &nbsp; Inspect</button>
+          <button class="btn" data-tool="select">▧ &nbsp; Select range</button>
+          <button class="btn" data-tool="level">─ &nbsp; Price level</button>
+          <button class="btn" data-tool="note">✎ &nbsp; Note marker</button>
+          <span class="spacer"></span>
+          <button class="btn subtle" id="undoMark" title="Undo last annotation">↶ &nbsp; Undo</button>
+          <button class="btn subtle" id="zoomOut" title="Show more candles">−</button>
+          <span class="mono small muted" id="zoomLabel">90 bars</span>
+          <button class="btn subtle" id="zoomIn" title="Show fewer candles">+</button>
+        </div>
+        <div class="chartwrap" id="chartWrap">
+          <canvas id="chart" aria-label="Interactive candle chart"></canvas>
+          <div class="chart-overlay-status" id="chartHover">Open/high/low/close · Move over chart</div>
+          <div class="chart-overlay-foot">Click to inspect · Select range to scope analyst · Draw levels or notes with the toolbar</div>
+        </div>
+        <div class="chart-bottom"><div class="replay-controls"><label class="flex"><input type="checkbox" id="replayToggle"> Historical reveal</label><button class="btn" id="replayBack">−1</button><button class="btn" id="replayNext">+1</button><button class="btn" id="replayTen">+10</button><span id="replayLabel" class="mono small muted">Full dataset</span></div><div id="rangeStatus" class="small muted">No range selected</div></div>
+      </div>
+      <div class="detail-grid">
+        <div class="minipanel">
+          <div class="flex between"><h3>Capture notes</h3><span class="eyebrow">Linked to snapshot</span></div>
+          <label class="label" for="setupName">Setup / idea</label><input class="field" id="setupName" placeholder="e.g. Opening-range pullback — variant A">
+          <div style="height:10px"></div>
+          <label class="label" for="thesis">What do you see, and what would invalidate it?</label>
+          <textarea id="thesis" placeholder="Write freely. Your reasoning matters more than a checkbox."></textarea>
+          <div class="divider"></div>
+          <div class="flex between"><span class="muted small">Chart image + candles + visible context + your notes</span><button class="btn" id="captureSecondary">Save to visual journal</button></div>
+        </div>
+        <div class="minipanel">
+          <div class="flex between"><h3>Session context</h3><span class="eyebrow">Objective values</span></div>
+          <div class="context-row"><span class="k">Price feed</span><span class="v" id="feedStatus">Synthetic / training only</span></div>
+          <div class="context-row"><span class="k">Selected candles</span><span class="v mono" id="selectedBars">Current view</span></div>
+          <div class="context-row"><span class="k">Chart markings</span><span class="v mono" id="markCount">0</span></div>
+          <div class="context-row"><span class="k">Recorded trades</span><span class="v mono">Not connected</span></div>
+          <p class="empty">The prototype never treats a chart pattern as a validated edge. Strategy results belong in separately audited tests.</p>
+        </div>
+      </div>
+    </section>
+    <section id="view-lab" class="hidden">
+      <div class="workspace-title"><div><h1>Strategy laboratory</h1><p>Build falsifiable hypotheses before putting money behind them.</p></div><span class="pill">Separate from live execution</span></div>
+      <div class="summary-stripe">
+        <div class="summary-item"><p class="eyebrow">Candidate strategies</p><div class="value">03</div><div class="hint">Hypotheses, not verified edges</div></div>
+        <div class="summary-item"><p class="eyebrow">Validated strategies</p><div class="value">00</div><div class="hint">No historical tests imported</div></div>
+        <div class="summary-item"><p class="eyebrow">Approved for live</p><div class="value">00</div><div class="hint">Requires independent risk checks</div></div>
+      </div>
+      <p class="lab-note">Choose a hypothesis to prepare an analysis packet. Exact triggers, entries, exits, fees, slippage, no-trade windows, and rejection criteria must be frozen before testing.</p>
+      <div class="labgrid">
+        <article class="strategy"><div class="stage"><i>01</i><span class="eyebrow">MES / MNQ · futures</span></div><h3>Opening-range continuation</h3><p>Test the first controlled pullback after a measured opening-range break in the direction of higher-timeframe trend.</p><div class="foot"><span class="status">Not tested</span><button class="btn" data-strategy="or-cont">Explore setup</button></div></article>
+        <article class="strategy"><div class="stage"><i>02</i><span class="eyebrow">MES / MNQ · futures</span></div><h3>Failed-breakout reversal</h3><p>Test when an excursion beyond the opening range returns inside, then fails to reclaim the extreme.</p><div class="foot"><span class="status">Not tested</span><button class="btn" data-strategy="or-fail">Explore setup</button></div></article>
+        <article class="strategy"><div class="stage"><i>03</i><span class="eyebrow">EUR/USD · spot FX</span></div><h3>Contraction → expansion</h3><p>Test volatility compression followed by a defined expansion trigger during liquid cross-market hours.</p><div class="foot"><span class="status">Not tested</span><button class="btn" data-strategy="fx-expand">Explore setup</button></div></article>
+        <article class="strategy" style="background:#141c24"><p class="eyebrow">Validation contract</p><h3>What constitutes evidence?</h3><p>Out-of-sample returns, independent time periods, realistic costs, net expectancy, drawdown survival, parameter stability, and forward-paper performance. A compelling chart alone is not evidence.</p><div class="foot"><span class="status">No benchmark runs</span></div></article>
+      </div>
+      <div class="minipanel" style="margin-top:13px"><div class="flex between"><h3 id="labDetailTitle">Choose a hypothesis</h3><button class="btn" id="prepareStrategy">Prepare AI research context</button></div><p id="labDetailText" class="empty">Choose one of the strategies above to view its experiment requirements.</p></div>
+    </section>
+    <section id="view-journal" class="hidden">
+      <div class="workspace-title"><div><h1>Visual journal</h1><p>Every snapshot should lead back to a decision and an explanation.</p></div><div class="action-row"><button class="btn" id="goWorkspace">New snapshot</button><button class="btn" id="journalExport">Export archive</button></div></div>
+      <div class="summary-stripe"><div class="summary-item"><div class="eyebrow">Saved snapshots</div><div class="value" id="snapshotCount">0</div><div class="hint">Locally stored captures</div></div><div class="summary-item"><div class="eyebrow">Linked live trades</div><div class="value">—</div><div class="hint">Not yet integrated</div></div><div class="summary-item"><div class="eyebrow">Evidence coverage</div><div class="value">—</div><div class="hint">No broker fills imported</div></div></div>
+      <div class="fieldrow"><input class="field" id="journalSearch" placeholder="Search notes, markets, or setups..."><button class="btn" id="refreshJournal">Refresh</button></div>
+      <div id="snapshotCards" class="journal-list"></div>
+      <div id="journalPreview" class="hidden"></div>
+    </section>
+  </main>
+  <aside class="assistant" id="assistant">
+    <div class="assistant-head"><div class="assistant-title"><h2>✦ &nbsp; AI Research Analyst</h2><span class="ai-state">MODEL OFFLINE</span></div><p>Scoped to your selected evidence. Nothing is sent to an external model in this foundation.</p><div class="ai-modes" role="group" aria-label="Analyst interaction mode"><button class="active" data-ai-mode="quiet" aria-pressed="true">Quiet</button><button data-ai-mode="assist" aria-pressed="false">Assist</button><button data-ai-mode="coach" aria-pressed="false">Coach</button></div></div>
+    <div class="ai-scroll">
+      <div class="ai-section"><div class="flex between" style="margin-bottom:12px"><h3 style="margin:0">Analysis context</h3><span class="eyebrow">Inspect before sending</span></div>
+        <div class="context-row"><span class="k">Source</span><span class="v" id="aiSource">Demo / synthetic</span></div>
+        <div class="context-row"><span class="k">Instrument</span><span class="v mono" id="aiSymbol">DEMO</span></div>
+        <div class="context-row"><span class="k">Evidence window</span><span class="v" id="aiWindow">Last visible 90 candles</span></div>
+        <div class="context-row"><span class="k">Chart notes</span><span class="v mono" id="aiMarks">0 attached</span></div>
+        <div class="context-row"><span class="k">Saved cases</span><span class="v mono" id="aiCases">0 snapshots</span></div>
+      </div>
+      <div class="ai-section"><h3>Include in context</h3><div class="scope">
+        <button class="active" data-scope="candles" aria-pressed="true">Candles</button>
+        <button class="active" data-scope="marks" aria-pressed="true">Annotations</button>
+        <button class="active" data-scope="notes" aria-pressed="true">Draft notes</button>
+        <button data-scope="history" aria-pressed="false">Journal cases</button>
+      </div><p class="small dim" style="margin-top:10px;line-height:1.7">Only selected sources enter a prepared context packet. Sensitive account credentials are never included.</p></div>
+      <div class="ai-section"><h3>Verified local observations</h3><div id="aiObservations"></div></div>
+      <div class="ai-section"><div class="flex between"><h3 style="margin:0">Context packet</h3><button class="subtle-link" id="copyContext">Copy JSON</button></div><p class="small muted" style="line-height:1.7;margin:9px 0">Prepared locally for a future connected model. Exact inputs, source type, and missing data are explicit.</p><pre id="packetPreview" style="margin:0;max-height:150px;overflow:auto;padding:10px;border:1px solid var(--edge);border-radius:7px;background:#0e151c;font:10px/1.65 var(--mono);color:#9db2bd;white-space:pre-wrap;overflow-wrap:anywhere">Select evidence and prepare an analysis.</pre></div>
+    </div>
+    <div class="ai-composer">
+      <div class="prompt-row"><button class="prompt" data-prompt="Review my selected chart context. Separate observations, uncertainties, and what could falsify an idea.">Review setup</button><button class="prompt" data-prompt="Identify decision-process mistakes supported by my notes and observed candle sequence. Do not invent trade history.">Audit decisions</button><button class="prompt" data-prompt="Propose a falsifiable strategy experiment with exact entry/exit/risk conditions and out-of-sample validation.">Design test</button></div>
+      <label for="aiPrompt" class="label">Ask a grounded question</label><textarea id="aiPrompt" placeholder="What does this structure suggest I should investigate?"></textarea>
+      <div class="composer-footer"><span class="muted">Read-only · User-controlled context</span><button class="btn primary" id="prepareContext">Prepare context</button></div>
+    </div>
+  </aside>
+  <footer class="statusbar"><span id="footerMode">Research mode</span><span>Local storage</span><span>Ctrl + E to export</span><span class="right">Prototype v0.1 · No live market data · No orders</span></footer>
+</div>
+<div class="toast hidden" role="status" id="toast"></div>
+<script>
+"use strict";
+(function(){
+  const $ = id => document.getElementById(id);
+  const app = $("app");
+  const STORAGE_KEY = "trader-workspace-html-v1-prefs";
+  const DB_NAME = "trader-workspace-html-v1";
+  const strategyMap = {
+    "or-cont": {name:"Opening-range continuation",detail:"Freeze: cash-session open and opening-range minutes; higher-timeframe trend filter; precise break and pullback confirmation; stop structure; exit and time stop; news exclusion; fees and slippage; max trades per day. Compare MES and MNQ separately. Reject if net out-of-sample expectancy or drawdown survival fails."},
+    "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
+    "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
+  };
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,replay:false,reveal:0,hover:null,selection:null,drag:null,
+    scopes:{candles:true,marks:true,notes:true,history:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
+  function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
+  const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
+  const iso = ms => new Date(ms).toISOString();
+  const fmt=n => Number(n).toLocaleString(undefined,{maximumFractionDigits:3});
+  function toast(message){const e=$("toast");e.textContent=message;e.classList.remove("hidden");clearTimeout(toast.timer);toast.timer=setTimeout(()=>e.classList.add("hidden"),3400)}
+  function safeStr(value){return String(value==null?"":value)}
+  function demo(){
+    let seed=4191,price=5823;
+    const rand=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
+    const bars=[],start=Date.parse("2026-10-05T13:30:00Z");
+    for(let i=0;i<360;i++){const open=price;
+      const drift=i<70?.52:i<140?-.38:i<250?.57:-.32;
+      const close=Math.max(1,open+drift+(rand()-.5)*7+Math.sin(i*.31)*1.15);
+      const high=Math.max(open,close)+.7+rand()*3.0;
+      const low=Math.min(open,close)-.7-rand()*3.0;
+      bars.push({time:start+i*300000,open,high,low,close});price=close;
+    }
+    return {id:"synthetic:seed4191:v1",symbol:"DEMO",timeframe:"5m",source:"synthetic",label:"Synthetic demo candles",bars};
+  }
+  function splitCSV(line){const a=[];let v="",q=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){if(q&&line[i+1]==='"'){v+='"';i++}else q=!q}else if(c===","&&!q){a.push(v.trim());v=""}else v+=c}a.push(v.trim());if(q)throw Error("Unclosed CSV quoted field");return a}
+  function readCSV(text, filename){
+    if(text.length>5000000)throw Error("File over 5 MB. Import a smaller time window.");
+    const lines=text.replace(/^\uFEFF/,"").split(/\r?\n/).filter(x=>x.trim());
+    if(lines.length<6)throw Error("At least five OHLC candles are required");
+    if(lines.length>20000)throw Error("Import limit is 20,000 candles");
+    const head=splitCSV(lines[0]).map(x=>x.toLowerCase().replace(/[^a-z]/g,""));
+    const col=aliases=>head.findIndex(h=>aliases.includes(h));
+    const idx={time:col(["time","timestamp","datetime","dateutc"]),open:col(["open","o"]),high:col(["high","h"]),low:col(["low","l"]),close:col(["close","c"])};
+    for(const k of Object.keys(idx))if(idx[k]<0)throw Error("Missing required column: "+k);
+    const bars=[];
+    for(let i=1;i<lines.length;i++){
+      const cells=splitCSV(lines[i]);const raw=cells[idx.time]||"";
+      if(!/^\d{10}$/.test(raw)&&!/^\d{13}$/.test(raw)&&!/^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d:\d\d)$/i.test(raw))throw Error("Row "+(i+1)+": timestamp needs timezone (Z or offset), or epoch sec/ms");
+      const time=/^\d{10}$/.test(raw)?Number(raw)*1000:/^\d{13}$/.test(raw)?Number(raw):Date.parse(raw);
+      if(!Number.isFinite(time))throw Error("Invalid timestamp at row "+(i+1));
+      const b={time};for(const k of ["open","high","low","close"]){if(!cells[idx[k]]||!Number.isFinite(Number(cells[idx[k]])))throw Error("Invalid "+k+" at row "+(i+1));b[k]=Number(cells[idx[k]]);if(b[k]<=0)throw Error("Nonpositive price at row "+(i+1))}
+      if(b.high<Math.max(b.open,b.close,b.low)||b.low>Math.min(b.open,b.close,b.high))throw Error("Inconsistent OHLC at row "+(i+1));
+      bars.push(b);
+    }
+    bars.sort((a,b)=>a.time-b.time);for(let i=1;i<bars.length;i++)if(bars[i].time===bars[i-1].time)throw Error("Duplicate timestamp");
+    const symbol=safeStr(filename).replace(/\.[^.]+$/,"").slice(0,32);
+    return {id:"csv:"+symbol+":"+bars.length+":"+bars[0].time+":"+bars[bars.length-1].time,symbol,timeframe:"source",source:"user-csv-unverified",label:"Imported CSV / source unverified",bars};
+  }
+  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,1);
+    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
+    request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||Error("IndexedDB unavailable"));})}
+  function dbAction(store,mode,op){return new Promise((resolve,reject)=>{if(!S.db)return reject(Error("Browser storage unavailable; export immediately"));
+    const tx=S.db.transaction(store,mode),r=op(tx.objectStore(store));tx.oncomplete=()=>resolve(r.result);
+    tx.onerror=()=>reject(tx.error||Error("Database error"));})}
+  async function loadSaved(){try{S.db=await openDB();S.snapshots=(await dbAction("snapshots","readonly",s=>s.getAll())).sort((a,b)=>b.at.localeCompare(a.at));const pref=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
+    if(pref.dataId){const d=await dbAction("datasets","readonly",s=>s.get(pref.dataId));if(d&&d.bars)S.data=d;}
+  }catch(e){toast("Local persistence unavailable: "+e.message)}
+  }
+  function savePrefs(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({dataId:S.data.id}))}catch(e){toast("Preferences not saved; export your work")}}
+  function activeDrawings(){return S.replay?S.replayDrawings.filter(mark=>mark.createdReveal<=S.reveal):S.drawings}
+  function visible(){const max=S.replay?S.reveal:S.data.bars.length-1;return {start:Math.max(0,max-S.visible+1),end:max,bars:S.data.bars.slice(Math.max(0,max-S.visible+1),max+1)}}
+  const canvas=$("chart"),ctx=canvas.getContext("2d");
+  const geom={};
+  function resized(){const rect=$("chartWrap").getBoundingClientRect();if(rect.width<10)return;const dpr=Math.min(devicePixelRatio||1,2);
+    canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr);canvas.style.width=rect.width+"px";canvas.style.height=rect.height+"px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
+  function chartMeta(){const width=canvas.clientWidth||700,height=canvas.clientHeight||400,padR=73,padL=11,padT=24,padB=35;
+    const a=visible(),maxPrice=Math.max(...a.bars.map(x=>x.high)),minPrice=Math.min(...a.bars.map(x=>x.low)),padding=Math.max((maxPrice-minPrice)*.12,.15);
+    const max=maxPrice+padding,min=minPrice-padding, plotW=width-padR-padL,plotH=height-padT-padB;
+    return {a,w:width,h:height,L:padL,T:padT,R:padR,B:padB,plotW,plotH,max,min,step:plotW/Math.max(a.bars.length,1)}
+  }
+  function xFor(i,m){return m.L+(i-m.a.start+.5)*m.step}
+  function yFor(p,m){return m.T+(m.max-p)/(m.max-m.min)*m.plotH}
+  function ixFrom(x,m){return clamp(Math.floor((x-m.L)/m.step)+m.a.start,m.a.start,m.a.end)}
+  function priceFrom(y,m){return m.max-(y-m.T)/m.plotH*(m.max-m.min)}
+  function dataFromEvent(event){const r=canvas.getBoundingClientRect(),x=event.clientX-r.left,y=event.clientY-r.top,m=chartMeta();if(x<m.L||x>m.w-m.R||y<m.T||y>m.h-m.B)return null;
+    return {index:ixFrom(x,m),price:priceFrom(y,m),x,y,m}}
+  function line(x1,y1,x2,y2,color,width=1,dash=[]){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore()}
+  function draw(){if(!S.data||!canvas.clientWidth)return;const m=chartMeta();Object.assign(geom,m);ctx.clearRect(0,0,m.w,m.h);ctx.fillStyle="#0f161e";ctx.fillRect(0,0,m.w,m.h);
+    ctx.save();ctx.fillStyle="#111c25";ctx.fillRect(m.L,m.T,m.plotW,m.plotH);
+    ctx.textBaseline="middle";ctx.font="10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono");
+    const range=m.max-m.min;
+    for(let t=0;t<=5;t++){const p=m.min+range*t/5,y=yFor(p,m);line(m.L,y,m.w-m.R,y,"#293845",1,[2,5]);ctx.fillStyle="#9aa9b7";ctx.fillText(p.toFixed(range<10?3:2),m.w-m.R+9,y)}
+    const marks=6,step=Math.max(1,Math.floor(m.a.bars.length/marks));
+    m.a.bars.forEach((b,j)=>{if(j%step===0){const x=xFor(m.a.start+j,m);line(x,m.T,x,m.h-m.B,"#21303d",.6,[2,8]);ctx.fillStyle="#7e93a2";ctx.fillText(iso(b.time).slice(5,16).replace("T"," ")+ "Z",Math.min(m.w-130,x+3),m.h-16)}});
+    ctx.save();ctx.beginPath();ctx.rect(m.L,m.T,m.plotW,m.plotH);ctx.clip();
+    m.a.bars.forEach((b,j)=>{const i=m.a.start+j,x=xFor(i,m),up=b.close>=b.open,color=up?"#50c19f":"#e38085";
+      line(x,yFor(b.high,m),x,yFor(b.low,m),color,Math.max(1,Math.min(1.5,m.step*.12)));
+      ctx.fillStyle=color;const y1=yFor(Math.max(b.open,b.close),m),y2=yFor(Math.min(b.open,b.close),m);ctx.fillRect(x-Math.max(1.5,m.step*.32),y1,Math.max(3,Math.min(12,m.step*.64)),Math.max(1.2,y2-y1));
+    });
+    for(const mark of activeDrawings()){if(mark.type==="level"){const y=yFor(mark.price,m);line(m.L,y,m.w-m.R,y,"#d6b773",1.2,[7,4]);ctx.fillStyle="#e7c88c";ctx.fillText("LEVEL",m.L+10,y-8)}
+      if(mark.type==="note"&&mark.index>=m.a.start&&mark.index<=m.a.end){const x=xFor(mark.index,m),y=yFor(mark.price,m);ctx.beginPath();ctx.fillStyle="#d7b978";ctx.arc(x,y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle="#1f2020";ctx.font="bold 10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono");ctx.fillText("N",x-3,y+1);ctx.font="10px "+getComputedStyle(document.documentElement).getPropertyValue("--mono")}
+    }
+    if(S.selection){let l=xFor(Math.max(m.a.start,S.selection[0]),m),r=xFor(Math.min(m.a.end,S.selection[1]),m);if(r>=l){ctx.fillStyle="rgba(114,176,160,.14)";ctx.fillRect(l,m.T,r-l+m.step,m.plotH);line(l,m.T,l,m.h-m.B,"#95caba",1,[4,3]);line(r+m.step,m.T,r+m.step,m.h-m.B,"#95caba",1,[4,3])}}
+    if(S.drag&&S.tool==="select"){const l=xFor(S.drag.start,m),r=xFor(S.drag.end,m);ctx.fillStyle="rgba(114,176,160,.12)";ctx.fillRect(Math.min(l,r),m.T,Math.abs(r-l)||m.step,m.plotH)}
+    if(S.hover){const h=S.hover,x=xFor(h.index,m),y=yFor(h.price,m);line(x,m.T,x,m.h-m.B,"#829caa",.85,[3,5]);line(m.L,y,m.w-m.R,y,"#829caa",.85,[3,5]);}
+    ctx.restore();ctx.restore();
+  }
+  function updateContext(){const a=visible(),bars=a.bars;
+    $("chartSymbol").textContent=S.data.symbol+ " · "+(S.data.source==="synthetic"?"Practice":"Imported data");
+    $("chartPeriod").textContent=S.data.timeframe;$("chartCount").textContent=S.data.bars.length+" bars";
+    $("sideSymbol").textContent=S.data.symbol;
+    $("sideMarketSub").textContent=S.data.source==="synthetic"?"Synthetic training chart":"User CSV / unverified";
+    const demo=S.data.source==="synthetic";
+    $("sourceTag").textContent=demo?"SYNTHETIC":"USER CSV";
+    $("sourceTag").classList.toggle("imported",!demo);
+    $("feedStatus").textContent=demo?"Synthetic / training only":"Imported CSV / unverified";
+    $("markCount").textContent=activeDrawings().length;
+    $("aiMarks").textContent=activeDrawings().length+" attached";
+    $("aiSource").textContent=S.data.source==="synthetic"?"Synthetic demo":"Imported / unverified";
+    $("aiSymbol").textContent=S.data.symbol;
+    $("aiCases").textContent=S.snapshots.length+" snapshots";
+    $("zoomLabel").textContent=S.visible+" bars";
+    $("selectedBars").textContent=S.selection?(S.selection[1]-S.selection[0]+1)+" selected":"Last "+bars.length;
+    $("aiWindow").textContent=S.selection?(S.selection[1]-S.selection[0]+1)+" selected bars":bars.length+" visible bars";
+    $("rangeStatus").textContent=S.selection?"Range: "+(S.selection[1]-S.selection[0]+1)+" candles":"No range selected";
+    $("replayLabel").textContent=S.replay?(S.reveal+1)+" / "+S.data.bars.length:"Full dataset";
+    $("replayBack").disabled=!S.replay||S.reveal<=Math.min(39,S.data.bars.length-1);
+    $("replayNext").disabled=!S.replay||S.reveal>=S.data.bars.length-1;
+    $("replayTen").disabled=!S.replay||S.reveal>=S.data.bars.length-1;
+    $("footerMode").textContent=S.replay?"Historical reveal · No fills":"Research mode";
+    updateObservations();draw();
+  }
+  function evidenceBars(){const a=visible();if(!S.selection)return a.bars;
+    const lo=Math.max(a.start,S.selection[0]),hi=Math.min(a.end,S.selection[1]);
+    return lo<=hi?S.data.bars.slice(lo,hi+1):[];
+  }
+  function renderObservations(items){const host=$("aiObservations");host.textContent="";
+    items.forEach(item=>{const div=document.createElement("div");div.className="ai-item"+(item.warn?" warn":"");
+      const cat=document.createElement("div");cat.className="cat";cat.textContent=item.label;
+      const body=document.createElement("div");body.className="body";body.textContent=item.detail;
+      div.append(cat,body);host.append(div);
+    });}
+  function computeObservations(){const bars=evidenceBars();if(!bars.length)return [{label:"No evidence",detail:"Choose a visible candle range or return to the active chart.",warn:true}];
+    const high=Math.max(...bars.map(b=>b.high)),low=Math.min(...bars.map(b=>b.low)),first=bars[0].open,last=bars[bars.length-1].close;
+    const percent=(last-first)/first*100,spread=high-low;
+    const output=[
+      {label:"Observed price change",detail:bars.length+" candles · from "+fmt(first)+" to "+fmt(last)+" ("+(percent>=0?"+":"")+percent.toFixed(2)+"%)."},
+      {label:"Observed range",detail:"High "+fmt(high)+" · Low "+fmt(low)+" · Range "+fmt(spread)+". No inferred support or resistance quality."}
+    ];
+    if(S.data.source==="synthetic")output.push({label:"Data integrity",detail:"These candles were generated mathematically for layout/testing. No market or strategy conclusions are valid.",warn:true});
+    else output.push({label:"Data integrity",detail:"CSV prices have not been verified against an authorized provider. Timeframes, fees, spreads and sessions are not authenticated.",warn:true});
+    return output;
+  }
+  function updateObservations(){renderObservations(computeObservations())}
+  function packet(){
+    const b=evidenceBars(),prompt=$("aiPrompt").value.trim(),a=visible();
+    const result={
+      schema:"trader.analyst.context.v1",created_at:new Date().toISOString(),purpose:"decision_support_only",
+      execution:"disabled",model:"not_connected",interaction_mode:S.mode,prompt,source:{kind:S.data.source,id:S.data.id,symbol:S.data.symbol,display_label:S.data.label,timeframe:S.data.timeframe},
+      replay:{enabled:S.replay,revealed_through_utc:iso(S.data.bars[a.end].time),future_candles_excluded_from_visible_bars:true,blind_trial:false},
+      selected_window:{first_utc:b.length?iso(b[0].time):null,last_utc:b.length?iso(b[b.length-1].time):null,count:b.length},
+      include:{...S.scopes},evidence:{},
+      missing:["Broker fills and costs not connected","Market data provider not verified","Strategy performance not validated","Live AI model unavailable"]
+    };
+    if(S.scopes.candles)result.evidence.candles=b.map(c=>({...c,time_utc:iso(c.time)}));
+    if(S.scopes.marks)result.evidence.drawings=activeDrawings().filter(d=>d.type==="level"||(d.index>=a.start&&d.index<=a.end));
+    if(S.scopes.notes)result.evidence.notes={setup:$("setupName").value,thesis:$("thesis").value};
+    if(S.scopes.history && !S.replay)result.evidence.saved_cases=S.snapshots.slice(0,10).map(s=>({id:s.id,at:s.at,symbol:s.symbol,setup:s.setup,note:s.note,source:s.source}));
+    if(S.scopes.history && S.replay)result.missing.push("Saved journal cases omitted from reveal mode to avoid retrospective outcome leakage");
+    if(S.strategy)result.strategy_candidate={id:S.strategy,name:strategyMap[S.strategy].name,detail:strategyMap[S.strategy].detail,validation:"not_tested"};
+    return result;
+  }
+  function prepareContext(){
+    if(!$("aiPrompt").value.trim()){toast("Write a question or select a suggested prompt.");return}
+    S.packet=packet();const p={...S.packet,evidence:{...S.packet.evidence}};
+    if(p.evidence.candles&&p.evidence.candles.length>12){p.evidence.candles=[...p.evidence.candles.slice(0,6),{message:"...remaining candles present in copied full packet..."},...p.evidence.candles.slice(-6)]}
+    $("packetPreview").textContent=JSON.stringify(p,null,2);
+    toast("Evidence packet prepared locally — no AI model called.");
+  }
+  async function copyPacket(){
+    if(!S.packet){toast("Prepare a context packet first.");return}
+    const text=JSON.stringify(S.packet,null,2);
+    try{await navigator.clipboard.writeText(text);toast("Full context packet copied.");}
+    catch(e){const temp=document.createElement("textarea");temp.value=text;document.body.appendChild(temp);temp.select();const ok=document.execCommand("copy");temp.remove();toast(ok?"Full packet copied.":"Clipboard blocked; export your journal or use the preview.");}
+  }
+  function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.strategy=null;
+    $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
+    savePrefs();updateContext();}
+  async function importFile(event){const file=event.target.files&&event.target.files[0];if(!file)return;
+    try{const raw=await file.text(), d=readCSV(raw,file.name);
+      if(typeof crypto!=="undefined" && crypto.subtle && typeof TextEncoder!=="undefined") {
+        const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(d.symbol+"\n"+raw));
+        d.id="csv-sha256:"+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
+      } else d.id="csv-local:"+id();
+      if(S.db)await dbAction("datasets","readwrite",store=>store.put(d));
+      resetDataset(d);toast("Imported "+d.bars.length+" candles. Source remains unverified.");
+    }catch(e){toast("Import error: "+e.message)}
+    event.target.value="";
+  }
+  function handleDown(event){const p=dataFromEvent(event);if(!p)return;
+    if(S.tool==="select"){S.drag={start:p.index,end:p.index};canvas.setPointerCapture?.(event.pointerId)}}
+  function handleMove(event){const p=dataFromEvent(event);
+    if(!p){S.hover=null;draw();return}
+    S.hover={index:p.index,price:p.price};
+    if(S.drag)S.drag.end=p.index;
+    const bar=S.data.bars[p.index];
+    $("chartHover").textContent=iso(bar.time).slice(0,16)+"Z    O "+fmt(bar.open)+"    H "+fmt(bar.high)+"    L "+fmt(bar.low)+"    C "+fmt(bar.close);
+    draw();
+  }
+  function handleUp(event){if(!S.drag)return;const p=dataFromEvent(event);if(p)S.drag.end=p.index;
+    const lo=Math.min(S.drag.start,S.drag.end),hi=Math.max(S.drag.start,S.drag.end);
+    S.selection=[lo,hi];S.drag=null;S.packet=null;updateContext();
+    try{canvas.releasePointerCapture?.(event.pointerId)}catch(e){}}
+  function handleClick(event){const p=dataFromEvent(event);if(!p||S.tool==="select")return;
+    if(S.tool==="level"){(S.replay?S.replayDrawings:S.drawings).push({id:id(),type:"level",price:Number(p.price.toFixed(4)),createdReveal:S.reveal,at:iso(S.data.bars[p.index].time)});toast("Price level added.")}
+    if(S.tool==="note"){const draft=$("thesis").value.trim().slice(0,130);(S.replay?S.replayDrawings:S.drawings).push({id:id(),type:"note",index:p.index,price:Number(p.price.toFixed(4)),text:draft||"Review this candle",createdReveal:S.reveal,at:iso(S.data.bars[p.index].time)});toast("Note marker attached to this candle.")}
+    if(S.tool!=="inspect"){S.packet=null;updateContext()}
+  }
+  function setTool(t){S.tool=t;document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("tool-active",b.dataset.tool===t));toast(t==="select"?"Drag across candles to select a range.":t==="level"?"Click a price to add a horizontal level.":t==="note"?"Click a candle to add a note marker.":"Inspect candles by hovering.")}
+  function setPage(page){S.page=page;
+    document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===page));
+    for(const value of ["workspace","lab","journal"])$("view-"+value).classList.toggle("hidden",value!==page);
+    $("breadcrumb").textContent=page==="workspace"?"Workspace":page==="lab"?"Strategy lab":"Visual journal";
+    $("breadcrumbsuf").textContent=page==="workspace"?"Chart research":page==="lab"?"Hypothesis design":"Snapshots & decisions";
+    if(page==="journal")renderJournal();if(page==="workspace")requestAnimationFrame(resized);
+  }
+  async function capture(){if(!S.data||!canvas.width)return;
+    const a=visible();const b=evidenceBars();const entry={
+      id:id(),at:new Date().toISOString(),symbol:S.data.symbol,source:S.data.source,
+      source_id:S.data.id,timeframe:S.data.timeframe,
+      setup:$("setupName").value.trim(),note:$("thesis").value.trim(),
+      selected_range:S.selection?[...S.selection]:null,window:{start_utc:iso(a.bars[0].time),end_utc:iso(a.bars[a.bars.length-1].time)},
+      candles:b.map(x=>({...x})),drawings:activeDrawings().map(x=>({...x})),
+      image:canvas.toDataURL("image/png"),review:"",experiment_id:S.strategy||null
+    };
+    try{await dbAction("snapshots","readwrite",s=>s.put(entry));S.snapshots.unshift(entry);S.selectedSnapshot=entry.id;updateContext();toast("Snapshot saved to visual journal.");}
+    catch(e){toast("Snapshot not stored: "+e.message)}
+  }
+  function downloadText(text,name){const blob=new Blob([text],{type:"application/json;charset=utf-8"});const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200)}
+  async function exportArchive(){
+    try {
+      const datasets=S.db?await dbAction("datasets","readonly",store=>store.getAll()):[];
+      if(S.data.source!=="synthetic"&&!datasets.some(x=>x.id===S.data.id))datasets.push(S.data);
+      const out={schema:"trader.html.foundation.v1",exported_at:new Date().toISOString(),
+        disclaimer:"Demo / imported unverified data; not live broker fills",snapshots:S.snapshots.map(x=>({...x})),datasets,
+        draft:{setup:$("setupName").value,thesis:$("thesis").value},active_context:S.packet?{...S.packet,evidence:undefined}:null};
+      downloadText(JSON.stringify(out,null,2),"trader-research-archive-"+new Date().toISOString().slice(0,10)+".json");
+      toast("Full chart archive exported. Restore UI still pending — keep this file safe.");
+    } catch(e){toast("Archive failed: "+e.message)}
+  }
+  function renderJournal(){
+    $("snapshotCount").textContent=S.snapshots.length;$("snapshotCards").textContent="";
+    const q=$("journalSearch").value.toLowerCase().trim();
+    const list=S.snapshots.filter(s=>[s.symbol,s.setup,s.note,s.review].some(v=>safeStr(v).toLowerCase().includes(q)));
+    if(!list.length){const p=document.createElement("p");p.className="empty";p.textContent=S.snapshots.length?"No saved snapshots match your search.":"No snapshots yet. Capture a chart with a setup and explanatory note."; $("snapshotCards").append(p)}
+    for(const s of list){const b=document.createElement("button");b.type="button";b.className="snap";b.setAttribute("aria-label","Open snapshot "+s.symbol+" "+s.at);
+      const img=document.createElement("img");img.src=s.image;img.alt="Saved candlestick chart";img.loading="lazy";
+      const d=document.createElement("div");d.className="snapmeta";
+      const title=document.createElement("strong");title.textContent=s.symbol+" · "+(s.setup||"Untitled setup");
+      const meta=document.createElement("p");meta.textContent=new Date(s.at).toLocaleString()+" · "+(s.source==="synthetic"?"Synthetic":"Imported CSV");
+      d.append(title,meta);b.append(img,d);b.addEventListener("click",()=>{S.selectedSnapshot=s.id;renderSelectedSnapshot()});$("snapshotCards").append(b);
+    }
+    renderSelectedSnapshot();
+  }
+  function renderSelectedSnapshot(){
+    const target=$("journalPreview"),s=S.snapshots.find(x=>x.id===S.selectedSnapshot);
+    if(!s){target.className="hidden";target.textContent="";return}
+    target.className="panel journal-preview";target.textContent="";
+    const img=document.createElement("img");img.src=s.image;img.alt="Saved chart image";
+    const aside=document.createElement("div");
+    const eyebrow=document.createElement("p");eyebrow.className="eyebrow";eyebrow.textContent="Immutable capture · "+(s.source==="synthetic"?"Synthetic":"Unverified CSV");
+    const head=document.createElement("h3");head.style.cssText="font-size:17px;margin:10px 0";head.textContent=s.setup||"Untitled setup";
+    const original=document.createElement("p");original.className="review-block";original.textContent=s.note||"No initial thesis recorded";
+    const label=document.createElement("label");label.className="label";label.style.marginTop="18px";label.textContent="Review notes (editable)";
+    const notes=document.createElement("textarea");notes.value=s.review||"";notes.rows=5;notes.placeholder="What did you observe? What would you improve?";
+    notes.addEventListener("input",()=>{s.review=notes.value;dbAction("snapshots","readwrite",store=>store.put(s)).catch(e=>toast("Review note save failed: "+e.message))});
+    const row=document.createElement("div");row.className="action-row";row.style.marginTop="12px";
+    const save=document.createElement("button");save.className="btn";save.textContent="Export PNG";save.addEventListener("click",()=>{const a=document.createElement("a");a.href=s.image;a.download="chart-"+s.id+".png";a.click()});
+    const remove=document.createElement("button");remove.className="btn danger";remove.textContent="Delete";remove.addEventListener("click",async()=>{if(!confirm("Delete this snapshot permanently?"))return;
+      try{await dbAction("snapshots","readwrite",store=>store.delete(s.id));S.snapshots=S.snapshots.filter(x=>x.id!==s.id);S.selectedSnapshot=null;renderJournal();updateContext();toast("Snapshot deleted.")}
+      catch(e){toast("Delete failed: "+e.message)}});
+    row.append(save,remove);aside.append(eyebrow,head,original,label,notes,row);target.append(img,aside);
+  }
+  function prepareStrategy(key){S.strategy=key;const p=strategyMap[key];$("labDetailTitle").textContent=p.name;$("labDetailText").textContent=p.detail;
+    $("aiPrompt").value="Design an auditable research plan for "+p.name+". Define the objective entry/exit rules, data requirements, cost model, blind testing split, and failure criteria. Treat this hypothesis as unvalidated.";
+    toast("Strategy hypothesis loaded into analyst research context.");
+  }
+  function bind(){
+    document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>setPage(b.dataset.view)));
+    document.querySelectorAll("[data-tool]").forEach(b=>b.addEventListener("click",()=>setTool(b.dataset.tool)));
+    document.querySelectorAll("[data-strategy]").forEach(b=>b.addEventListener("click",()=>prepareStrategy(b.dataset.strategy)));
+    document.querySelectorAll("[data-prompt]").forEach(b=>b.addEventListener("click",()=>{$("aiPrompt").value=b.dataset.prompt;$("aiPrompt").focus()}));
+    document.querySelectorAll("[data-scope]").forEach(b=>b.addEventListener("click",()=>{const name=b.dataset.scope;S.scopes[name]=!S.scopes[name];b.classList.toggle("active",S.scopes[name]);b.setAttribute("aria-pressed",String(S.scopes[name]));S.packet=null}));
+    $("prepareContext").addEventListener("click",prepareContext);$("prepareStrategy").addEventListener("click",()=>{$("aiPrompt").value=$("aiPrompt").value||"Design a falsifiable strategy test.";prepareContext()});
+    $("copyContext").addEventListener("click",copyPacket);
+    $("toggleAiBtn").addEventListener("click",()=>{if(window.matchMedia("(max-width:1050px)").matches){app.classList.toggle("show-ai")}else{app.classList.toggle("hide-ai")}requestAnimationFrame(resized)});
+    document.querySelectorAll("[data-ai-mode]").forEach(b=>b.addEventListener("click",()=>{
+      S.mode=b.dataset.aiMode;
+      document.querySelectorAll("[data-ai-mode]").forEach(x=>{const active=x.dataset.aiMode===S.mode;x.classList.toggle("active",active);x.setAttribute("aria-pressed",String(active))});
+      S.packet=null;toast(S.mode==="quiet"?"Quiet mode: only user-requested context.":S.mode==="assist"?"Assist mode prepared; no model calls or notifications enabled yet.":"Coach mode prepared; session coaching activates only with a connected model.");
+    }));
+    $("importBtn").addEventListener("click",()=>$("importCsv").click());$("importCsv").addEventListener("change",importFile);
+    $("resetDemo").addEventListener("click",()=>resetDataset(demo()));
+    $("captureBtn").addEventListener("click",capture);$("captureSecondary").addEventListener("click",capture);
+    $("exportBtn").addEventListener("click",exportArchive);$("journalExport").addEventListener("click",exportArchive);
+    $("journalSearch").addEventListener("input",renderJournal);$("refreshJournal").addEventListener("click",renderJournal);
+    $("goWorkspace").addEventListener("click",()=>setPage("workspace"));
+    $("zoomOut").addEventListener("click",()=>{S.visible=clamp(S.visible+25,30,180);S.selection=null;updateContext()});
+    $("zoomIn").addEventListener("click",()=>{S.visible=clamp(S.visible-25,30,180);S.selection=null;updateContext()});
+    $("undoMark").addEventListener("click",()=>{(S.replay?S.replayDrawings:S.drawings).pop();updateContext()});
+    $("replayToggle").addEventListener("change",e=>{S.replay=e.target.checked;if(S.replay)S.replayDrawings=[];S.reveal=Math.min(79,S.data.bars.length-1);S.selection=null;S.packet=null;updateContext()});
+    $("replayBack").addEventListener("click",()=>{S.reveal=clamp(S.reveal-1,Math.min(39,S.data.bars.length-1),S.data.bars.length-1);S.selection=null;updateContext()});
+    $("replayNext").addEventListener("click",()=>{S.reveal=clamp(S.reveal+1,0,S.data.bars.length-1);S.selection=null;updateContext()});
+    $("replayTen").addEventListener("click",()=>{S.reveal=clamp(S.reveal+10,0,S.data.bars.length-1);S.selection=null;updateContext()});
+    canvas.addEventListener("pointerdown",handleDown);canvas.addEventListener("pointermove",handleMove);
+    canvas.addEventListener("pointerup",handleUp);canvas.addEventListener("click",handleClick);
+    canvas.addEventListener("pointerleave",()=>{S.hover=null;draw()});
+    canvas.addEventListener("pointercancel",()=>{S.drag=null;draw()});
+    document.addEventListener("keydown",e=>{const tag=e.target.tagName.toLowerCase();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="e"){e.preventDefault();exportArchive()}
+      if(["input","textarea","select"].includes(tag))return;
+      if(e.key==="Escape"&&S.page==="workspace"){S.selection=null;S.drag=null;updateContext()}
+      if(e.key==="1")setTool("inspect");if(e.key==="2")setTool("select");if(e.key==="3")setTool("level");if(e.key==="4")setTool("note");
+    });
+    window.addEventListener("resize",resized);
+    if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
+  }
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;updateContext();resized();toast("Workspace ready · Demo mode · No broker connected");}
+  start();
+})();
+</script>
+</body>
+</html>
