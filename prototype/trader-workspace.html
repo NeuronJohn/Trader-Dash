@@ -245,6 +245,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .mes-scanned .hit strong{font-size:11px;display:block;margin-bottom:5px}
 .mes-scanned .hit small{font-size:10px;color:#9db0b9;line-height:1.6}
 .mes-scanned .hit .label{font:10px var(--mono);color:#c9bea4;margin-top:5px}
+
+.mes-audit{padding:0 16px 13px;font-size:11px;color:#aebdc8}
+.mes-audit .checks{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}
+.mes-audit .check{border:1px solid #30424b;background:#17252b;padding:6px 9px;border-radius:6px;font:10px var(--mono);color:#c4d8df}
+.mes-audit .check.warn{border-color:#6a5138;color:#e0c49c;background:#272118}
 </style>
 </head>
 <body>
@@ -405,7 +410,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
             <h3>Opening-range strategy experiments <span class="pill">v1</span></h3>
             <p class="small muted">08:30–11:00 America/Chicago · first 15-minute range · complete five-minute candles · 1 MES contract</p>
           </div>
-          <div class="action-row"><button id="scanMes" class="btn">Find MES setups</button><button id="runMes" class="btn primary">Run MES research</button></div>
+          <div class="action-row"><button id="auditMes" class="btn subtle">Audit CSV</button><button id="scanMes" class="btn">Find MES setups</button><button id="runMes" class="btn primary">Run MES research</button></div>
         </div>
         <div class="mes-controls">
           <label class="label">Frozen rule
@@ -418,6 +423,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
           <label class="label">Round-trip fees (USD/contract)<input class="field mono" type="number" id="mesFee" min="0" max="100" step=".25" value="2.5"></label>
           <label class="label">ORP target (R)<input class="field mono" type="number" id="mesReward" min=".5" max="6" step=".25" value="2"></label>
         </div>
+        <div id="mesAudit" class="mes-audit"><p class="small muted">Import a MES dataset to inspect tick alignment and Chicago cash-session coverage. This cannot prove data authenticity.</p></div>
         <div class="mes-instrument">
           <span><strong>MES</strong> · CME Micro E-mini S&amp;P 500</span>
           <span>0.25 index-point tick · $1.25/tick · $5/point</span>
@@ -1292,7 +1298,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     S.experiment=null;S.mesRun=null;S.mesPreview=null;S.mesSignals=null;S.mesSignalPreview=null;
     $("mesConfirm").checked=false;
     $("simTick").value=data.source==="synthetic"?"0.25":"";
-    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();renderMesReport();renderMesScans();}
+    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();renderMesReport();renderMesScans();runMesAudit();}
   async function importFile(event){
     const files=[...(event.target.files||[])].slice(0,12);
     event.target.value="";
@@ -1618,7 +1624,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     return JSON.stringify([
       S.data?.id,S.selectedCandidate?.id||"none",
       S.replay?S.reveal:"all",S.selection,bars.map(c=>c.time),
-      S.scopes,S.scopes.marks?activeDrawings():null,
+      S.scopes,S.mesSignalPreview?.signalBarStart,S.mesRun?.id,
+      S.scopes.marks?activeDrawings():null,
       S.scopes.notes?[$("setupName").value,$("thesis").value]:null,
       S.scopes.experiments?S.experiment?.id:null,
       $("aiPrompt").value.trim(),S.mode,
@@ -1722,6 +1729,39 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       throw Error("MES rule engine unavailable. Download the complete prototype folder including session-engine.js.");
     return engine;
   }
+  function runMesAudit(){
+    const host=$("mesAudit");host.textContent="";
+    if(!S.data||S.data.source!=="user-csv-unverified"||
+      !/(^|[^a-z])mes(?=[^a-z]|$)/i.test(S.data.symbol)){
+      host.append(htmlText("p","Select an imported CSV whose filename identifies MES. Source verification is still required.","small muted"));
+      return;
+    }
+    try{
+      const check=mesEngine().sessionsFromBars(S.data.bars);
+      const summary=htmlText("p","Format-only inspection · "+S.data.bars.length+" OHLC candles · "+
+        S.data.symbol+". Data source, time convention and contract rolls are not authenticated.","small muted");
+      host.append(summary);
+      const row=document.createElement("div");row.className="checks";
+      const fields=[
+        ["MES 0.25 ticks",true],
+        ["5m bar starts",true],
+        [check.valid.length+" complete CT sessions",check.valid.length>0],
+        [check.excluded.length+" incomplete CT sessions",check.excluded.length===0],
+      ];
+      for(const [label,ok] of fields){
+        row.append(htmlText("span",label,"check"+(ok?"":" warn")));
+      }
+      host.append(row);
+      if(check.excluded.length){
+        const examples=check.excluded.slice(0,4).map(x=>x.day).join(", ");
+        host.append(htmlText("p","Excluded session examples: "+examples+". Incomplete days are not simulated.","small muted"));
+      }
+      if(!check.valid.length)host.append(htmlText("p","No complete sessions: verify UTC timestamps represent the beginning of each five-minute bar, not bar close, and check source gaps.","notice-small"));
+    }catch(e){
+      host.append(htmlText("p","Data quality check failed: "+e.message,"report-warning"));
+    }
+  }
+
   function checkMesSource(){
     if(!$("mesConfirm").checked)throw Error("Confirm MES dataset provenance and five-minute bar-start timestamps before researching");
     if(S.data.source!=="user-csv-unverified")throw Error("Import MES history. The synthetic chart is only for drawing practice");
@@ -2115,6 +2155,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("runExperiment").addEventListener("click",runResearchExperiment);
     $("runMes").addEventListener("click",runMesResearch);
     $("scanMes").addEventListener("click",runMesScan);
+    $("auditMes").addEventListener("click",runMesAudit);
     $("mesRule").addEventListener("change",()=>{$("mesReward").disabled=$("mesRule").value==="FBR-001"});
     $("analyzeLocal").addEventListener("click",()=>requestLocalAnalysis(false));
     $("prepareContext").addEventListener("click",prepareContext);$("prepareStrategy").addEventListener("click",()=>{$("aiPrompt").value=$("aiPrompt").value||"Design a falsifiable strategy test.";prepareContext()});
@@ -2197,7 +2238,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();renderRunHistory();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderRunHistory();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
