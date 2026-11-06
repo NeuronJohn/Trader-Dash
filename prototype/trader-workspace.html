@@ -211,6 +211,32 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .run-item strong{font-size:11px;font-weight:650}.run-item p{font-size:10px;color:#9aadb8;margin-top:3px}
 .run-item .outcome{font:11px var(--mono);white-space:nowrap}
 .run-item .outcome.neg{color:#e2a2a7}.run-item .outcome.pos{color:#93cbb2}
+
+.mes-research{margin-top:14px;overflow:hidden}
+.mes-controls{display:grid;grid-template-columns:1.4fr repeat(3,minmax(100px,1fr));gap:13px;padding:3px 16px 15px}
+.mes-controls .label{font-size:11px}
+.mes-controls .field{margin-top:6px;font-size:11px;padding:9px 10px}
+.mes-instrument{margin:0 16px;padding:10px 0;border-top:1px solid var(--hair);display:flex;flex-wrap:wrap;justify-content:space-between;gap:7px;font-size:11px;color:#a7b7c4}
+.mes-instrument strong{color:#d7e2e6}
+.mes-confirm{margin:0 16px 15px;display:flex;align-items:flex-start;gap:10px;font-size:11px;line-height:1.6;color:#a6b7c3}
+.mes-confirm input{accent-color:#a9d7cd;margin-top:3px;flex-shrink:0}
+.mes-report{padding:15px 16px;border-top:1px solid var(--hair)}
+.mes-report h4{font-size:12px;margin:0 0 12px}
+.mes-report .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:9px 0}
+.mes-report .stat{border:1px solid #2a3b45;background:#16212b;border-radius:8px;padding:12px}
+.mes-report .stat .caption{font-size:10px;color:#92a7b3}
+.mes-report .stat .number{font:20px var(--mono);margin:7px 0;color:#e0e9eb}
+.mes-report .stat .number.minus{color:#e6a1a6}
+.mes-report .note{font-size:11px;line-height:1.65;color:#c0ac88;margin:11px 0}
+.mes-report .episodes{max-height:245px;overflow:auto;border-top:1px solid var(--hair)}
+.mes-report table{width:100%;border-collapse:collapse;font:11px var(--mono)}
+.mes-report th,.mes-report td{padding:9px 6px;border-bottom:1px solid #253541;text-align:left}
+.mes-report th{font:10px var(--font);color:#8a9daa}
+.mes-report td{color:#bacbd6}
+.mes-report button.case-link{padding:4px 7px;background:#1d3532;border:1px solid #456d63;border-radius:5px;color:#c2e8da;font-size:10px}
+.mes-report .mes-footer{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+@media(max-width:1000px){.mes-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.mes-controls{grid-template-columns:1fr}.mes-report .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -364,6 +390,37 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <details class="experiment-history"><summary>Previous research runs <span class="dim" id="runHistoryCount">· 0</span></summary><div id="runHistory" class="run-history"></div></details>
       </section>
 
+      <section class="panel mes-research" id="mesLab">
+        <div class="research-head">
+          <div>
+            <div class="eyebrow">Session-accurate · MES only · No order execution</div>
+            <h3>Opening-range strategy experiments <span class="pill">v1</span></h3>
+            <p class="small muted">08:30–11:00 America/Chicago · first 15-minute range · complete five-minute candles · 1 MES contract</p>
+          </div>
+          <button id="runMes" class="btn primary">Run MES research</button>
+        </div>
+        <div class="mes-controls">
+          <label class="label">Frozen rule
+            <select class="field" id="mesRule">
+              <option value="ORP-001">ORP-001 · Break → first pullback</option>
+              <option value="FBR-001">FBR-001 · Failed break → reversal</option>
+            </select>
+          </label>
+          <label class="label">Slippage per side (ticks)<input class="field mono" type="number" id="mesSlip" min="0" max="20" step="0.5" value="1"></label>
+          <label class="label">Round-trip fees (USD/contract)<input class="field mono" type="number" id="mesFee" min="0" max="100" step=".25" value="2.5"></label>
+          <label class="label">ORP target (R)<input class="field mono" type="number" id="mesReward" min=".5" max="6" step=".25" value="2"></label>
+        </div>
+        <div class="mes-instrument">
+          <span><strong>MES</strong> · CME Micro E-mini S&amp;P 500</span>
+          <span>0.25 index-point tick · $1.25/tick · $5/point</span>
+        </div>
+        <label class="mes-confirm"><input id="mesConfirm" type="checkbox">
+          <span>I checked that the selected CSV is <strong>MES</strong> five-minute data with UTC <strong>bar-start</strong> timestamps, correct contract/roll handling, and complete 08:30–11:00 CT sessions. I understand the tool cannot authenticate the source.</span>
+        </label>
+        <div id="mesResult" class="mes-report" aria-live="polite">
+          <p class="empty">Import an authorized MES five-minute CSV, confirm its timestamp convention and session quality, then run either preregistered rule. Synthetic candles and unverified fills do not establish trading edge.</p>
+        </div>
+      </section>
     </section>
     <section id="view-journal" class="hidden">
       <div class="workspace-title"><div><h1>Visual journal</h1><p>Every snapshot should lead back to a decision and an explanation.</p></div><div class="action-row"><input id="archiveFile" type="file" accept=".json,application/json" class="hidden"><button class="btn" id="restoreArchiveBtn">Restore archive</button><button class="btn" id="goWorkspace">New snapshot</button><button class="btn" id="journalExport">Export archive</button></div></div>
@@ -403,6 +460,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   <footer class="statusbar"><span id="footerMode">Research mode</span><span>Local storage</span><span>Ctrl + E to export</span><span class="right">Prototype v0.1 · No live market data · No orders</span></footer>
 </div>
 <div class="toast hidden" role="status" id="toast"></div>
+<script src="session-engine.js"></script>
 <script>
 "use strict";
 (function(){
@@ -415,7 +473,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),
     scopes:{candles:true,marks:true,notes:true,history:false,experiments:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
