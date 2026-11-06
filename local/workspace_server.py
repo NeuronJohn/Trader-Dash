@@ -198,6 +198,33 @@ def validate_context(payload: object) -> dict:
             "reserved_unseen": bool(simulation.get("reserved_unseen", True)),
             "disclaimer": "Exploratory OHLC model; source not verified; not validated live results",
         }
+    paper = evidence.get("paper_research")
+    safe_paper = None
+    if isinstance(paper, dict):
+        records = paper.get("recent_cases", [])
+        scoped = []
+        if isinstance(records, list):
+            for record in records[:12]:
+                if not isinstance(record, dict):
+                    continue
+                status = compact_text(record.get("status"), 20)
+                modeled = record.get("modeled_net_R")
+                scoped.append({
+                    "rule": compact_text(record.get("rule"), 25),
+                    "day": compact_text(record.get("day"), 20),
+                    "origin": compact_text(record.get("origin"), 50),
+                    "status": status,
+                    "modeled_net_R": (modeled if status == "RESOLVED" and
+                                      type(modeled) in (int, float) and
+                                      math.isfinite(modeled) else None),
+                })
+        safe_paper = {
+            "source": "CSV_UNVERIFIED_REPLAY_OR_TIMELY_IMPORT",
+            "verified_forward_trades": 0,
+            "broker_fills": None,
+            "cases": scoped,
+            "warning": "Research statistics are not a verified forward strategy record",
+        }
     # The MES signal and backtest report must be opt-in and may NEVER be
     # represented to the model as a real broker fill or validated edge.
     def finite_price(value):
@@ -268,6 +295,7 @@ def validate_context(payload: object) -> dict:
         "candidate": candidate,
         "mes_signal": safe_mes_signal,
         "mes_session_experiment": safe_mes_simulation,
+        "opt_in_paper_research": safe_paper,
         "exploratory_simulation": safe_simulation,
         "user_selected_prior_cases": safe_cases,
         "disclaimers": [
@@ -341,10 +369,12 @@ class Handler(BaseHTTPRequestHandler):
                              "connect-src 'self'; base-uri 'none'; form-action 'none'")
             self.end_headers()
             self.wfile.write(content)
-        elif pathname in ("/session-engine.js", "/prototype/session-engine.js"):
-            path = ROOT / "prototype" / "session-engine.js"
+        elif pathname in ("/session-engine.js", "/prototype/session-engine.js",
+                          "/paper-ledger.js", "/prototype/paper-ledger.js"):
+            name = "paper-ledger.js" if "paper-ledger.js" in pathname else "session-engine.js"
+            path = ROOT / "prototype" / name
             if not path.is_file():
-                self._reply(404, {"ok": False, "error": "Strategy engine unavailable"})
+                self._reply(404, {"ok": False, "error": "Research engine unavailable"})
                 return
             content = path.read_bytes()
             self.send_response(200)
