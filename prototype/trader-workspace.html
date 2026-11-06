@@ -377,7 +377,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,holdoutExposures:new Set(),
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),
     scopes:{candles:true,marks:true,notes:true,history:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -422,13 +422,16 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const symbol=safeStr(filename).replace(/\.[^.]+$/,"").slice(0,32);
     return {id:"csv:"+symbol+":"+bars.length+":"+bars[0].time+":"+bars[bars.length-1].time,symbol,timeframe:"source",source:"user-csv-unverified",label:"Imported CSV / source unverified",bars};
   }
-  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,2);
-    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets","drawings"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
+  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,3);
+    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets","drawings","experiments"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||Error("IndexedDB unavailable"));})}
   function dbAction(store,mode,op){return new Promise((resolve,reject)=>{if(!S.db)return reject(Error("Browser storage unavailable; export immediately"));
     const tx=S.db.transaction(store,mode),r=op(tx.objectStore(store));tx.oncomplete=()=>resolve(r.result);
     tx.onerror=()=>reject(tx.error||Error("Database error"));})}
-  async function loadSaved(){try{S.db=await openDB();S.snapshots=(await dbAction("snapshots","readonly",s=>s.getAll())).sort((a,b)=>b.at.localeCompare(a.at));const pref=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
+  async function loadSaved(){try{S.db=await openDB();S.snapshots=(await dbAction("snapshots","readonly",s=>s.getAll())).sort((a,b)=>b.at.localeCompare(a.at));
+    S.experimentRuns=(await dbAction("experiments","readonly",s=>s.getAll())).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+    S.holdoutExposures=new Set(S.experimentRuns.filter(e=>e.holdoutRevealedAt).map(e=>e.datasetId));
+    const pref=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
     if(pref.dataId){const d=await dbAction("datasets","readonly",s=>s.get(pref.dataId));if(d&&d.bars)S.data=d;}
   }catch(e){toast("Local persistence unavailable: "+e.message)}
   }
@@ -1037,7 +1040,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
   function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selectedDrawing=null;S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.viewportEnd=null;S.strategy=null;S.selectedCandidate=null;
     $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
-    savePrefs();scanHistory(true);loadDrawingSet();}
+    S.experiment=null;$("simTick").value=data.source==="synthetic"?"0.25":"";
+    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();}
   async function importFile(event){const file=event.target.files&&event.target.files[0];if(!file)return;
     try{const raw=await file.text(), d=readCSV(raw,file.name);
       if(typeof crypto!=="undefined" && crypto.subtle && typeof TextEncoder!=="undefined") {
@@ -1266,6 +1270,152 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       catch(e){toast("Delete failed: "+e.message)}});
     row.append(save,remove);aside.append(eyebrow,head,original,label,notes,row);target.append(img,aside);
   }
+
+  // The reserved chronological evaluation window is deliberately not shown
+  // until the user explicitly reveals it. Repeated tuning after reveal
+  // contaminates the meaning of that historical reserve.
+  function numberText(value,digits=2){return value==null||!Number.isFinite(value)?"—":(value>=0?"+":"")+value.toFixed(digits)}
+  function htmlText(tag,value,cls){
+    const el=document.createElement(tag);el.textContent=String(value);
+    if(cls)el.className=cls;
+    return el;
+  }
+  function currentSimulationOptions(){
+    const tickRaw=$("simTick").value;
+    if(!tickRaw || !(Number(tickRaw)>0))throw Error("Enter the correct instrument tick size; do not guess from the chart.");
+    return {
+      tickSize:Number(tickRaw),slippageTicks:Number($("simSlip").value),
+      roundTripFeeTicks:Number($("simFee").value),rewardR:Number($("simTarget").value),
+      maxHold:Number($("simHold").value),type:$("simKind").value
+    };
+  }
+  async function runResearchExperiment(){
+    if(!S.data) return;
+    try{
+      const options=currentSimulationOptions();
+      const report=simulateHistoricalResearch(S.data.bars,options);
+      const token={
+        id:id(),datasetId:S.data.id,datasetSymbol:S.data.symbol,source:S.data.source,
+        createdAt:new Date().toISOString(),options,report,holdoutRevealedAt:null
+      };
+      S.experiment=token;
+      S.experimentRuns.unshift({...token,report:{...report,holdout:null,trades:report.trades.filter(t=>t.exitIndex<report.splitIndex-report.embargo)}});
+      if(S.db){
+        const safe=S.experimentRuns[0];
+        await dbAction("experiments","readwrite",store=>store.put(safe));
+      }
+      renderExperiment();
+      toast("Simulation completed with recorded assumptions. This is not live performance.");
+    }catch(e){toast("Cannot simulate: "+e.message)}
+  }
+  function statNode(name,value,description){
+    const box=document.createElement("div");box.className="experiment-stat";
+    box.append(htmlText("div",name,"metric"));
+    const val=htmlText("div",value,"value"+(typeof value==="string"&&value.startsWith("-")?" negative":typeof value==="string"&&value.startsWith("+")?" positive":""));
+    box.append(val,htmlText("div",description,"sub"));
+    return box;
+  }
+  function renderExperiment(){
+    const host=$("experimentResults");host.textContent="";
+    const record=S.experiment;
+    if(!record){host.append(htmlText("p","Set the cost parameters and run a historical simulation. No strategy is approved for trading.","empty"));return}
+    const {report}=record,wasSeen=S.holdoutExposures.has(record.datasetId);
+    const head=document.createElement("div");head.className="report-header";
+    head.append(htmlText("h4",record.datasetSymbol+" · "+record.options.type+" · rolling-17-bar-v1"),
+      htmlText("span","Research only · "+(record.source==="synthetic"?"SYNTHETIC":"CSV UNVERIFIED"),"eyebrow"));
+    host.append(head);
+    const stats=document.createElement("div");stats.className="experiment-stats";
+    const train=report.train;
+    stats.append(
+      statNode("Training trades",String(train.trades),report.rawSignalCount+" raw rule matches"),
+      statNode("Training average net R",numberText(train.avgNetR)+"R","After manually assumed tick costs"),
+      statNode("Training max drawdown",train.trades?train.maxDrawdownR.toFixed(2)+"R":"—","Historical sequence, not future risk"),
+    );
+    host.append(stats);
+    const message=document.createElement("div");message.className="report-warning";
+    message.textContent=record.source==="synthetic"?
+      "These simulated candles are artificial. No result can establish a real-market edge. Even on real prices, costs, stop gaps, sessions and execution need independent verification.":
+      "CSV origin is unverified. Tick assumptions are user-supplied; no live bid/ask spreads, fees, rollover or broker fills are checked. Do not interpret this as qualified performance.";
+    host.append(message);
+    const split=document.createElement("div");split.className="report-header";
+    split.append(htmlText("h4","Chronological reserved period"));
+    if(!record.holdoutRevealedAt){
+      const reveal=document.createElement("button");reveal.className="btn";reveal.textContent="Reveal reserved results";
+      reveal.addEventListener("click",()=>revealHoldout());
+      split.append(reveal);
+    }else split.append(htmlText("span","Revealed · "+new Date(record.holdoutRevealedAt).toLocaleString(),"small dim"));
+    host.append(split);
+    if(wasSeen){
+      const notice=document.createElement("p");notice.className="report-warning";
+      notice.textContent="This dataset's reserved period has already been examined. Changing parameters and retesting it is NOT independent out-of-sample validation. Use new untouched historical data for future validation.";
+      host.append(notice);
+    }
+    if(record.holdoutRevealedAt){
+      const held=report.holdout, heldStat=document.createElement("div");heldStat.className="experiment-stats";
+      heldStat.append(
+        statNode("Reserved trades",String(held.trades),"Purged chronological window"),
+        statNode("Reserved average net R",numberText(held.avgNetR)+"R","Not independently blind after exposure"),
+        statNode("Reserved max drawdown",held.trades?held.maxDrawdownR.toFixed(2)+"R":"—","Not a risk guarantee")
+      );
+      host.append(heldStat);
+    }else host.append(htmlText("p","Results deliberately hidden. Reveal once to inspect the later time window. Repeated changes using the same revealed data invalidate its role as an untouched test.","small muted"));
+    const title=htmlText("h4","Simulated episodes · "+(record.holdoutRevealedAt?"visible periods":"training period"),"");
+    title.style.margin="16px 0 10px";host.append(title);
+    const rows=report.trades.filter(t=>record.holdoutRevealedAt||
+      t.exitIndex<report.splitIndex-report.embargo).slice(0,100);
+    const wrap=document.createElement("div");wrap.className="results-scroll";
+    const table=document.createElement("table");table.className="research-table";
+    const h=document.createElement("thead"),tr=document.createElement("tr");
+    for(const name of ["Detected UTC","Pattern","Side","Exit","Net R","Inspect"]){
+      tr.append(htmlText("th",name));
+    }
+    h.append(tr);table.append(h);
+    const body=document.createElement("tbody");
+    for(const t of rows){
+      const row=document.createElement("tr");
+      row.append(htmlText("td",iso(t.signalTime).slice(5,16).replace("T"," ")+"Z"));
+      row.append(htmlText("td",t.type==="failure"?"Failed break":"Break + retest"));
+      row.append(htmlText("td",t.side));
+      row.append(htmlText("td",t.exitReason.replaceAll("_"," ")));
+      row.append(htmlText("td",numberText(t.netR)+"R",t.netR>=0?"pos":"neg"));
+      const cell=document.createElement("td"),view=document.createElement("button");view.className="subtle-link";view.textContent="Chart";
+      view.addEventListener("click",()=>{
+        if(S.data.id!==record.datasetId){toast("Load "+record.datasetSymbol+" to inspect this event.");return}
+        const match=searchPatterns(S.data.bars,S.replay?S.reveal:S.data.bars.length-1).find(c=>c.id===t.id);
+        if(match){selectCandidate(match);setPage("workspace");}else toast("This historical match is beyond the replay cutoff.");
+      });
+      cell.append(view);row.append(cell);body.append(row);
+    }
+    if(!rows.length){const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=6;
+      cell.textContent="No closed trades in this window under these explicit parameters.";row.append(cell);body.append(row)}
+    table.append(body);wrap.append(table);host.append(wrap);
+    const notes=document.createElement("div");notes.className="result-actions";
+    const exportBtn=document.createElement("button");exportBtn.className="btn";exportBtn.textContent="Export report JSON";
+    exportBtn.addEventListener("click",()=>downloadText(JSON.stringify({
+      schema:"trader.research.export.v1",source:record.source,dataset_id:record.datasetId,
+      assumptions:report.assumptions,created_at:record.createdAt,report:record.holdoutRevealedAt?report:{
+        ...report,holdout:null,trades:report.trades.filter(t=>t.exitIndex<report.splitIndex-report.embargo)
+      },
+      excludedReservedResults:!record.holdoutRevealedAt,
+    },null,2),"research-"+record.id+".json"));
+    notes.append(exportBtn,htmlText("span","The simulation uses a structural price stop, not verified exchange fills.","small muted"));
+    host.append(notes);
+  }
+  async function revealHoldout(){
+    const record=S.experiment;if(!record||record.holdoutRevealedAt)return;
+    if(!window.confirm("Reveal the reserved chronological window? After seeing these results, tuning and retesting on the same period is no longer independent validation."))return;
+    record.holdoutRevealedAt=new Date().toISOString();
+    S.holdoutExposures.add(record.datasetId);
+    const index=S.experimentRuns.findIndex(t=>t.id===record.id);
+    const safe={...record,report:record.report};
+    if(index>=0)S.experimentRuns[index]=safe;
+    try{
+      if(S.db)await dbAction("experiments","readwrite",store=>store.put(safe));
+      renderExperiment();
+      toast("Reserved results revealed and exposure recorded for this dataset.");
+    }catch(e){toast("Exposure could not be recorded: "+e.message)}
+  }
+
   function prepareStrategy(key){S.strategy=key;const p=strategyMap[key];$("labDetailTitle").textContent=p.name;$("labDetailText").textContent=p.detail;
     $("aiPrompt").value="Design an auditable research plan for "+p.name+". Define the objective entry/exit rules, data requirements, cost model, blind testing split, and failure criteria. Treat this hypothesis as unvalidated.";
     toast("Strategy hypothesis loaded into analyst research context.");
@@ -1276,6 +1426,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     document.querySelectorAll("[data-strategy]").forEach(b=>b.addEventListener("click",()=>prepareStrategy(b.dataset.strategy)));
     document.querySelectorAll("[data-prompt]").forEach(b=>b.addEventListener("click",()=>{$("aiPrompt").value=b.dataset.prompt;$("aiPrompt").focus()}));
     document.querySelectorAll("[data-scope]").forEach(b=>b.addEventListener("click",()=>{const name=b.dataset.scope;S.scopes[name]=!S.scopes[name];b.classList.toggle("active",S.scopes[name]);b.setAttribute("aria-pressed",String(S.scopes[name]));S.packet=null}));
+    $("runExperiment").addEventListener("click",runResearchExperiment);
     $("prepareContext").addEventListener("click",prepareContext);$("prepareStrategy").addEventListener("click",()=>{$("aiPrompt").value=$("aiPrompt").value||"Design a falsifiable strategy test.";prepareContext()});
     $("copyContext").addEventListener("click",copyPacket);
     $("toggleAiBtn").addEventListener("click",()=>{if(window.matchMedia("(max-width:1050px)").matches){app.classList.toggle("show-ai")}else{app.classList.toggle("hide-ai")}requestAnimationFrame(resized)});
@@ -1355,7 +1506,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();scanHistory(true);resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
