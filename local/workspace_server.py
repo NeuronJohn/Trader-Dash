@@ -174,6 +174,30 @@ def validate_context(payload: object) -> dict:
     notes = evidence.get("notes", {})
     if not isinstance(notes, dict):
         notes = {}
+    simulation = evidence.get("research_simulation")
+    safe_simulation = None
+    if isinstance(simulation, dict) and simulation.get("status") == "RESEARCH_ONLY_NOT_VERIFIED":
+        train = simulation.get("train")
+        if not isinstance(train, dict):
+            train = {}
+        assumption = simulation.get("assumptions")
+        if not isinstance(assumption, dict):
+            assumption = {}
+        safe_simulation = {
+            "status": "RESEARCH_ONLY_NOT_VERIFIED",
+            "train": {
+                "trades": train.get("trades") if isinstance(train.get("trades"), int) else None,
+                "avg_net_R": train.get("avgNetR") if isinstance(train.get("avgNetR"), (int, float)) else None,
+                "max_drawdown_R": train.get("maxDrawdownR") if isinstance(train.get("maxDrawdownR"), (int, float)) else None,
+            },
+            "cost_assumption": {
+                "tick_size": assumption.get("tickSize"),
+                "slippage_ticks_per_side": assumption.get("slippageTicksPerSide"),
+                "round_trip_fee_ticks": assumption.get("roundTripFeeTicks"),
+            },
+            "reserved_unseen": bool(simulation.get("reserved_unseen", True)),
+            "disclaimer": "Exploratory OHLC model; source not verified; not validated live results",
+        }
     candidate = payload.get("pattern_candidate")
     if isinstance(candidate, dict):
         candidate = {
@@ -201,6 +225,7 @@ def validate_context(payload: object) -> dict:
             "thesis": compact_text(notes.get("thesis"), 2000),
         },
         "candidate": candidate,
+        "exploratory_simulation": safe_simulation,
         "user_selected_prior_cases": safe_cases,
         "disclaimers": [
             "Historical structural matches have not been tested for edge",
