@@ -250,6 +250,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .mes-audit .checks{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}
 .mes-audit .check{border:1px solid #30424b;background:#17252b;padding:6px 9px;border-radius:6px;font:10px var(--mono);color:#c4d8df}
 .mes-audit .check.warn{border-color:#6a5138;color:#e0c49c;background:#272118}
+.strategy-fold{margin-top:12px;padding:12px 15px}.strategy-fold>summary{cursor:pointer;font-size:12px;font-weight:670;color:#c6d8e0}.strategy-fold>summary .dim{font-size:11px;font-weight:400;margin-left:5px}.strategy-fold-body{margin-top:12px}.strategy-fold .experiment{margin-top:0}.strategy-fold .experiment-history{border:0;padding:5px 0 0}
 </style>
 </head>
 <body>
@@ -371,38 +372,6 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <div class="summary-item"><p class="eyebrow">Validated strategies</p><div class="value">00</div><div class="hint">No historical tests imported</div></div>
         <div class="summary-item"><p class="eyebrow">Approved for live</p><div class="value">00</div><div class="hint">Requires independent risk checks</div></div>
       </div>
-      <p class="lab-note">Choose a hypothesis to prepare an analysis packet. Exact triggers, entries, exits, fees, slippage, no-trade windows, and rejection criteria must be frozen before testing.</p>
-      <div class="labgrid">
-        <article class="strategy"><div class="stage"><i>01</i><span class="eyebrow">MES / MNQ · futures</span></div><h3>Opening-range continuation</h3><p>Test the first controlled pullback after a measured opening-range break in the direction of higher-timeframe trend.</p><div class="foot"><span class="status">Not tested</span><button class="btn" data-strategy="or-cont">Explore setup</button></div></article>
-        <article class="strategy"><div class="stage"><i>02</i><span class="eyebrow">MES / MNQ · futures</span></div><h3>Failed-breakout reversal</h3><p>Test when an excursion beyond the opening range returns inside, then fails to reclaim the extreme.</p><div class="foot"><span class="status">Not tested</span><button class="btn" data-strategy="or-fail">Explore setup</button></div></article>
-        <article class="strategy"><div class="stage"><i>03</i><span class="eyebrow">EUR/USD · spot FX</span></div><h3>Contraction → expansion</h3><p>Test volatility compression followed by a defined expansion trigger during liquid cross-market hours.</p><div class="foot"><span class="status">Not tested</span><button class="btn" data-strategy="fx-expand">Explore setup</button></div></article>
-        <article class="strategy" style="background:#141c24"><p class="eyebrow">Validation contract</p><h3>What constitutes evidence?</h3><p>Out-of-sample returns, independent time periods, realistic costs, net expectancy, drawdown survival, parameter stability, and forward-paper performance. A compelling chart alone is not evidence.</p><div class="foot"><span class="status">No benchmark runs</span></div></article>
-      </div>
-      <div class="minipanel" style="margin-top:13px"><div class="flex between"><h3 id="labDetailTitle">Choose a hypothesis</h3><button class="btn" id="prepareStrategy">Prepare AI research context</button></div><p id="labDetailText" class="empty">Choose one of the strategies above to view its experiment requirements.</p></div>
-
-      <section class="panel experiment" id="experimentPanel">
-        <div class="research-head">
-          <div>
-            <div class="eyebrow">Reproducible local experiment · Historical OHLC only</div>
-            <h3>Test a structural hypothesis</h3>
-            <p class="small muted">No future-bar signal inputs. Entry at next open; stop-first when OHLC order is ambiguous. Results are normalized R, not account profit.</p>
-          </div>
-          <button class="btn primary" id="runExperiment">Run simulation</button>
-        </div>
-        <div class="experiment-fields">
-          <label class="label">Pattern family<select id="simKind" class="field"><option value="all">All rolling-range patterns</option><option value="breakout">Break + retest only</option><option value="failure">Failed break only</option></select></label>
-          <label class="label">Tick size<input class="field mono" type="number" id="simTick" min="0.000001" step="any" placeholder="Required — per instrument"></label>
-          <label class="label">Slippage / side (ticks)<input class="field mono" type="number" id="simSlip" min="0" max="50" step=".5" value="1"></label>
-          <label class="label">Round-trip fees (tick-equivalent)<input class="field mono" type="number" id="simFee" min="0" max="50" step=".5" value="1"></label>
-          <label class="label">Target (initial risk multiples)<input class="field mono" type="number" id="simTarget" min=".5" max="6" step=".25" value="2"></label>
-          <label class="label">Maximum holding bars<input class="field mono" type="number" id="simHold" min="1" max="120" step="1" value="12"></label>
-        </div>
-        <div class="experiment-results" id="experimentResults">
-          <p class="empty">Choose assumptions, then run a deterministic, cost-adjusted historical simulation. Its results are educational until the market data and execution model are verified.</p>
-        </div>
-        <details class="experiment-history"><summary>Previous research runs <span class="dim" id="runHistoryCount">· 0</span></summary><div id="runHistory" class="run-history"></div></details>
-      </section>
-
       <section class="panel mes-research" id="mesLab">
         <div class="research-head">
           <div>
@@ -436,6 +405,39 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
           <p class="empty">Import an authorized MES five-minute CSV, confirm its timestamp convention and session quality, then run either preregistered rule. Synthetic candles and unverified fills do not establish trading edge.</p>
         </div>
       </section>
+      <details class="strategy-fold panel" id="previousRuns"><summary>Saved research history <span class="dim">· experiments and exposures</span></summary><details class="experiment-history"><summary>Previous research runs <span class="dim" id="runHistoryCount">· 0</span></summary><div id="runHistory" class="run-history"></div></details></details>
+      <details class="strategy-fold panel" id="hypothesisLibrary"><summary>Other research hypotheses <span class="dim">· more markets</span></summary><div class="strategy-fold-body">      <p class="lab-note">Choose a hypothesis to prepare an analysis packet. Exact triggers, entries, exits, fees, slippage, no-trade windows, and rejection criteria must be frozen before testing.</p>
+      <div class="labgrid">
+        <article class="strategy"><div class="stage"><i>01</i><span class="eyebrow">MES / MNQ · futures</span></div><h3>Opening-range continuation</h3><p>Test the first controlled pullback after a measured opening-range break in the direction of higher-timeframe trend.</p><div class="foot"><span class="status">Not tested</span><button class="btn" data-strategy="or-cont">Explore setup</button></div></article>
+        <article class="strategy"><div class="stage"><i>02</i><span class="eyebrow">MES / MNQ · futures</span></div><h3>Failed-breakout reversal</h3><p>Test when an excursion beyond the opening range returns inside, then fails to reclaim the extreme.</p><div class="foot"><span class="status">Not tested</span><button class="btn" data-strategy="or-fail">Explore setup</button></div></article>
+        <article class="strategy"><div class="stage"><i>03</i><span class="eyebrow">EUR/USD · spot FX</span></div><h3>Contraction → expansion</h3><p>Test volatility compression followed by a defined expansion trigger during liquid cross-market hours.</p><div class="foot"><span class="status">Not tested</span><button class="btn" data-strategy="fx-expand">Explore setup</button></div></article>
+        <article class="strategy" style="background:#141c24"><p class="eyebrow">Validation contract</p><h3>What constitutes evidence?</h3><p>Out-of-sample returns, independent time periods, realistic costs, net expectancy, drawdown survival, parameter stability, and forward-paper performance. A compelling chart alone is not evidence.</p><div class="foot"><span class="status">No benchmark runs</span></div></article>
+      </div>
+      <div class="minipanel" style="margin-top:13px"><div class="flex between"><h3 id="labDetailTitle">Choose a hypothesis</h3><button class="btn" id="prepareStrategy">Prepare AI research context</button></div><p id="labDetailText" class="empty">Choose one of the strategies above to view its experiment requirements.</p></div>
+
+</div></details>
+      <details class="strategy-fold panel" id="advancedStructure"><summary>Advanced rolling-range experiments <span class="dim">· exploratory</span></summary><div class="strategy-fold-body">      <section class="panel experiment" id="experimentPanel">
+        <div class="research-head">
+          <div>
+            <div class="eyebrow">Reproducible local experiment · Historical OHLC only</div>
+            <h3>Test a structural hypothesis</h3>
+            <p class="small muted">No future-bar signal inputs. Entry at next open; stop-first when OHLC order is ambiguous. Results are normalized R, not account profit.</p>
+          </div>
+          <button class="btn primary" id="runExperiment">Run simulation</button>
+        </div>
+        <div class="experiment-fields">
+          <label class="label">Pattern family<select id="simKind" class="field"><option value="all">All rolling-range patterns</option><option value="breakout">Break + retest only</option><option value="failure">Failed break only</option></select></label>
+          <label class="label">Tick size<input class="field mono" type="number" id="simTick" min="0.000001" step="any" placeholder="Required — per instrument"></label>
+          <label class="label">Slippage / side (ticks)<input class="field mono" type="number" id="simSlip" min="0" max="50" step=".5" value="1"></label>
+          <label class="label">Round-trip fees (tick-equivalent)<input class="field mono" type="number" id="simFee" min="0" max="50" step=".5" value="1"></label>
+          <label class="label">Target (initial risk multiples)<input class="field mono" type="number" id="simTarget" min=".5" max="6" step=".25" value="2"></label>
+          <label class="label">Maximum holding bars<input class="field mono" type="number" id="simHold" min="1" max="120" step="1" value="12"></label>
+        </div>
+        <div class="experiment-results" id="experimentResults">
+          <p class="empty">Choose assumptions, then run a deterministic, cost-adjusted historical simulation. Its results are educational until the market data and execution model are verified.</p>
+        </div>
+        
+      </section></div></details>
     </section>
     <section id="view-journal" class="hidden">
       <div class="workspace-title"><div><h1>Visual journal</h1><p>Every snapshot should lead back to a decision and an explanation.</p></div><div class="action-row"><input id="archiveFile" type="file" accept=".json,application/json" class="hidden"><button class="btn" id="restoreArchiveBtn">Restore archive</button><button class="btn" id="goWorkspace">New snapshot</button><button class="btn" id="journalExport">Export archive</button></div></div>
@@ -2022,6 +2024,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         toast("Original MES experiment recomputed. CSV source authenticity remains unverified.");
         return;
       }
+      $("advancedStructure").open=true;
       const o=saved.options;
       $("simKind").value=o.type;$("simTick").value=o.tickSize;
       $("simSlip").value=o.slippageTicks;$("simFee").value=o.roundTripFeeTicks;
