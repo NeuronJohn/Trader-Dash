@@ -230,6 +230,7 @@ export default function DisciplineTraderToolkit() {
     };
   });
 
+  const [activeTab, setActiveTab] = useState("charts");
   const [selectedDate, setSelectedDate] = useState(todayKey());
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [pendingLockMode, setPendingLockMode] = useState("restOfDay");
@@ -677,7 +678,7 @@ export default function DisciplineTraderToolkit() {
   return (
     <div className="min-h-screen bg-[#06080d] text-white">
       <div className="mx-auto max-w-7xl px-4 py-5 md:px-6 lg:px-8">
-        <div className="mb-6 grid gap-4 xl:grid-cols-[1.35fr_0.8fr] xl:items-stretch">
+        <div className={"mb-6 grid gap-4 xl:grid-cols-[1.35fr_0.8fr] xl:items-stretch " + (["charts","analyst"].includes(activeTab) ? "hidden" : "")}>
           <Card className="overflow-hidden rounded-[2rem] border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.22),transparent_35%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_30%),linear-gradient(180deg,rgba(17,24,39,0.92),rgba(8,12,18,0.98))] shadow-2xl shadow-black/30">
             <CardContent className="relative p-4 md:p-5 h-full">
               <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_30%,transparent_60%,rgba(255,255,255,0.03))]" />
@@ -853,7 +854,7 @@ export default function DisciplineTraderToolkit() {
           </Card>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <div className={"grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 " + (["charts","analyst"].includes(activeTab) ? "hidden" : "")}>
           {statCards.map(({ label, value, sub, Icon }) => (
             <Card key={label} className="rounded-[1.6rem] border-white/10 bg-white/[0.04] backdrop-blur-sm min-h-[124px]">
               <CardContent className="p-4">
@@ -870,7 +871,7 @@ export default function DisciplineTraderToolkit() {
           ))}
         </div>
 
-        <Tabs defaultValue="charts" className="mt-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
           <TabsList className="grid w-full grid-cols-2 gap-2 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-2 md:grid-cols-4 xl:grid-cols-9 min-h-[72px]">
             <TabsTrigger value="charts" className="rounded-2xl">Charts</TabsTrigger>
             <TabsTrigger value="analyst" className="rounded-2xl">Analyst</TabsTrigger>
