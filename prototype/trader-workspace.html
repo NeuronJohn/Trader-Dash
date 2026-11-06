@@ -773,14 +773,16 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("aiSymbol").textContent=S.data.symbol;
     $("aiCases").textContent=S.snapshots.length+" snapshots";
     $("zoomLabel").textContent=S.visible+" bars";
-    $("selectedBars").textContent=S.selection?(S.selection[1]-S.selection[0]+1)+" selected":"Last "+bars.length;
-    $("aiWindow").textContent=S.selection?(S.selection[1]-S.selection[0]+1)+" selected bars":bars.length+" visible bars";
-    $("rangeStatus").textContent=S.selection?"Range: "+(S.selection[1]-S.selection[0]+1)+" candles":"No range selected";
+    $("selectedBars").textContent=S.selection?evidenceBars().length+" visible selected":"Last "+bars.length;
+    $("aiWindow").textContent=S.selection?evidenceBars().length+" selected bars":bars.length+" visible bars";
+    $("rangeStatus").textContent=S.selection?"Range: "+evidenceBars().length+" visible candles":"No range selected";
     $("replayLabel").textContent=S.replay?(S.reveal+1)+" / "+S.data.bars.length:"Full dataset";
     $("replayBack").disabled=!S.replay||S.reveal<=Math.min(39,S.data.bars.length-1);
     $("replayNext").disabled=!S.replay||S.reveal>=S.data.bars.length-1;
     $("replayTen").disabled=!S.replay||S.reveal>=S.data.bars.length-1;
     $("footerMode").textContent=S.replay?"Historical reveal · No fills":"Research mode";
+    $("drawingCount").textContent=markArray().length+" drawings"+(S.replay?" · replay":"");
+    $("deleteDrawing").disabled=!selectedMark();
     updateObservations();draw();
   }
   function evidenceBars(){const a=visible();if(!S.selection)return a.bars;
@@ -816,10 +818,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       missing:["Broker fills and costs not connected","Market data provider not verified","Strategy performance not validated","Live AI model unavailable"]
     };
     if(S.scopes.candles)result.evidence.candles=b.map(c=>({...c,time_utc:iso(c.time)}));
-    if(S.scopes.marks)result.evidence.drawings=activeDrawings().filter(d=>d.type==="level"||(d.index>=a.start&&d.index<=a.end));
+    if(S.scopes.marks)result.evidence.drawings=activeDrawings().filter(d=>!d.hidden && (d.type==="level" || drawingPoints(d).some(p=>p.index>=a.start&&p.index<=a.end)));
     if(S.scopes.notes)result.evidence.notes={setup:$("setupName").value,thesis:$("thesis").value};
     if(S.scopes.history && !S.replay)result.evidence.saved_cases=S.snapshots.slice(0,10).map(s=>({id:s.id,at:s.at,symbol:s.symbol,setup:s.setup,note:s.note,source:s.source}));
     if(S.scopes.history && S.replay)result.missing.push("Saved journal cases omitted from reveal mode to avoid retrospective outcome leakage");
+    if(S.selectedCandidate)result.pattern_candidate={id:S.selectedCandidate.id,rule_version:S.selectedCandidate.version,kind:S.selectedCandidate.type,detected_at_utc:iso(S.selectedCandidate.at),direction:S.selectedCandidate.side,range_boundary:S.selectedCandidate.boundary,reference_close:S.selectedCandidate.trigger,illustrative_invalidation:S.selectedCandidate.invalidation,confirmation_checks:S.selectedCandidate.checks,profitability:"NOT_TESTED",outcome:"UNKNOWN"};
     if(S.strategy)result.strategy_candidate={id:S.strategy,name:strategyMap[S.strategy].name,detail:strategyMap[S.strategy].detail,validation:"not_tested"};
     return result;
   }
@@ -836,9 +839,9 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     try{await navigator.clipboard.writeText(text);toast("Full context packet copied.");}
     catch(e){const temp=document.createElement("textarea");temp.value=text;document.body.appendChild(temp);temp.select();const ok=document.execCommand("copy");temp.remove();toast(ok?"Full packet copied.":"Clipboard blocked; export your journal or use the preview.");}
   }
-  function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.strategy=null;
+  function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selectedDrawing=null;S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.viewportEnd=null;S.strategy=null;S.selectedCandidate=null;
     $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
-    savePrefs();updateContext();}
+    savePrefs();scanHistory();loadDrawingSet();}
   async function importFile(event){const file=event.target.files&&event.target.files[0];if(!file)return;
     try{const raw=await file.text(), d=readCSV(raw,file.name);
       if(typeof crypto!=="undefined" && crypto.subtle && typeof TextEncoder!=="undefined") {
@@ -1038,30 +1041,70 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     }));
     $("importBtn").addEventListener("click",()=>$("importCsv").click());$("importCsv").addEventListener("change",importFile);
     $("resetDemo").addEventListener("click",()=>resetDataset(demo()));
-    $("captureBtn").addEventListener("click",capture);$("captureSecondary").addEventListener("click",capture);
+    $("captureSecondary").addEventListener("click",capture);
+    $("scanTop").addEventListener("click",()=>{scanHistory();toast(S.candidates.length+" historical candidate patterns found. None are verified trading signals.");});
+    $("scanNow").addEventListener("click",()=>{scanHistory();toast("Historical scan refreshed.");});
+    $("aiScanBtn").addEventListener("click",()=>{setPage("workspace");scanHistory();toast("Candidate search is local and rule-based, not an active AI model.");});
+    $("scanFilter").addEventListener("change",renderScanner);
+    $("drawingLabel").addEventListener("input",e=>{
+      const m=selectedMark();if(!m)return;m.label=e.target.value.slice(0,180);
+      queueDrawingSave();renderDrawingList();draw();
+    });
+    $("toggleDrawing").addEventListener("click",()=>{const m=selectedMark();if(m)changeMark(m.id,{hidden:!m.hidden})});
+    $("removeDrawing").addEventListener("click",()=>{if(S.selectedDrawing)removeMark(S.selectedDrawing)});
+    $("deleteDrawing").addEventListener("click",()=>{if(S.selectedDrawing)removeMark(S.selectedDrawing)});
     $("exportBtn").addEventListener("click",exportArchive);$("journalExport").addEventListener("click",exportArchive);
     $("journalSearch").addEventListener("input",renderJournal);$("refreshJournal").addEventListener("click",renderJournal);
     $("goWorkspace").addEventListener("click",()=>setPage("workspace"));
-    $("zoomOut").addEventListener("click",()=>{S.visible=clamp(S.visible+25,30,180);S.selection=null;updateContext()});
-    $("zoomIn").addEventListener("click",()=>{S.visible=clamp(S.visible-25,30,180);S.selection=null;updateContext()});
-    $("undoMark").addEventListener("click",()=>{(S.replay?S.replayDrawings:S.drawings).pop();updateContext()});
-    $("replayToggle").addEventListener("change",e=>{S.replay=e.target.checked;if(S.replay)S.replayDrawings=[];S.reveal=Math.min(79,S.data.bars.length-1);S.selection=null;S.packet=null;updateContext()});
-    $("replayBack").addEventListener("click",()=>{S.reveal=clamp(S.reveal-1,Math.min(39,S.data.bars.length-1),S.data.bars.length-1);S.selection=null;updateContext()});
-    $("replayNext").addEventListener("click",()=>{S.reveal=clamp(S.reveal+1,0,S.data.bars.length-1);S.selection=null;updateContext()});
-    $("replayTen").addEventListener("click",()=>{S.reveal=clamp(S.reveal+10,0,S.data.bars.length-1);S.selection=null;updateContext()});
+    $("zoomOut").addEventListener("click",()=>zoomAt(S.visible+20,.5));
+    $("zoomIn").addEventListener("click",()=>zoomAt(S.visible-20,.5));
+    $("panLeft").addEventListener("click",()=>scrollChart(-Math.max(1,Math.round(S.visible*.3))));
+    $("panRight").addEventListener("click",()=>scrollChart(Math.max(1,Math.round(S.visible*.3))));
+    $("undoMark").addEventListener("click",()=>{const m=markArray().at(-1);if(m)removeMark(m.id)});
+    $("replayToggle").addEventListener("change",e=>{
+      S.replay=e.target.checked;
+      if(S.replay){S.replayDrawings=[];S.reveal=Math.min(79,S.data.bars.length-1);S.viewportEnd=S.reveal;}
+      else S.viewportEnd=null;
+      S.selectedDrawing=null;S.selectedCandidate=null;S.selection=null;S.packet=null;
+      renderDrawingList();scanHistory();
+    });
+    function revealBy(n){
+      S.reveal=clamp(S.reveal+n,Math.min(39,S.data.bars.length-1),S.data.bars.length-1);
+      S.viewportEnd=S.reveal;S.selectedCandidate=null;S.selection=null;S.packet=null;scanHistory();
+    }
+    $("replayBack").addEventListener("click",()=>revealBy(-1));
+    $("replayNext").addEventListener("click",()=>revealBy(1));
+    $("replayTen").addEventListener("click",()=>revealBy(10));
+    canvas.addEventListener("wheel",e=>{
+      e.preventDefault();
+      if(e.shiftKey){scrollChart((e.deltaY>0?1:-1)*Math.max(1,Math.round(S.visible*.24)));return}
+      const r=canvas.getBoundingClientRect(),fraction=clamp((e.clientX-r.left-chartMeta().L)/chartMeta().plotW,0,1);
+      zoomAt(S.visible*(e.deltaY>0?1.14:.87),fraction);
+    },{passive:false});
     canvas.addEventListener("pointerdown",handleDown);canvas.addEventListener("pointermove",handleMove);
     canvas.addEventListener("pointerup",handleUp);canvas.addEventListener("click",handleClick);
     canvas.addEventListener("pointerleave",()=>{S.hover=null;draw()});
     canvas.addEventListener("pointercancel",()=>{S.drag=null;draw()});
-    document.addEventListener("keydown",e=>{const tag=e.target.tagName.toLowerCase();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="e"){e.preventDefault();exportArchive()}
+    document.addEventListener("keydown",e=>{
+      const tag=e.target?.tagName?.toLowerCase()||"";
+      if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="e"){e.preventDefault();exportArchive();return}
       if(["input","textarea","select"].includes(tag))return;
-      if(e.key==="Escape"&&S.page==="workspace"){S.selection=null;S.drag=null;updateContext()}
-      if(e.key==="1")setTool("inspect");if(e.key==="2")setTool("select");if(e.key==="3")setTool("level");if(e.key==="4")setTool("note");
+      if((e.key==="Delete"||e.key==="Backspace")&&S.selectedDrawing){e.preventDefault();removeMark(S.selectedDrawing);return}
+      if(e.key==="Escape"&&S.page==="workspace"){S.selection=null;S.drag=null;S.selectedDrawing=null;renderDrawingList();updateContext();return}
+      if(e.key==="1")setTool("inspect");
+      if(e.key==="2")setTool("select");
+      if(e.key==="3")setTool("edit");
+      if(e.key==="4")setTool("level");
+      if(e.key==="5")setTool("line");
+      if(e.key==="6")setTool("rectangle");
+      if(e.key==="7")setTool("arrow");
+      if(e.key==="8")setTool("brush");
+      if(e.key==="9")setTool("note");
     });
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;updateContext();resized();toast("Workspace ready · Demo mode · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();scanHistory();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
