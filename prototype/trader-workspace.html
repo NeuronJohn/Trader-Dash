@@ -296,7 +296,6 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <div class="context-row"><span class="k">Evidence window</span><span class="v" id="aiWindow">Last visible 90 candles</span></div>
         <div class="context-row"><span class="k">Chart notes</span><span class="v mono" id="aiMarks">0 attached</span></div>
         <div class="context-row"><span class="k">Saved cases</span><span class="v mono" id="aiCases">0 snapshots</span></div>
-      </div>
       <div class="ai-section"><h3>Include in context</h3><div class="scope">
         <button class="active" data-scope="candles" aria-pressed="true">Candles</button>
         <button class="active" data-scope="marks" aria-pressed="true">Annotations</button>
@@ -305,7 +304,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       </div><p class="small dim" style="margin-top:10px;line-height:1.7">Only selected sources enter a prepared context packet. Sensitive account credentials are never included.</p></div>
       </details>
       <details class="ai-section advanced"><summary>Local observations</summary><div id="aiObservations" style="margin-top:9px"></div></details>
-      <details class="ai-section advanced"><summary>Context packet</summary><div class="flex between"><h3 style="margin:0">Prepared input</h3><button class="subtle-link" id="copyContext">Copy JSON</button></div><p class="small muted" style="line-height:1.7;margin:9px 0">Prepared locally for a future connected model. Exact inputs, source type, and missing data are explicit.</p><pre id="packetPreview" style="margin:0;max-height:150px;overflow:auto;padding:10px;border:1px solid var(--edge);border-radius:7px;background:#0e151c;font:10px/1.65 var(--mono);color:#9db2bd;white-space:pre-wrap;overflow-wrap:anywhere">Select evidence and prepare an analysis.</pre></div></details>
+      <details class="ai-section advanced"><summary>Context packet</summary><div class="flex between"><h3 style="margin:0">Prepared input</h3><button class="subtle-link" id="copyContext">Copy JSON</button></div><p class="small muted" style="line-height:1.7;margin:9px 0">Prepared locally for a future connected model. Exact inputs, source type, and missing data are explicit.</p><pre id="packetPreview" style="margin:0;max-height:150px;overflow:auto;padding:10px;border:1px solid var(--edge);border-radius:7px;background:#0e151c;font:10px/1.65 var(--mono);color:#9db2bd;white-space:pre-wrap;overflow-wrap:anywhere">Select evidence and prepare an analysis.</pre></details>
     </div>
     <div class="ai-composer">
       <div class="prompt-row"><button class="prompt" id="aiScanBtn">Find setups</button><button class="prompt" data-prompt="Review my selected chart context. Separate observations, uncertainties, and what could falsify an idea.">Review setup</button><button class="prompt" data-prompt="Identify decision-process mistakes supported by my notes and observed candle sequence. Do not invent trade history.">Audit decisions</button><button class="prompt" data-prompt="Propose a falsifiable strategy experiment with exact entry/exit/risk conditions and out-of-sample validation.">Design test</button></div>
