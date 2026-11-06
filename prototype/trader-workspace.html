@@ -586,7 +586,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   function coordsOf(event){
     const rect=canvas.getBoundingClientRect(),m=chartMeta();
     const x=clamp(event.clientX-rect.left,m.L,m.w-m.R-1),y=clamp(event.clientY-rect.top,m.T,m.h-m.B-1);
-    return {x,y,index:ixFrom(x,m),price:priceFrom(y,m),m};
+    return {x,y,index:ixFrom(x,m),fractional:clamp(m.a.start+(x-m.L)/m.step-.5,0,chartLimit()),price:priceFrom(y,m),m};
   }
   function pt(p){return {index:p.index,price:p.price}}
   function distSeg(px,py,ax,ay,bx,by){
@@ -620,7 +620,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const moved=JSON.parse(JSON.stringify(original));
     const movePoint=p=>{p.index=clamp(p.index+deltaIndex,0,limit);p.price=Math.max(.000001,p.price+deltaPrice)};
     if(moved.type==="level")moved.price=Math.max(.000001,moved.price+deltaPrice);
-    if(moved.type==="note"){moved.index=clamp(moved.index+deltaIndex,0,limit);moved.price=Math.max(.000001,moved.price+deltaPrice)}
+    if(moved.type==="note"){moved.index=Math.round(clamp(moved.index+deltaIndex,0,limit));moved.price=Math.max(.000001,moved.price+deltaPrice)}
     if(moved.p1)movePoint(moved.p1);
     if(moved.p2)movePoint(moved.p2);
     if(moved.points)moved.points.forEach(movePoint);
@@ -850,26 +850,109 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     }catch(e){toast("Import error: "+e.message)}
     event.target.value="";
   }
-  function handleDown(event){const p=dataFromEvent(event);if(!p)return;
-    if(S.tool==="select"){S.drag={start:p.index,end:p.index};canvas.setPointerCapture?.(event.pointerId)}}
-  function handleMove(event){const p=dataFromEvent(event);
+
+  function chartLimit(){return S.replay?S.reveal:S.data.bars.length-1}
+  function scrollChart(deltaBars){
+    const limit=chartLimit(),now=visible().end;
+    S.viewportEnd=clamp(now+deltaBars,Math.min(S.visible-1,limit),limit);
+    S.selection=null;S.hover=null;S.packet=null;updateContext();
+  }
+  function zoomAt(next,relative=.5){
+    const old=visible(),limit=chartLimit();
+    const count=clamp(Math.round(next),24,180),anchor=old.start+clamp(relative,0,1)*(old.bars.length-1);
+    S.visible=count;
+    S.viewportEnd=clamp(Math.round(anchor+(1-clamp(relative,0,1))*(count-1)),Math.min(count-1,limit),limit);
+    S.selection=null;S.hover=null;S.packet=null;
+    updateContext();
+  }
+  function handleDown(event){
+    if(event.button!==0)return;
+    const p=dataFromEvent(event);if(!p)return;
+    const point=coordsOf(event);
+    if(S.tool==="select"){S.drag={kind:"range",start:p.index,end:p.index,startX:point.x};}
+    else if(S.tool==="inspect"){S.drag={kind:"pan",startX:event.clientX,end:visible().end,step:point.m.step,moved:false};}
+    else if(S.tool==="edit"){
+      const hit=hitDrawing(point);S.selectedDrawing=hit?.id||null;renderDrawingList();
+      if(hit)S.drag={kind:"move",id:hit.id,original:JSON.parse(JSON.stringify(hit)),startX:event.clientX,startY:event.clientY,step:point.m.step,span:point.m.max-point.m.min,plotH:point.m.plotH};
+    }
+    else if(["line","rectangle","arrow","brush"].includes(S.tool)){
+      const p1={index:point.fractional,price:point.price};
+      const preview=S.tool==="brush"?{type:"brush",points:[p1]}:{type:S.tool,p1,p2:{...p1}};
+      S.drag={kind:"new",tool:S.tool,startX:point.x,startY:point.y,preview};
+    }
+    if(S.drag){try{canvas.setPointerCapture(event.pointerId)}catch(e){}}
+  }
+  function handleMove(event){
+    let p=dataFromEvent(event);
+    if(S.drag) p=coordsOf(event);
     if(!p){S.hover=null;draw();return}
     S.hover={index:p.index,price:p.price};
-    if(S.drag)S.drag.end=p.index;
     const bar=S.data.bars[p.index];
-    $("chartHover").textContent=iso(bar.time).slice(0,16)+"Z    O "+fmt(bar.open)+"    H "+fmt(bar.high)+"    L "+fmt(bar.low)+"    C "+fmt(bar.close);
+    $("chartHover").textContent=iso(bar.time).slice(0,16)+"Z · O "+fmt(bar.open)+" H "+fmt(bar.high)+" L "+fmt(bar.low)+" C "+fmt(bar.close);
+    if(S.drag){
+      const drag=S.drag;
+      if(drag.kind==="range") drag.end=p.index;
+      if(drag.kind==="pan"){
+        const delta=event.clientX-drag.startX;
+        drag.moved=drag.moved||Math.abs(delta)>4;
+        if(drag.moved){
+          const limit=chartLimit();
+          S.viewportEnd=clamp(Math.round(drag.end-delta/drag.step),Math.min(S.visible-1,limit),limit);
+          S.selection=null;S.packet=null;
+        }
+      }
+      if(drag.kind==="new"){
+        const now={index:p.fractional,price:p.price};
+        if(drag.tool==="brush"){
+          const arr=drag.preview.points,last=arr[arr.length-1];
+          if(!last||Math.abs(last.index-now.index)> .045 || Math.abs(last.price-now.price)>((p.m.max-p.m.min)/700)) {
+            if(arr.length<3000)arr.push(now);
+          }
+        }else drag.preview.p2=now;
+      }
+      if(drag.kind==="move"){
+        const hit=markArray().find(m=>m.id===drag.id);
+        if(hit){
+          const diffX=(event.clientX-drag.startX)/drag.step;
+          const diffPrice=-(event.clientY-drag.startY)*drag.span/drag.plotH;
+          Object.assign(hit,shiftMark(drag.original,diffX,diffPrice,chartLimit()));
+        }
+      }
+    }
     draw();
   }
-  function handleUp(event){if(!S.drag)return;const p=dataFromEvent(event);if(p)S.drag.end=p.index;
-    const lo=Math.min(S.drag.start,S.drag.end),hi=Math.max(S.drag.start,S.drag.end);
-    S.selection=[lo,hi];S.drag=null;S.packet=null;updateContext();
-    try{canvas.releasePointerCapture?.(event.pointerId)}catch(e){}}
-  function handleClick(event){const p=dataFromEvent(event);if(!p||S.tool==="select")return;
-    if(S.tool==="level"){(S.replay?S.replayDrawings:S.drawings).push({id:id(),type:"level",price:Number(p.price.toFixed(4)),createdReveal:S.reveal,at:iso(S.data.bars[p.index].time)});toast("Price level added.")}
-    if(S.tool==="note"){const draft=$("thesis").value.trim().slice(0,130);(S.replay?S.replayDrawings:S.drawings).push({id:id(),type:"note",index:p.index,price:Number(p.price.toFixed(4)),text:draft||"Review this candle",createdReveal:S.reveal,at:iso(S.data.bars[p.index].time)});toast("Note marker attached to this candle.")}
-    if(S.tool!=="inspect"){S.packet=null;updateContext()}
+  function handleUp(event){
+    const d=S.drag;if(!d)return;
+    const p=coordsOf(event);
+    if(d.kind==="range"){
+      d.end=p.index;
+      if(Math.abs(d.end-d.start)>=1)S.selection=[Math.min(d.start,d.end),Math.max(d.start,d.end)];
+      else S.selection=null;
+      S.packet=null;
+    }
+    if(d.kind==="new"){
+      const mark=d.preview;
+      if(d.tool==="brush"){
+        if(mark.points.length>1)addMark(mark);
+      }else if(Math.hypot(p.x-d.startX,p.y-d.startY)>5)addMark(mark);
+    }
+    if(d.kind==="move")queueDrawingSave();
+    S.drag=null;S.packet=null;
+    try{canvas.releasePointerCapture(event.pointerId)}catch(e){}
+    renderDrawingList();updateContext();
   }
-  function setTool(t){S.tool=t;document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("tool-active",b.dataset.tool===t));toast(t==="select"?"Drag across candles to select a range.":t==="level"?"Click a price to add a horizontal level.":t==="note"?"Click a candle to add a note marker.":"Inspect candles by hovering.")}
+  function handleClick(event){
+    if(!["level","note"].includes(S.tool))return;
+    const p=dataFromEvent(event);if(!p)return;
+    if(S.tool==="level")addMark({type:"level",price:Number(p.price.toFixed(6)),label:""});
+    if(S.tool==="note")addMark({type:"note",index:p.index,price:Number(p.price.toFixed(6)),label:""});
+    toast("Drawing saved. Choose Edit to select, label, move or delete.");
+  }
+  function setTool(t,quiet=false){
+    S.drag=null;S.tool=t;
+    document.querySelectorAll("[data-tool]").forEach(b=>{const on=b.dataset.tool===t;b.classList.toggle("tool-active",on);b.setAttribute("aria-pressed",String(on))});
+    if(!quiet)toast({inspect:"Drag to pan, scroll to zoom.",select:"Drag across candles to scope research.",edit:"Click a drawing, drag to move it, Delete to remove it.",line:"Drag across the chart to draw a line.",rectangle:"Drag between corners to create a price zone.",arrow:"Drag to draw an arrow.",brush:"Drag to draw freehand.",level:"Click to place a horizontal level.",note:"Click to pin a note."}[t]||"Tool selected");
+  }
   function setPage(page){S.page=page;
     document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===page));
     for(const value of ["workspace","lab","journal"])$("view-"+value).classList.toggle("hidden",value!==page);
