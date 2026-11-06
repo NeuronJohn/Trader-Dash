@@ -766,14 +766,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const demo=S.data.source==="synthetic";
     $("sourceTag").textContent=demo?"SYNTHETIC":"USER CSV";
     $("sourceTag").classList.toggle("imported",!demo);
-    $("feedStatus").textContent=demo?"Synthetic / training only":"Imported CSV / unverified";
-    $("markCount").textContent=activeDrawings().length;
     $("aiMarks").textContent=activeDrawings().length+" attached";
     $("aiSource").textContent=S.data.source==="synthetic"?"Synthetic demo":"Imported / unverified";
     $("aiSymbol").textContent=S.data.symbol;
     $("aiCases").textContent=S.snapshots.length+" snapshots";
     $("zoomLabel").textContent=S.visible+" bars";
-    $("selectedBars").textContent=S.selection?evidenceBars().length+" visible selected":"Last "+bars.length;
     $("aiWindow").textContent=S.selection?evidenceBars().length+" selected bars":bars.length+" visible bars";
     $("rangeStatus").textContent=S.selection?"Range: "+evidenceBars().length+" visible candles":"No range selected";
     $("replayLabel").textContent=S.replay?(S.reveal+1)+" / "+S.data.bars.length:"Full dataset";
