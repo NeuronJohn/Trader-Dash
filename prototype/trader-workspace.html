@@ -379,7 +379,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <button class="active" data-scope="candles" aria-pressed="true">Candles</button>
         <button class="active" data-scope="marks" aria-pressed="true">Annotations</button>
         <button class="active" data-scope="notes" aria-pressed="true">Draft notes</button>
-        <button data-scope="history" aria-pressed="false">Journal cases</button>
+        <button data-scope="history" aria-pressed="false">Journal cases</button><button data-scope="experiments" aria-pressed="false">Experiment statistics</button>
       </div><p class="small dim" style="margin-top:10px;line-height:1.7">Only selected sources enter a prepared context packet. Sensitive account credentials are never included.</p></div>
       </details>
       <details class="ai-section advanced"><summary>Local observations</summary><div id="aiObservations" style="margin-top:9px"></div></details>
@@ -406,8 +406,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,
-    scopes:{candles:true,marks:true,notes:true,history:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),
+    scopes:{candles:true,marks:true,notes:true,history:false,experiments:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
   const iso = ms => new Date(ms).toISOString();
@@ -1108,7 +1108,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(S.scopes.notes)result.evidence.notes={setup:$("setupName").value,thesis:$("thesis").value};
     if(S.scopes.history && !S.replay)result.evidence.saved_cases=S.snapshots.slice(0,10).map(s=>({id:s.id,at:s.at,symbol:s.symbol,setup:s.setup,note:s.note,source:s.source}));
     if(S.scopes.history && S.replay)result.missing.push("Saved journal cases omitted from reveal mode to avoid retrospective outcome leakage");
-    if(S.experiment && S.experiment.datasetId===S.data.id && !S.replay){
+    if(S.scopes.experiments && S.experiment && S.experiment.datasetId===S.data.id && !S.replay){
       const run=S.experiment;
       result.evidence.research_simulation={
         run_id:run.id,status:"RESEARCH_ONLY_NOT_VERIFIED",
@@ -1396,7 +1396,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   function displayModelAnalysis(data){
     const host=$("aiModelAnswer");host.textContent="";host.classList.remove("hidden","error");
     const analysis=data?.analysis||{};
-    host.append(htmlText("h3","Local AI · Evidence review"));
+    host.append(htmlText("h3","Local AI · Evidence review (not independently verified)"));
     const fields=[
       ["Observed",analysis.observation],["Possible interpretation",analysis.interpretation],
       ["How to falsify",analysis.falsification],["Test next",analysis.next_experiment],
@@ -1460,6 +1460,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     displayModelMessage("Local analysis in progress","Examining the selected bar history and visible research context. No trade is being placed.");
     try{
       const p=packet();
+      const cacheKey=JSON.stringify([S.runtime.model,p.source.id,p.replay,p.selected_window,p.pattern_candidate,p.evidence,p.prompt]);
+      if(S.modelCache.has(cacheKey)){
+        displayModelAnalysis(S.modelCache.get(cacheKey));
+        return;
+      }
       const response=await fetch("/api/analyst",{
         method:"POST",credentials:"same-origin",
         headers:{"Content-Type":"application/json","X-Trader-Token":S.runtime.token},
@@ -1469,6 +1474,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       if(serial!==S.localAnalysisSerial || key!==analysisKey())return;
       if(!response.ok||!answer.ok)throw Error(String(answer.error||"Local model analysis failed"));
       if(answer.source_id!==S.data.id)throw Error("Model response was for a different dataset");
+      if(S.modelCache.size>=25)S.modelCache.clear();
+      S.modelCache.set(cacheKey,answer);
       displayModelAnalysis(answer);
     }catch(e){
       if(serial!==S.localAnalysisSerial)return;
