@@ -531,7 +531,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 
 
   function markArray(){return S.replay?S.replayDrawings:S.drawings}
-  function selectedMark(){return markArray().find(x=>x.id===S.selectedDrawing)||null}
+  function selectedMark(){return activeDrawings().find(x=>x.id===S.selectedDrawing)||null}
   function queueDrawingSave(){
     if(S.replay)return; // Replay annotations are ephemeral and cannot modify historical research evidence.
     const record={id:S.data.id,list:S.drawings.map(m=>JSON.parse(JSON.stringify(m))),updated_at:new Date().toISOString()};
@@ -564,9 +564,9 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     queueDrawingSave();renderDrawingList();updateContext();
   }
   function renderDrawingList(){
-    const arr=markArray();
+    const arr=activeDrawings();
     const list=$("drawingList");list.textContent="";
-    $("drawingCount").textContent=arr.length+" saved"+(S.replay?" (replay only)":"");
+    $("drawingCount").textContent=arr.length+" active"+(S.replay?" (replay only)":"");
     $("deleteDrawing").disabled=!selectedMark();
     if(!arr.length){const empty=document.createElement("p");empty.className="empty";empty.textContent="Draw with Line, Level, Box, Arrow, Brush or Note. Choose Edit to select or move them.";list.append(empty)}
     const labels={level:"Level",line:"Trendline",rectangle:"Zone",arrow:"Arrow",brush:"Brush stroke",note:"Pinned note"};
@@ -778,7 +778,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("replayNext").disabled=!S.replay||S.reveal>=S.data.bars.length-1;
     $("replayTen").disabled=!S.replay||S.reveal>=S.data.bars.length-1;
     $("footerMode").textContent=S.replay?"Historical reveal · No fills":"Research mode";
-    $("drawingCount").textContent=markArray().length+" drawings"+(S.replay?" · replay":"");
+    $("drawingCount").textContent=activeDrawings().length+" drawings"+(S.replay?" · replay":"");
     $("deleteDrawing").disabled=!selectedMark();
     updateObservations();draw();
   }
@@ -1067,7 +1067,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     });
     function revealBy(n){
       S.reveal=clamp(S.reveal+n,Math.min(39,S.data.bars.length-1),S.data.bars.length-1);
-      S.viewportEnd=S.reveal;S.selectedCandidate=null;S.selection=null;S.packet=null;scanHistory();
+      S.viewportEnd=S.reveal;S.selectedCandidate=null;S.selectedDrawing=null;S.selection=null;S.packet=null;renderDrawingList();scanHistory();
     }
     $("replayBack").addEventListener("click",()=>revealBy(-1));
     $("replayNext").addEventListener("click",()=>revealBy(1));
