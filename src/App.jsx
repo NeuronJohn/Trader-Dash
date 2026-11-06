@@ -91,7 +91,11 @@ const defaultReminders = [
 ];
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  // Use the Chicago trading calendar, not UTC, to avoid off-by-one evening sessions.
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date()).filter(x => x.type !== "literal").map(x => [x.type, x.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function toNum(value, fallback = 0) {
