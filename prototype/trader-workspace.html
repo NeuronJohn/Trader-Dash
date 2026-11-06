@@ -1057,7 +1057,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
 
   function selectCandidate(candidate){
-    S.selectedCandidate=candidate;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
+    S.selectedCandidate=candidate;S.mesPreview=null;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
     const end=S.replay?S.reveal:S.data.bars.length-1;
     S.viewportEnd=Math.min(end,candidate.index+Math.round(S.visible*.35));
     S.packet=null;
@@ -1177,6 +1177,17 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(S.scopes.notes)result.evidence.notes={setup:$("setupName").value,thesis:$("thesis").value};
     if(S.scopes.history && !S.replay)result.evidence.saved_cases=S.snapshots.slice(0,10).map(s=>({id:s.id,at:s.at,symbol:s.symbol,setup:s.setup,note:s.note,source:s.source}));
     if(S.scopes.history && S.replay)result.missing.push("Saved journal cases omitted from reveal mode to avoid retrospective outcome leakage");
+    if(S.scopes.experiments&&S.mesRun&&S.mesRun.datasetId===S.data.id&&!S.replay){
+      const run=S.mesRun,report=run.report;
+      result.evidence.session_research={
+        version:report.version,rule:report.rule,instrument:"MES",
+        status:"UNVERIFIED_RESEARCH_ONLY",source_verified:false,
+        options:report.assumptions,train:report.train,
+        reserve:run.holdoutRevealedAt?report.reserve:null,
+        reserve_unseen:!run.holdoutRevealedAt,
+        dataConvention:report.dataConvention
+      };
+    }
     if(S.scopes.experiments && S.experiment && S.experiment.datasetId===S.data.id && !S.replay){
       const run=S.experiment;
       result.evidence.research_simulation={
@@ -1207,8 +1218,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
   function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selectedDrawing=null;S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.viewportEnd=null;S.strategy=null;S.selectedCandidate=null;
     $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
-    S.experiment=null;$("simTick").value=data.source==="synthetic"?"0.25":"";
-    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();}
+    S.experiment=null;S.mesRun=null;S.mesPreview=null;
+    $("mesConfirm").checked=false;
+    $("simTick").value=data.source==="synthetic"?"0.25":"";
+    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();renderMesReport();}
   async function importFile(event){
     const files=[...(event.target.files||[])].slice(0,12);
     event.target.value="";
@@ -1345,7 +1358,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       setup:$("setupName").value.trim(),note:$("thesis").value.trim(),
       selected_range:S.selection?[...S.selection]:null,window:{start_utc:iso(a.bars[0].time),end_utc:iso(a.bars[a.bars.length-1].time)},
       candles:b.map(x=>({...x})),drawings:activeDrawings().map(x=>({...x})),
-      image:canvas.toDataURL("image/png"),review:"",experiment_id:S.experiment?.id||S.strategy||null,
+      image:canvas.toDataURL("image/png"),review:"",experiment_id:S.mesRun?.id||S.experiment?.id||S.strategy||null,
+      modeled_mes_case:S.mesPreview?{rule:S.mesPreview.rule,side:S.mesPreview.side,day:S.mesPreview.day,
+        signalTime:S.mesPreview.signalTime,entryTime:S.mesPreview.entryTime,exitTime:S.mesPreview.exitTime,
+        modeledNetR:S.mesPreview.netR,status:"NOT_EXECUTED_HISTORICAL_SIMULATION"}:null,
       selected_candidate:S.selectedCandidate?{
         id:S.selectedCandidate.id,version:S.selectedCandidate.version,
         detected_at:iso(S.selectedCandidate.at),family:S.selectedCandidate.type,
@@ -1412,8 +1428,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       for(const r of experiments){
         if(typeof r.id!=="string"||r.id.length>180||typeof r.datasetId!=="string"||
            typeof r.createdAt!=="string"||!r.options||typeof r.options!=="object"||
-           !r.report||typeof r.report!=="object"||r.report.status!=="RESEARCH_ONLY_NOT_VERIFIED"||
-           !Array.isArray(r.report.trades)||r.report.trades.length>20000)
+           !r.report||typeof r.report!=="object"||
+           !["RESEARCH_ONLY_NOT_VERIFIED","UNVERIFIED_RESEARCH_ONLY"].includes(r.report.status)||
+           !(r.kind==="MES_SESSION_V1"?Array.isArray(r.report.allTrades)&&r.report.allTrades.length<=20000:
+             Array.isArray(r.report.trades)&&r.report.trades.length<=20000))
           throw Error("Invalid historical research run");
       }
       if(!window.confirm("Import "+snapshots.length+" snapshots, "+datasets.length+" datasets, "+
@@ -1799,11 +1817,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     for(const entry of entries.slice(0,40)){
       const button=document.createElement("button");button.type="button";button.className="run-item";
       const left=document.createElement("div");
-      left.append(htmlText("strong",(entry.datasetSymbol||"Market")+" · "+(entry.options?.type||"all")+" patterns"));
+      left.append(htmlText("strong",(entry.datasetSymbol||"Market")+" · "+(entry.kind==="MES_SESSION_V1" ? entry.options?.rule+" · MES session" : (entry.options?.type||"all")+" patterns")));
       const when=entry.createdAt?new Date(entry.createdAt).toLocaleString():"Unknown date";
-      left.append(htmlText("p",when+" · Target "+Number(entry.options?.rewardR||0)+"R · "+
+      left.append(htmlText("p",when+" · Target "+Number(entry.options?.targetR??entry.options?.rewardR??0)+"R · "+
         (entry.holdoutRevealedAt?"Reserve examined":"Reserve hidden")));
-      const mean=entry.report?.train?.avgNetR;
+      const mean=entry.kind==="MES_SESSION_V1"?entry.report?.train?.expectancyR:entry.report?.train?.avgNetR;
       const right=htmlText("span",numberText(mean)+"R avg", "outcome "+(mean==null?"":mean<0?"neg":"pos"));
       button.append(left,right);
       button.addEventListener("click",()=>loadExperimentRun(entry.id));
@@ -1818,6 +1836,17 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         if(!d&&S.db)d=await dbAction("datasets","readonly",store=>store.get(saved.datasetId));
         if(!d)throw Error("Original dataset is unavailable; restore or reimport it");
         resetDataset(d);
+      }
+      if(saved.kind==="MES_SESSION_V1"){
+        const engine=mesEngine(),o=saved.options;
+        $("mesRule").value=o.rule;$("mesSlip").value=o.slippageTicks;
+        $("mesFee").value=o.roundTripFeeUsd;$("mesReward").value=o.targetR;
+        $("mesReward").disabled=o.rule==="FBR-001";
+        S.mesRun={...saved,report:engine.run(S.data.bars,o)};
+        renderMesReport();setPage("lab");
+        $("mesLab").scrollIntoView?.({block:"start",behavior:"smooth"});
+        toast("Original MES experiment recomputed. CSV source authenticity remains unverified.");
+        return;
       }
       const o=saved.options;
       $("simKind").value=o.type;$("simTick").value=o.tickSize;
@@ -1950,6 +1979,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     document.querySelectorAll("[data-prompt]").forEach(b=>b.addEventListener("click",()=>{$("aiPrompt").value=b.dataset.prompt;$("aiPrompt").focus()}));
     document.querySelectorAll("[data-scope]").forEach(b=>b.addEventListener("click",()=>{const name=b.dataset.scope;S.scopes[name]=!S.scopes[name];b.classList.toggle("active",S.scopes[name]);b.setAttribute("aria-pressed",String(S.scopes[name]));S.packet=null}));
     $("runExperiment").addEventListener("click",runResearchExperiment);
+    $("runMes").addEventListener("click",runMesResearch);
+    $("mesRule").addEventListener("change",()=>{$("mesReward").disabled=$("mesRule").value==="FBR-001"});
     $("analyzeLocal").addEventListener("click",()=>requestLocalAnalysis(false));
     $("prepareContext").addEventListener("click",prepareContext);$("prepareStrategy").addEventListener("click",()=>{$("aiPrompt").value=$("aiPrompt").value||"Design a falsifiable strategy test.";prepareContext()});
     $("copyContext").addEventListener("click",copyPacket);
@@ -2031,7 +2062,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderRunHistory();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderRunHistory();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
