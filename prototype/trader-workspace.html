@@ -515,13 +515,16 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
   function downloadText(text,name){const blob=new Blob([text],{type:"application/json;charset=utf-8"});const url=URL.createObjectURL(blob),a=document.createElement("a");
     a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200)}
-  function exportArchive(){
-    const entries=S.snapshots.map(x=>({...x}));const out={schema:"trader.html.foundation.v1",exported_at:new Date().toISOString(),
-      disclaimer:"Demo / imported unverified data; not live broker fills",snapshots:entries,
-      datasets:S.data.source==="synthetic"?[]:[S.data],
-      draft:{setup:$("setupName").value,thesis:$("thesis").value},active_context:S.packet?{...S.packet,evidence:undefined}:null};
-    downloadText(JSON.stringify(out,null,2),"trader-research-archive-"+new Date().toISOString().slice(0,10)+".json");
-    toast("Archive exported. Keep it safe — no cloud sync.");
+  async function exportArchive(){
+    try {
+      const datasets=S.db?await dbAction("datasets","readonly",store=>store.getAll()):[];
+      if(S.data.source!=="synthetic"&&!datasets.some(x=>x.id===S.data.id))datasets.push(S.data);
+      const out={schema:"trader.html.foundation.v1",exported_at:new Date().toISOString(),
+        disclaimer:"Demo / imported unverified data; not live broker fills",snapshots:S.snapshots.map(x=>({...x})),datasets,
+        draft:{setup:$("setupName").value,thesis:$("thesis").value},active_context:S.packet?{...S.packet,evidence:undefined}:null};
+      downloadText(JSON.stringify(out,null,2),"trader-research-archive-"+new Date().toISOString().slice(0,10)+".json");
+      toast("Full chart archive exported. Restore UI still pending — keep this file safe.");
+    } catch(e){toast("Archive failed: "+e.message)}
   }
   function renderJournal(){
     $("snapshotCount").textContent=S.snapshots.length;$("snapshotCards").textContent="";
