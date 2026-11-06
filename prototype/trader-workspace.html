@@ -579,8 +579,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const symbol=safeStr(filename).replace(/\.[^.]+$/,"").slice(0,32);
     return {id:"csv:"+symbol+":"+bars.length+":"+bars[0].time+":"+bars[bars.length-1].time,symbol,timeframe:"source",source:"user-csv-unverified",label:"Imported CSV / source unverified",bars};
   }
-  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,3);
-    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets","drawings","experiments"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
+  function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,4);
+    request.onupgradeneeded=()=>{for(const name of ["snapshots","datasets","drawings","experiments","paper_cases"]){if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:"id"})}};
     request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||Error("IndexedDB unavailable"));})}
   function dbAction(store,mode,op){return new Promise((resolve,reject)=>{if(!S.db)return reject(Error("Browser storage unavailable; export immediately"));
     const tx=S.db.transaction(store,mode),r=op(tx.objectStore(store));tx.oncomplete=()=>resolve(r.result);
@@ -588,6 +588,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   async function loadSaved(){try{S.db=await openDB();S.snapshots=(await dbAction("snapshots","readonly",s=>s.getAll())).sort((a,b)=>b.at.localeCompare(a.at));
     S.experimentRuns=(await dbAction("experiments","readonly",s=>s.getAll())).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
     S.holdoutExposures=new Set(S.experimentRuns.filter(e=>e.holdoutRevealedAt).map(e=>e.datasetId));
+    S.paperCases=(await dbAction("paper_cases","readonly",store=>store.getAll())).sort((a,b)=>b.createdAtUtc.localeCompare(a.createdAtUtc));
     const pref=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
     if(pref.dataId){const d=await dbAction("datasets","readonly",s=>s.get(pref.dataId));if(d&&d.bars)S.data=d;}
   }catch(e){toast("Local persistence unavailable: "+e.message)}
@@ -2029,6 +2030,152 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     }catch(e){toast("Could not persist reserved-data exposure. Export the report and do not treat the reserve as blind. "+e.message)}
   }
 
+
+  function paperEngine(){
+    const e=globalThis.TraderPaperLedger;
+    if(!e||e.version!=="PAPER-LEDGER-v1")throw Error("Paper ledger script unavailable. Keep paper-ledger.js beside the HTML.");
+    return e;
+  }
+  function selectedPaperSignal(){
+    if(S.mesSignalPreview)return S.mesSignalPreview;
+    if(S.mesSignals&&S.mesSignals.datasetId===S.data.id){
+      return S.mesSignals.matches.at(-1)||null;
+    }
+    return null;
+  }
+  async function persistPaperCase(c){
+    const prevIndex=S.paperCases.findIndex(x=>x.id===c.id);
+    if(S.db)await dbAction("paper_cases","readwrite",store=>store.put(c));
+    if(prevIndex<0)S.paperCases.unshift(c);
+    else S.paperCases[prevIndex]=c;
+    S.paperCases.sort((a,b)=>b.createdAtUtc.localeCompare(a.createdAtUtc));
+    S.paperSelected=c.id;
+    renderPaperLedger();
+  }
+  async function capturePaperCase(preferSelected=true){
+    try{
+      if(!S.db)throw Error("Local storage is required for durable checkpoints; start the local server and export a backup");
+      checkMesSource();
+      const signal=preferSelected?selectedPaperSignal():(S.mesSignals?.datasetId===S.data.id?S.mesSignals.matches.at(-1):null);
+      if(!signal)throw Error("Select a MES strategy match using Find MES setups first");
+      if(S.paperCases.some(c=>c.seriesSymbol===S.data.symbol&&c.rule===signal.rule&&c.signalTime===signal.signalTime))
+        throw Error("This rule confirmation is already in your ledger");
+      if(S.paperCases.length>=750)throw Error("750-case limit reached: export your ledger before adding more");
+      const now=Date.now(),cfg={
+        signal,dataset:S.data,clockMs:now,rule:signal.rule,
+        slippageTicks:Number($("mesSlip").value),
+        roundTripFeeUsd:Number($("mesFee").value),
+        targetR:Number($("mesReward").value),
+        replay:S.replay||S.data.bars[S.data.bars.length-1].time+300000!==signal.signalTime,
+        caseId:id(),
+      };
+      const trial=paperEngine().newCase(cfg);
+      await persistPaperCase(trial);
+      toast(trial.origin==="HISTORICAL_REPLAY"?
+        "Historical replay checkpoint saved. No forward performance claimed.":
+        "Timestamped CSV checkpoint saved as UNVERIFIED. No live feed proof.");
+      if(S.page!=="lab")setPage("lab");
+      $("paperLab").scrollIntoView?.({block:"nearest",behavior:"smooth"});
+    }catch(e){toast("Cannot record case: "+e.message)}
+  }
+  async function reconcilePaperCases(){
+    try{
+      if(!S.db)throw Error("Browser research storage unavailable");
+      if(S.replay)throw Error("Exit chart replay mode before reconciling against the full newly loaded CSV");
+      if(!S.data||S.data.source!=="user-csv-unverified")throw Error("Load the corresponding MES CSV first");
+      let changed=0,pending=0,conflicts=0;
+      const engine=mesEngine(),ledger=paperEngine();
+      for(const caseRecord of [...S.paperCases]){
+        if(caseRecord.status!=="PENDING"||caseRecord.seriesSymbol!==S.data.symbol)continue;
+        const checked=ledger.reconcile(caseRecord,S.data,engine,Date.now());
+        if(checked.status==="PENDING"||checked.status==="UNAVAILABLE"){pending++;continue}
+        if(!["RESOLVED","SKIPPED","CONFLICT"].includes(checked.status)){pending++;continue}
+        const completed=ledger.appendResolution(caseRecord,checked,Date.now());
+        await persistPaperCase(completed);
+        changed++;if(checked.status==="CONFLICT")conflicts++;
+      }
+      renderPaperLedger();
+      toast("Checked CSV: "+changed+" finalized, "+pending+" pending, "+conflicts+" data conflicts. No broker fills verified.");
+    }catch(e){toast("Cannot reconcile cases: "+e.message)}
+  }
+  function renderPaperLedger(){
+    const root=$("paperCases");root.textContent="";
+    const engine=paperEngine(),summary=engine.summary(S.paperCases);
+    const totals=[summary.groups.HISTORICAL_REPLAY,summary.groups.TIMELY_CSV_UNVERIFIED];
+    const total=totals.reduce((n,x)=>n+x.total,0);
+    const pending=totals.reduce((n,x)=>n+x.pending,0);
+    const resolved=totals.reduce((n,x)=>n+x.resolved,0);
+    const stat=$("paperSummary");stat.textContent="";
+    for(const [value,name] of [[total,"Recorded checkpoints"],[pending,"Pending"],[resolved,"Modeled outcomes"]]){
+      const b=document.createElement("div");b.className="paper-metric";
+      b.append(htmlText("strong",String(value)),htmlText("span",name));stat.append(b);
+    }
+    const note=$("paperLab").querySelector?.(".paper-note");
+    if(note)note.textContent=summary.groups.TIMELY_CSV_UNVERIFIED.resolved+
+      " timely CSV outcomes and "+summary.groups.HISTORICAL_REPLAY.resolved+
+      " historical replay outcomes. Neither is independently verified. No broker fills or live feed.";
+    if(!S.paperCases.length){
+      root.append(htmlText("p","No checkpoints yet. Scan MES history, inspect a confirmation, then choose Save MES case.","empty"));
+    }else{
+      for(const c of S.paperCases.slice(0,100)){
+        const b=document.createElement("button");b.type="button";
+        b.className="paper-item"+(S.paperSelected===c.id?" selected":"");
+        b.append((()=>{
+          const div=document.createElement("div");
+          div.append(htmlText("strong",c.rule+" · "+c.side+" · "+c.day),
+            htmlText("small",(c.origin==="HISTORICAL_REPLAY"?"Replay":"Timely CSV · unverified")+
+            " · recorded "+c.createdAtUtc.slice(0,16).replace("T"," ")+"Z"));
+          return div;
+        })(),htmlText("span",c.status.replace("_"," "),"state"));
+        b.addEventListener("click",()=>{S.paperSelected=c.id;renderPaperLedger()});
+        root.append(b);
+      }
+    }
+    renderPaperDetail();
+  }
+  function renderPaperDetail(){
+    const host=$("paperCaseDetail");host.textContent="";
+    const c=S.paperCases.find(r=>r.id===S.paperSelected);
+    host.classList.toggle("hidden",!c);
+    if(!c)return;
+    host.append(htmlText("h4",c.rule+" · "+c.day+" · "+c.origin.replaceAll("_"," ")));
+    for(const [name,value] of [
+      ["Status",c.status],["Confirmation",c.signalTime?iso(c.signalTime).slice(0,16)+"Z":"—"],
+      ["Evidence checksum",c.prefixChecksum+" · non-cryptographic"],
+      ["Direction",c.side],["Data",c.seriesSymbol],
+      ["Modeled net R",c.status==="RESOLVED"?numberText(c.outcome.netR)+"R":"Pending / no modeled fill"],
+      ["Modeled net USD",c.status==="RESOLVED"?numberText(c.outcome.netUsd,2)+" USD":"—"],
+    ]){
+      const row=document.createElement("div");row.className="line";
+      row.append(htmlText("span",name),htmlText("span",value));host.append(row);
+    }
+    const existing=c.events.filter(e=>e.type==="NOTE").at(-1);
+    const lbl=htmlText("label","Optional review note · appended, never changes capture","label");host.append(lbl);
+    const input=document.createElement("textarea");input.className="field";input.maxLength=1200;
+    input.placeholder="Why did you study this setup? What would disprove it?";
+    input.value=existing?.text||"";host.append(input);
+    const actions=document.createElement("div");actions.className="actions";
+    const add=document.createElement("button");add.className="btn";add.textContent="Append note";
+    add.addEventListener("click",async()=>{
+      try{const updated=paperEngine().appendNote(c,input.value,Date.now());
+        await persistPaperCase(updated);toast("Timestamped note appended.")}catch(e){toast("Note failed: "+e.message)}
+    });
+    actions.append(add);
+    if(c.status==="PENDING"){
+      actions.append(htmlText("span","Use Check outcomes after a complete CSV session is loaded.","small muted"));
+    }else if(c.status==="CONFLICT"){
+      actions.append(htmlText("span","Changed prefix or invalid source. Case preserved without a scored outcome.","small muted"));
+    }
+    host.append(actions);
+  }
+  function exportPaperLedger(){
+    const output={schema:"trader.paper-ledger-archive.v1",exported_at:new Date().toISOString(),
+      verified_forward_trades:0,source:"user-csv-unverified",
+      warning:"User-held research only. CSV observations are not authenticated broker fills.",
+      summary:paperEngine().summary(S.paperCases),cases:S.paperCases.map(c=>({...c}))};
+    downloadText(JSON.stringify(output,null,2),"trader-paper-ledger-"+new Date().toISOString().slice(0,10)+".json");
+  }
+
   function renderRunHistory(){
     const host=$("runHistory");host.textContent="";
     const entries=S.experimentRuns||[];
@@ -2201,6 +2348,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     document.querySelectorAll("[data-scope]").forEach(b=>b.addEventListener("click",()=>{const name=b.dataset.scope;S.scopes[name]=!S.scopes[name];b.classList.toggle("active",S.scopes[name]);b.setAttribute("aria-pressed",String(S.scopes[name]));S.packet=null}));
     $("runExperiment").addEventListener("click",runResearchExperiment);
     $("runMes").addEventListener("click",runMesResearch);
+    $("capturePaper").addEventListener("click",()=>capturePaperCase(true));
+    $("paperCaptureLatest").addEventListener("click",()=>capturePaperCase(false));
+    $("paperReconcile").addEventListener("click",reconcilePaperCases);
+    $("paperExport").addEventListener("click",exportPaperLedger);
     $("scanMes").addEventListener("click",runMesScan);
     $("auditMes").addEventListener("click",runMesAudit);
     $("mesRule").addEventListener("change",()=>{$("mesReward").disabled=$("mesRule").value==="FBR-001"});
@@ -2285,7 +2436,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderRunHistory();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderRunHistory();renderPaperLedger();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
