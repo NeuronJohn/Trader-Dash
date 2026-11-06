@@ -189,7 +189,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       <div class="workspace-title"><div><h1>Market workspace</h1><p>Find candidate setups, understand the structure, then decide what deserves a note.</p></div>
       <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo</button><button class="btn primary" id="scanTop">⌕ &nbsp; Find setups</button></div></div>
       <div class="panel chartbox">
-        <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
+        <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span><button class="btn subtle" id="latestCase" title="Jump to most recently detected historical candidate">No scan yet</button></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
         <div class="chart-toolbar">
           <div class="toolset">
             <button class="btn tool-active" data-tool="inspect" title="Inspect candles and drag to pan. Keyboard: 1">⌖ &nbsp; Cursor</button>
@@ -289,7 +289,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   <aside class="assistant" id="assistant">
     <div class="assistant-head"><div class="assistant-title"><h2>✦ &nbsp; AI Research Analyst</h2><span class="ai-state">MODEL OFFLINE</span></div><p>Scoped to your selected evidence. Nothing is sent to an external model in this foundation.</p><div class="ai-modes" role="group" aria-label="Analyst interaction mode"><button class="active" data-ai-mode="quiet" aria-pressed="true">Quiet</button><button data-ai-mode="assist" aria-pressed="false">Assist</button><button data-ai-mode="coach" aria-pressed="false">Coach</button></div></div>
     <div class="ai-scroll">
-      <div class="ai-section"><div class="flex between"><h3 style="margin:0">Selected candidate</h3><span class="eyebrow">Structure, not prediction</span></div><div id="aiCandidate" class="ai-candidate"><p class="empty">Click Find setups, then select a historical example. A concise visual breakdown will appear here.</p></div></div>
+      <div class="ai-section"><div class="flex between"><h3 style="margin:0">Selected candidate</h3><span class="eyebrow">Structure, not prediction</span></div><div id="aiCandidate" class="ai-candidate"><p class="empty">Historical rule matches appear here automatically; explore their structure before recording decisions.</p></div></div>
       <details class="ai-section advanced"><summary>Evidence & context controls</summary><div class="flex between" style="margin-bottom:12px"><h3 style="margin:0">Analysis context</h3><span class="eyebrow">Inspect before sending</span></div>
         <div class="context-row"><span class="k">Source</span><span class="v" id="aiSource">Demo / synthetic</span></div>
         <div class="context-row"><span class="k">Instrument</span><span class="v mono" id="aiSymbol">DEMO</span></div>
@@ -692,10 +692,17 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     }
     return out.slice(-200);
   }
-  function scanHistory(){
+  function scanHistory(focusLatest=false){
     const limit=S.replay?S.reveal:S.data.bars.length-1;
     S.candidates=searchPatterns(S.data.bars,limit);
     if(S.selectedCandidate && !S.candidates.some(c=>c.id===S.selectedCandidate.id))S.selectedCandidate=null;
+    if(focusLatest && S.candidates.length){
+      const candidate=S.candidates[S.candidates.length-1];
+      S.selectedCandidate=candidate;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
+      S.viewportEnd=Math.min(limit,candidate.index+Math.round(S.visible*.35));
+      $("setupName").value=candidate.title+" · "+candidate.side+" · "+iso(candidate.at).slice(0,16)+"Z";
+    }
+    $("latestCase").textContent=S.candidates.length?S.candidates.length+" historical matches":"No patterns found";
     renderScanner();
     updateContext();
   }
@@ -838,7 +845,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
   function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selectedDrawing=null;S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.viewportEnd=null;S.strategy=null;S.selectedCandidate=null;
     $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
-    savePrefs();scanHistory();loadDrawingSet();}
+    savePrefs();scanHistory(true);loadDrawingSet();}
   async function importFile(event){const file=event.target.files&&event.target.files[0];if(!file)return;
     try{const raw=await file.text(), d=readCSV(raw,file.name);
       if(typeof crypto!=="undefined" && crypto.subtle && typeof TextEncoder!=="undefined") {
@@ -1039,10 +1046,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("importBtn").addEventListener("click",()=>$("importCsv").click());$("importCsv").addEventListener("change",importFile);
     $("resetDemo").addEventListener("click",()=>resetDataset(demo()));
     $("captureSecondary").addEventListener("click",capture);
-    $("scanTop").addEventListener("click",()=>{scanHistory();toast(S.candidates.length+" historical candidate patterns found. None are verified trading signals.");});
-    $("scanNow").addEventListener("click",()=>{scanHistory();toast("Historical scan refreshed.");});
-    $("aiScanBtn").addEventListener("click",()=>{setPage("workspace");scanHistory();toast("Candidate search is local and rule-based, not an active AI model.");});
+    $("scanTop").addEventListener("click",()=>{scanHistory(true);toast(S.candidates.length+" historical candidate patterns found. None are verified trading signals.");});
+    $("scanNow").addEventListener("click",()=>{scanHistory(true);toast("Historical scan refreshed.");});
+    $("aiScanBtn").addEventListener("click",()=>{setPage("workspace");scanHistory(true);toast("Candidate search is local and rule-based, not an active AI model.");});
     $("scanFilter").addEventListener("change",renderScanner);
+    $("latestCase").addEventListener("click",()=>{const newest=S.candidates.at(-1);if(newest)selectCandidate(newest);else toast("No matching pattern in this dataset.");});
     $("drawingLabel").addEventListener("input",e=>{
       const m=selectedMark();if(!m)return;m.label=e.target.value.slice(0,180);
       queueDrawingSave();renderDrawingList();draw();
@@ -1101,7 +1109,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();scanHistory();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();scanHistory(true);resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
