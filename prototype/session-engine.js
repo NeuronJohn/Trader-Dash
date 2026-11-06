@@ -117,8 +117,12 @@
     const b=s.bars,{high,low}=priorRange(b);
     for(let i=3;i<23;i++){
       let side=0;
-      if(b[i].high>=high+2*TICK)side=-1;
-      else if(b[i].low<=low-2*TICK)side=1;
+      const upper=b[i].high>=high+2*TICK,lower=b[i].low<=low-2*TICK;
+      // If both sides were swept on one OHLC bar, no defensible event order
+      // can be recovered. Reject instead of choosing a favorable narrative.
+      if(upper&&lower)return {reason:"Both opening-range extremes swept in one candle; sequence unknown"};
+      if(upper)side=-1;
+      else if(lower)side=1;
       if(!side)continue;
       // First excursion gets at most 3 bars to return into the opening range.
       for(let ret=i;ret<=Math.min(i+2,22);ret++){
