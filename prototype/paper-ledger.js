@@ -140,6 +140,15 @@ function appendResolution(c, resolution, clockMs){
     modeledNetR:resolution.status==="RESOLVED"?resolution.outcome.netR:null});
   return out;
 }
+function appendNote(c,note,clockMs){
+  verifyCase(c);
+  if(!Number.isSafeInteger(clockMs)||clockMs<Date.parse(c.createdAtUtc))fail("Note timestamp predates case");
+  if(typeof note!=="string"||note.length>1200)fail("Note exceeds 1200 characters");
+  const out=JSON.parse(serialize(c));
+  if(out.events.length>=100)fail("Event history is full; export your ledger");
+  out.events.push({type:"NOTE",atUtc:new Date(clockMs).toISOString(),text:note.slice(0,1200)});
+  return out;
+}
 function summary(cases){
   const groups={
     HISTORICAL_REPLAY:{total:0,pending:0,resolved:0,skipped:0,conflicts:0,averageNetR:null,netR:null},
@@ -164,6 +173,6 @@ function summary(cases){
     warning:"Replay and user-attested CSV observations are NEVER combined into independently verified forward performance."};
 }
 root.TraderPaperLedger=Object.freeze({
-  version:"PAPER-LEDGER-v1",newCase,verifyCase,reconcile,appendResolution,summary,prefixFor,checksum
+  version:"PAPER-LEDGER-v1",newCase,verifyCase,reconcile,appendResolution,appendNote,summary,prefixFor,checksum
 });
 })(typeof globalThis!=="undefined"?globalThis:this);
