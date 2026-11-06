@@ -203,6 +203,14 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .ai-model-answer.error h3{color:#efc89c}
 .ai-model-answer .busy{color:#9dc6b9;font-size:11px}
 #analyzeLocal:disabled{opacity:.43}
+
+.experiment-history{border-top:1px solid var(--hair);padding:13px 16px}
+.experiment-history summary{font-size:12px;color:#acbfc9;font-weight:650;cursor:pointer}
+.run-history{margin-top:12px;display:flex;flex-direction:column;gap:6px;max-height:275px;overflow-y:auto}
+.run-item{border:1px solid #31404a;background:#131f27;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 11px;text-align:left}
+.run-item strong{font-size:11px;font-weight:650}.run-item p{font-size:10px;color:#9aadb8;margin-top:3px}
+.run-item .outcome{font:11px var(--mono);white-space:nowrap}
+.run-item .outcome.neg{color:#e2a2a7}.run-item .outcome.pos{color:#93cbb2}
 </style>
 </head>
 <body>
@@ -353,6 +361,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <div class="experiment-results" id="experimentResults">
           <p class="empty">Choose assumptions, then run a deterministic, cost-adjusted historical simulation. Its results are educational until the market data and execution model are verified.</p>
         </div>
+        <details class="experiment-history"><summary>Previous research runs <span class="dim" id="runHistoryCount">· 0</span></summary><div id="runHistory" class="run-history"></div></details>
       </section>
 
     </section>
@@ -1354,7 +1363,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       S.selectedSnapshot=null;
       S.experimentRuns=(await dbAction("experiments","readonly",store=>store.getAll())).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
       S.holdoutExposures=new Set(S.experimentRuns.filter(e=>e.holdoutRevealedAt).map(e=>e.datasetId));
-      await loadDrawingSet();renderJournal();updateContext();
+      await loadDrawingSet();renderJournal();renderRunHistory();updateContext();
       toast("Archive restored locally. Import sources remain unverified.");
     }catch(e){toast("Restore rejected: "+e.message)}
   }
@@ -1523,16 +1532,58 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         id:id(),datasetId:S.data.id,datasetSymbol:S.data.symbol,source:S.data.source,
         createdAt:new Date().toISOString(),options,report,holdoutRevealedAt:null
       };
+      if(S.experimentRuns.length>=250)throw Error("Research history is full; export your archive before adding more runs.");
       S.experiment=token;
       S.experimentRuns.unshift({...token,report:{...report,holdout:null,trades:report.trades.filter(t=>t.exitIndex<report.splitIndex-report.embargo)}});
       if(S.db){
         const safe=S.experimentRuns[0];
         await dbAction("experiments","readwrite",store=>store.put(safe));
       }
-      renderExperiment();
+      renderExperiment();renderRunHistory();
       toast("Simulation completed with recorded assumptions. This is not live performance.");
     }catch(e){toast("Cannot simulate: "+e.message)}
   }
+
+  function renderRunHistory(){
+    const host=$("runHistory");host.textContent="";
+    const entries=S.experimentRuns||[];
+    $("runHistoryCount").textContent="· "+entries.length;
+    if(!entries.length){host.append(htmlText("p","No saved research runs yet. Run a simulation to start an auditable experiment history.","empty"));return}
+    for(const entry of entries.slice(0,40)){
+      const button=document.createElement("button");button.type="button";button.className="run-item";
+      const left=document.createElement("div");
+      left.append(htmlText("strong",(entry.datasetSymbol||"Market")+" · "+(entry.options?.type||"all")+" patterns"));
+      const when=entry.createdAt?new Date(entry.createdAt).toLocaleString():"Unknown date";
+      left.append(htmlText("p",when+" · Target "+Number(entry.options?.rewardR||0)+"R · "+
+        (entry.holdoutRevealedAt?"Reserve examined":"Reserve hidden")));
+      const mean=entry.report?.train?.avgNetR;
+      const right=htmlText("span",numberText(mean)+"R avg", "outcome "+(mean==null?"":mean<0?"neg":"pos"));
+      button.append(left,right);
+      button.addEventListener("click",()=>loadExperimentRun(entry.id));
+      host.append(button);
+    }
+  }
+  async function loadExperimentRun(runId){
+    const saved=S.experimentRuns.find(e=>e.id===runId);if(!saved)return;
+    try{
+      if(S.data.id!==saved.datasetId){
+        let d=S.dataLibrary.find(x=>x.id===saved.datasetId);
+        if(!d&&S.db)d=await dbAction("datasets","readonly",store=>store.get(saved.datasetId));
+        if(!d)throw Error("Original dataset is unavailable; restore or reimport it");
+        resetDataset(d);
+      }
+      const o=saved.options;
+      $("simKind").value=o.type;$("simTick").value=o.tickSize;
+      $("simSlip").value=o.slippageTicks;$("simFee").value=o.roundTripFeeTicks;
+      $("simTarget").value=o.rewardR;$("simHold").value=o.maxHold;
+      const report=simulateHistoricalResearch(S.data.bars,o);
+      S.experiment={...saved,report};
+      renderExperiment();
+      document.getElementById("experimentPanel").scrollIntoView?.({block:"start",behavior:"smooth"});
+      toast("Loaded saved assumptions and recomputed the original experiment locally.");
+    }catch(e){toast("Could not open experiment: "+e.message)}
+  }
+
   function statNode(name,value,description){
     const box=document.createElement("div");box.className="experiment-stat";
     box.append(htmlText("div",name,"metric"));
@@ -1636,7 +1687,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(index>=0)S.experimentRuns[index]=safe;
     try{
       if(S.db)await dbAction("experiments","readwrite",store=>store.put(safe));
-      renderExperiment();
+      renderExperiment();renderRunHistory();
       toast("Reserved results revealed and exposure recorded for this dataset.");
     }catch(e){toast("Exposure could not be recorded: "+e.message)}
   }
@@ -1733,7 +1784,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderRunHistory();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
