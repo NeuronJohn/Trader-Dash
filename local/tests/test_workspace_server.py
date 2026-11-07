@@ -237,6 +237,62 @@ class PracticeEndpointTests(unittest.TestCase):
         self.assertEqual(len(sent),1)
         return sent[0]
 
+    def test_prospective_observer_start_requires_local_approval_and_token(self):
+        state={"active":True,"symbol":"EUR_USD","brokerOrdersAllowed":False}
+        with patch.object(server.FORWARD,"start",return_value=state) as started:
+            status,result=self.post({"symbol":"EUR_USD"},path="/api/forward/start")
+        self.assertEqual(status,200)
+        self.assertFalse(result["broker_orders"])
+        self.assertEqual(result["monitor"]["symbol"],"EUR_USD")
+        started.assert_called_once_with("EUR_USD")
+        with patch.object(server.FORWARD,"start") as blocked:
+            status,_=self.post({"symbol":"EUR_USD"},path="/api/forward/start",
+                               token="INVALID")
+        self.assertEqual(status,403)
+        blocked.assert_not_called()
+        with patch.object(server.FORWARD,"start") as blocked:
+            status,_=self.post({"symbol":"EUR_USD"},path="/api/forward/start",
+                               origin="https://malicious.invalid")
+        self.assertEqual(status,403)
+        blocked.assert_not_called()
+
+    def test_prospective_start_stop_accept_only_strict_request_shapes(self):
+        for value in [
+            {"symbol":"MES"},{"symbol":"EUR_USD","order":1},
+            {"symbol":"EUR_USD","poll_seconds":1},{"symbol":"USD_JPY","secret":"X"},
+            {},{"symbol":123},
+        ]:
+            with patch.object(server.FORWARD,"start") as not_called:
+                status,result=self.post(value,path="/api/forward/start")
+            self.assertEqual(status,422)
+            not_called.assert_not_called()
+        with patch.object(server.FORWARD,"stop") as not_called:
+            status,result=self.post({"cancel_order":True},
+                                    path="/api/forward/stop")
+        self.assertEqual(status,422)
+        not_called.assert_not_called()
+        with patch.object(server.FORWARD,"stop",return_value={
+                "active":False,"brokerOrdersAllowed":False}) as stopped:
+            status,result=self.post({},path="/api/forward/stop")
+        self.assertEqual(status,200)
+        self.assertFalse(result["broker_orders"])
+        stopped.assert_called_once()
+
+    def test_get_prospective_status_is_read_only_and_never_exposes_token(self):
+        from pathlib import Path
+        handle=object.__new__(server.Handler)
+        handle.headers={"Host":f"127.0.0.1:{server.PORT}"}
+        handle.path="/api/forward/status?symbol=EUR_USD"
+        sent=[]
+        handle._reply=lambda status,payload:sent.append((status,payload))
+        with patch.object(server.market,"storage_path",
+                          return_value=Path("/nonexistent_forward_market_test_file.sqlite3")):
+            handle.do_GET()
+        self.assertEqual(sent[0][0],200)
+        self.assertEqual(sent[0][1]["journal"]["summary"]["actualBrokerFills"],0)
+        self.assertFalse(sent[0][1]["broker_orders"])
+        self.assertNotIn(server.TOKEN,json.dumps(sent[0][1]))
+
     def test_cross_origin_is_rejected_before_fetch(self):
         status,result=self.post(
             {"symbol":"EUR_USD","count":500},origin="https://untrusted.invalid"
