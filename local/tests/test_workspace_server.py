@@ -1,9 +1,11 @@
 """Offline tests for the read-only, local-only Ollama research boundary."""
 import importlib.util
+import io
 import json
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 path = Path(__file__).resolve().parents[1] / "workspace_server.py"
 spec = importlib.util.spec_from_file_location("workspace_server", path)
@@ -132,6 +134,25 @@ class ContextTests(unittest.TestCase):
         self.assertNotIn("reserve", result["mes_session_experiment"])
 
 
+    def test_oanda_practice_candle_source_stays_nonexecution(self):
+        request = context()
+        request["source"] = {
+            "id":"oanda-fxpractice:EUR_USD",
+            "kind":"oanda-fxpractice",
+            "symbol":"EUR_USD",
+            "timeframe":"5m",
+            "secret_key":"DO_NOT_FORWARD",
+        }
+        result = server.validate_context(request)
+        self.assertTrue(result["provider_provenance"]["practice_candles"])
+        self.assertFalse(result["provider_provenance"]["verified_broker_fills"])
+        self.assertNotIn("secret_key",result["source"])
+        request["source"]["kind"] = "oanda-live"
+        with self.assertRaisesRegex(ValueError,"Unsupported source"):
+            server.validate_context(request)
+
+
+
 class ModelBoundaryTests(unittest.TestCase):
     def test_requires_exact_structured_response(self):
         valid = {
@@ -164,6 +185,72 @@ class ModelBoundaryTests(unittest.TestCase):
         rejected = SimpleNamespace(headers={"Host": "malicious.invalid"})
         self.assertTrue(server.Handler._trusted_host(accepted))
         self.assertFalse(server.Handler._trusted_host(rejected))
+
+
+
+class PracticeEndpointTests(unittest.TestCase):
+    def post(self, payload, path="/api/market/fetch", origin=None, token=None):
+        encoded=json.dumps(payload).encode("utf-8")
+        handle=object.__new__(server.Handler)
+        handle.headers={
+            "Host": f"127.0.0.1:{server.PORT}",
+            "Origin": origin if origin is not None else f"http://127.0.0.1:{server.PORT}",
+            "X-Trader-Token": token if token is not None else server.TOKEN,
+            "Content-Type":"application/json",
+            "Content-Length": str(len(encoded)),
+        }
+        handle.path=path
+        handle.rfile=io.BytesIO(encoded)
+        sent=[]
+        handle._reply=lambda status,data:sent.append((status,data))
+        handle.do_POST()
+        self.assertEqual(len(sent),1)
+        return sent[0]
+
+    def test_cross_origin_is_rejected_before_fetch(self):
+        status,result=self.post(
+            {"symbol":"EUR_USD","count":500},origin="https://untrusted.invalid"
+        )
+        self.assertEqual(status,403)
+        self.assertFalse(result["ok"])
+
+    def test_session_token_required(self):
+        status,result=self.post(
+            {"symbol":"EUR_USD","count":500},token="WRONG"
+        )
+        self.assertEqual(status,403)
+        self.assertIn("token",result["error"])
+
+    def test_no_order_or_live_market_endpoint_exists(self):
+        status,result=self.post({},path="/api/Order/place")
+        self.assertEqual(status,404)
+        status,result=self.post({},path="/api/oanda-live/submit")
+        self.assertEqual(status,404)
+
+    def test_only_allowlisted_practice_instruments_and_parameters(self):
+        for body in [
+            {"symbol":"MES","count":100},
+            {"symbol":"EUR_USD","count":5001},
+            {"symbol":"EUR_USD","count":500,"order_units":1},
+        ]:
+            status,result=self.post(body)
+            self.assertEqual(status,422)
+            self.assertFalse(result["ok"])
+
+    def test_success_is_a_receipt_and_explicitly_has_no_execution(self):
+        sample={
+            "receipt_id":"fixture",
+            "symbol":"EUR_USD",
+            "source":"oanda-fxpractice",
+            "added":1,"repeated":0,"conflicts":0,
+        }
+        with patch.object(server.market,"fetch_into_store",return_value=sample) as mocked:
+            status,result=self.post({"symbol":"EUR_USD","count":100})
+        self.assertEqual(status,200)
+        self.assertFalse(result["execution"])
+        self.assertEqual(result["market_receipt"]["receipt_id"],"fixture")
+        mocked.assert_called_once_with("EUR_USD",100)
+
 
 
 if __name__ == "__main__":
