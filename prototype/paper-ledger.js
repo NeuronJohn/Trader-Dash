@@ -74,8 +74,9 @@ function newCase({signal,dataset,clockMs,rule,slippageTicks=1,roundTripFeeUsd=2.
 function verifyCase(c){
   if(!c||c.schema!=="trader.paper-case.v1"||typeof c.id!=="string"||c.id.length>180||
     !TYPES.has(c.origin)||!RULES.has(c.rule)||!c.plan||c.plan.rule!==c.rule||
-    typeof c.seriesSymbol!=="string" || typeof c.day!=="string" ||
-    !Number.isSafeInteger(c.signalTime)||!Array.isArray(c.events)||c.events.length>100||
+    typeof c.seriesSymbol!=="string" || c.seriesSymbol.length>80 || typeof c.day!=="string" ||
+    !Number.isSafeInteger(c.signalTime)||!Number.isFinite(Date.parse(c.createdAtUtc))||
+    !Array.isArray(c.events)||c.events.length>100||c.events.length<1||
     !Array.isArray(c.prefix)||c.prefix.length>24||c.prefix.length<3 ||
     !["PENDING","RESOLVED","SKIPPED","CONFLICT"].includes(c.status))fail("Malformed paper case");
   const p=normalizedBars(c.prefix);
@@ -83,6 +84,11 @@ function verifyCase(c){
   const first=c.events[0];
   if(!first||first.type!=="CAPTURE"||first.dataChecksum!==c.prefixChecksum)fail("Capture record missing");
   if(c.events.some(e=>!e||typeof e.type!=="string"||typeof e.atUtc!=="string"))fail("Invalid event history");
+  if(c.status==="RESOLVED" && (!c.outcome||!Number.isFinite(c.outcome.netR)||!Number.isFinite(c.outcome.netUsd)))fail("Malformed resolved outcome");
+  if(c.status!=="PENDING"){
+    const lastResolution=c.events.findLast(e=>e.result===c.status);
+    if(!lastResolution)fail("Final status has no matching event");
+  }
   return true;
 }
 function reconcile(c,data,engine,atMs){
@@ -94,6 +100,7 @@ function reconcile(c,data,engine,atMs){
   if(!Number.isSafeInteger(atMs))fail("Clock timestamp required");
   let normalized;
   try{normalized=normalizedBars(data.bars)}catch(e){return {status:"CONFLICT",reason:e.message}}
+  if(normalized.at(-1).time+BAR_MS>atMs)return {status:"PENDING",reason:"File contains candles that close after the observation clock; cannot score future data"};
   const present=new Map(normalized.map(b=>[b.time,b]));
   for(const saved of c.prefix){
     const current=present.get(saved.time);
@@ -128,6 +135,7 @@ function reconcile(c,data,engine,atMs){
 function appendResolution(c, resolution, clockMs){
   verifyCase(c);
   if(c.status!=="PENDING")fail("Case already finalized: append-only history");
+  if(c.events.length>=100)fail("Event log full; export records before finalizing");
   if(!["RESOLVED","SKIPPED","CONFLICT"].includes(resolution.status))fail("Only finalized outcomes may be appended");
   if(!Number.isSafeInteger(clockMs)||clockMs<Date.parse(c.createdAtUtc))fail("Resolution time predates case");
   const out=JSON.parse(serialize(c));
