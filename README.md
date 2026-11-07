@@ -1,10 +1,10 @@
 # Trader / Lab — Trading Research Workspace
 
-This repository is being developed as a local-first, chart-first trading research assistant, now including session-aware historical MES strategy experiments. It is **not** a broker-connected trading application, a verified profitable strategy, or an execution bot.
+This repository is being developed as a local-first, chart-first trading research assistant, including MES research and an optional read-only OANDA fxPractice candle store. It is **not** a broker-connected trading application, a verified profitable strategy, or an execution bot.
 
 ## Open the current research prototype
 
-On the working branch **foundation/forward-paper-ledger-v5**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
+On the working branch **foundation/market-data-receipts-oanda-v6**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
 
 If Python is not installed, open `prototype/trader-workspace.html` directly in Edge/Chrome. It still supports a synthetic demonstration chart, imported historical CSVs, annotations, a market library, local pattern discovery, a basic strategy simulator, journal snapshots and exports, but **not local Ollama AI**.
 
@@ -34,6 +34,14 @@ Recorded results are separated into **historical replay** and **timely but unver
 Full local research archives now include paper cases and their events. The HTML must be accompanied by both the sibling modules: session-engine.js **and** paper-ledger.js.
 
 Read [Paper Ledger v0.5](docs/PAPER_LEDGER_V5.md) for instructions, restrictions, tests and the path to real authenticated market data.
+
+## v0.6 — OANDA Practice market data
+
+The first authenticated-provider **read-only research adapter** has been added for OANDA fxPractice. It can fetch completed 5-minute midpoint/bid/ask candles on demand, record first-seen prices and revision conflicts in a private SQLite log, and open saved FX prices in the dashboard.
+
+Use **Start-Trader-Practice.cmd** to enter a dedicated PRACTICE token privately into a local Python process (never in GitHub or the HTML page). Or keep using **Start-Trader-Research.cmd** without provider credentials. The OANDA source is strictly separate from MES/Topstep futures research, and there are no order routes or background price monitoring.
+
+Read [OANDA Practice Market Data v0.6](docs/PRACTICE_MARKET_DATA_V6.md) for the provider-specific setup, receipt audit, credential limits, backups and current Topstep API considerations.
 
 ## What has been built
 
