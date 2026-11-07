@@ -414,6 +414,8 @@ class Handler(BaseHTTPRequestHandler):
                     raise market.MarketError("Unknown market query parameter")
                 symbol = params.get("symbol", ["EUR_USD"])[0]
                 count = int(params.get("limit", ["500"])[0])
+                if symbol not in market.ALLOWED_SYMBOLS or not 1 <= count <= market.MAX_OUTPUT:
+                    raise market.MarketError("Select an allowed practice pair with 1–1000 stored candles")
                 # Do not create an empty DB from a read-only chart request.
                 if market.storage_path().is_file():
                     connection = market.open_store()
