@@ -333,6 +333,6 @@ test("legacy OANDA bars missing bid/ask extremes are excluded, not silently appr
   await x.runFxResearch();
   assert.ok(x.S.fxRunRecord);
   assert.equal(x.S.fxRunRecord.report.rejectedSessions.length,1);
-  assert.equal(x.S.fxRunRecord.report.completeSessions,7);
+  assert.equal(x.S.fxRunRecord.report.completeSessions,8); // nine weekdays; one excluded
   assert.ok(x.nodes.fxResults.children.length>0);
 });
