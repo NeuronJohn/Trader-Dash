@@ -42,7 +42,7 @@
  <div><span class="muted small">Last completed close</span><div id="contextClose" class="number" style="font-size:16px">—</div></div>
 </div><p id="structureLabel" class="muted" style="margin-top:11px">Select a contract to analyze completed bars.</p>
 <p class="muted small" style="margin-top:5px">Uses previous 20 fully closed candles as the reference; excludes the forming candle and does not establish a profitable setup.</p></div>
-<section class="panel pad" id="riskWorksheet" style="display:grid;gap:12px">
+<details class="panel pad" id="riskWorksheet"><summary style="cursor:pointer;font-weight:650">Risk worksheet <span class="muted small">· open to edit a hypothetical plan</span></summary><div style="display:grid;gap:12px;margin-top:12px">
 <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
   <h2>Pre-trade risk worksheet</h2><span class="tag">PLANNING ONLY · NEVER AN ORDER</span>
 </div>
@@ -69,7 +69,7 @@
   <div><span class="muted small">Max qty under self-limit</span><div class="number" id="riskMaxQty">—</div></div>
 </div>
 <p class="small" id="riskMessage" role="status">Enter a trade plan and personal risk budget. No orders can be submitted here.</p>
-</section>
+</div></details>
 <div class="tables"><section class="panel"><div class="panelhead"><h2>Daily realized performance</h2><span class="small muted">Chicago futures session</span></div><table><thead><tr><th>Session</th><th>Closing legs</th><th>Net P&L</th></tr></thead><tbody id="daily"></tbody></table></section><section class="panel"><div class="panelhead"><h2>Open positions</h2><span class="small muted">Broker snapshot</span></div><table><thead><tr><th>Contract</th><th>Size</th><th>Avg price</th></tr></thead><tbody id="positions"></tbody></table></section></div><div class="tables"><section class="panel"><div class="panelhead"><h2>Completed trade history</h2><span class="small muted">Full position cycles · most recent 100</span></div><div style="overflow:auto;max-height:420px"><table><thead><tr><th>Exit (CT)</th><th>Contract</th><th>Side</th><th>Qty</th><th>Duration</th><th>Net</th></tr></thead><tbody id="completedRows"></tbody></table></div></section>
 <section class="panel"><div class="panelhead"><h2>Performance patterns</h2><span class="small muted">Observed results, not predictions</span></div><div style="overflow:auto;max-height:420px"><table><thead><tr><th>Breakdown</th><th>Count</th><th>Win %</th><th>Net</th></tr></thead><tbody id="patternRows"></tbody></table></div></section></div><div class="foot">TopstepX REST data refreshed approximately every 30 seconds while visible. Broker authentication remains local. No order execution, live-streaming claim, or guarantee of trading performance.</div></main>
 <script src="/topstep/risk-plan.js"></script>
@@ -426,7 +426,7 @@ $("deskDraft").addEventListener("click",()=>{
    $("riskEntry").value=plan.entry;
    $("riskStop").value=plan.stop;
    $("riskTarget").value=plan.target;
-   planRisk();paint();
+   $("riskWorksheet").open=true;planRisk();paint();
    set("deskAIStatus","Illustrative ATR levels placed in the worksheet. Enter your own risk cap and check the plan.");
    $("riskWorksheet").scrollIntoView({behavior:"smooth",block:"center"});
  }catch(e){set("deskAIStatus",e.message)}
