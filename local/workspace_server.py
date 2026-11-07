@@ -563,7 +563,7 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(403, {"ok": False, "error": "Cross-origin requests disabled"})
             return
         pathname = urlsplit(self.path).path
-        if pathname not in ("/api/analyst", "/api/market/fetch", "/api/market/backfill", "/api/forward/start", "/api/forward/stop"):
+        if pathname not in ("/api/analyst", "/api/market/fetch", "/api/market/backfill", "/api/forward/start", "/api/forward/stop", "/api/market/backup"):
             self._reply(404, {"ok": False, "error": "No such research action"})
             return
         if not secrets.compare_digest(self.headers.get("X-Trader-Token", ""), TOKEN):
@@ -582,6 +582,19 @@ class Handler(BaseHTTPRequestHandler):
         try:
             raw = self.rfile.read(length)
             payload = json.loads(raw)
+            if pathname == "/api/market/backup":
+                if not isinstance(payload, dict) or payload:
+                    raise ValueError("Backup takes no paths, tokens or custom options")
+                if not MARKET_GATE.acquire(blocking=False):
+                    self._reply(429, {"ok": False, "error": "Another market operation is active"})
+                    return
+                try:
+                    result = market.backup_store()
+                finally:
+                    MARKET_GATE.release()
+                self._reply(200, {"ok": True, "backup": result,
+                                  "broker_orders": False})
+                return
             if pathname in ("/api/forward/start", "/api/forward/stop"):
                 if not isinstance(payload, dict):
                     raise ValueError("Expected forward monitoring options object")
