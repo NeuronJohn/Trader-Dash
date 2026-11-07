@@ -265,7 +265,9 @@ class TradeLedger:
 
     def history(self, account_id, since):
         with self.lock, self._connection() as db:
-            rows = db.execute("SELECT payload FROM legs WHERE account_id=? AND stamp >= ? ORDER BY stamp,trade_id",
+            # Compare parsed instants, not ISO text: 'Z' and fractional-second
+            # timestamps do not sort reliably at the same second lexically.
+            rows = db.execute("SELECT payload FROM legs WHERE account_id=? AND julianday(stamp) >= julianday(?) ORDER BY julianday(stamp),trade_id",
                               (account_id, since)).fetchall()
         return [json.loads(row[0]) for row in rows]
 
