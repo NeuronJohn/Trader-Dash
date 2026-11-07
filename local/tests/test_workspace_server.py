@@ -164,6 +164,32 @@ class ContextTests(unittest.TestCase):
         result=server.validate_context(payload)
         self.assertIsNone(result["opt_in_fx_research"])
 
+    def test_forward_research_opt_in_is_sanitized_and_never_trusts_browser_pnl(self):
+        packet=context()
+        packet["source"]={
+            "id":"oanda-fxpractice:EUR_USD","kind":"oanda-fxpractice",
+            "symbol":"EUR_USD","timeframe":"5m"
+        }
+        packet["replay"]["enabled"]=False
+        packet["evidence"]["forward_practice"]={
+            "status":"PROVIDER_RECEIVED_LOCAL_PRACTICE_OBSERVATIONS_NOT_BROKER_FILLS",
+            "summary":{"averageModeledR":99999999,"actualBrokerFills":30},
+            "verified_broker_fills":10000,
+            "recent":[{"day":"2026-07-06","status":"MODELED",
+                       "modeled_net_R":99999999,"secret_token":"LEAK"}],
+        }
+        cleaned=server.validate_context(packet)
+        forward_info=cleaned["opt_in_forward_practice"]
+        self.assertEqual(forward_info["verified_broker_fills"],0)
+        self.assertIsNone(forward_info["summary"])
+        self.assertEqual(forward_info["recent_cases"],[])
+        self.assertNotIn("secret_token",json.dumps(forward_info))
+        packet["replay"]["enabled"]=True
+        self.assertIsNone(server.validate_context(packet)["opt_in_forward_practice"])
+        packet["replay"]["enabled"]=False
+        packet["source"]["kind"]="user-csv-unverified"
+        self.assertIsNone(server.validate_context(packet)["opt_in_forward_practice"])
+
     def test_oanda_practice_candle_source_stays_nonexecution(self):
         request = context()
         request["source"] = {
