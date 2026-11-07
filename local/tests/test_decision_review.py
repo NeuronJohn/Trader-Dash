@@ -35,6 +35,15 @@ class DecisionReviewTests(unittest.TestCase):
         self.assertFalse(llm.call_args.kwargs["payload"]["stream"])
         self.assertEqual(llm.call_args.kwargs["payload"]["format"],"json")
 
+    def test_demo_explanation_must_identify_synthetic_source(self):
+        reply={"message":{"content":json.dumps({
+            "observation":"Price crossed a reference range.",
+            "concern":"This observation has no verified expectancy.",
+            "next_check":"Inspect the next closed candle."})}}
+        with patch.object(desk.local_ai,"ollama_request",return_value=reply):
+            with self.assertRaises(ValueError):
+                desk.explain(evidence())
+
     def test_numeric_and_order_claims_are_rejected(self):
         for concern in ("Win probability is 90 percent.","You should buy now.",
                         "Place an order immediately."):
