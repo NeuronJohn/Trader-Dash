@@ -18,11 +18,13 @@ import threading
 import time
 from zoneinfo import ZoneInfo
 
-import market_data as market
+# The localhost server injects its single market-data adapter, so the same
+# request lock and storage are reused. The recorder cannot choose a provider.
+market = None
 
 RULE="FXC-001"
 VERSION="FXC-001-v1"
-SOURCE=market.SOURCE
+SOURCE="oanda-fxpractice"
 TZ=ZoneInfo("America/New_York")
 M5=300_000
 PIPS={"EUR_USD":0.0001,"GBP_USD":0.0001,"USD_JPY":0.01}
