@@ -1,4 +1,4 @@
-# TopstepX read-only workstation v0.9 (development)
+# TopstepX read-only workstation v0.10 (development)
 
 ## What exists
 - Local, browser-based /topstep dashboard reusing the project research server, plus / for the earlier research workspace.
@@ -146,3 +146,27 @@ When a broker account refresh fails, last-seen values are blanked and an explici
 
 ### Boundaries
 Even a full successful offline rehearsal **does not prove actual Topstep connectivity, correct broker fee reconciliation or production readiness**. Next release gate remains a Practice-account API smoke test with authorized credentials kept exclusively on your machine, matched against the official TopstepX UI. No order execution is permitted by either development mode.
+
+## v0.10 — pre-trade risk worksheet and chart-quality foundation (no API needed)
+
+This milestone adds two independently testable, deterministic, browser/Node modules:
+
+- `topstep/risk-plan.js`: no-order futures plan estimates using **contract-specific** `tickSize` and `tickValue` from the ProjectX contract search response. Long and short risk use stop distance in ticks. Assumed adverse slippage is counted on **both entry and exit**. Estimated **loss per contract = (stopTicks + 2 × slippageTicksPerSide) × tickValue + roundTripFeesUsd**. Estimated **net reward per contract = (targetTicks − 2 × slippageTicksPerSide) × tickValue − roundTripFeesUsd**. Totals multiply by requested quantity; the worksheet displays a maximum quantity fitting the user's self-selected risk budget and contract cap. Price levels must align with the exchange tick. Invalid risk direction, invalid quantity, missing metadata, negative/nonfinite costs and unfavorable net target are explicitly reported.
+- `topstep/chart-model.js`: deterministic viewport range, cursor-anchored zoom and drag panning with live-tail return, position hit testing, price-axis auto-fit to **visible** bars, and consistent candle width/geometry. The actual Topstep canvas now draws planned entry/stop/target lines, a crosshair and bar metadata without submitting orders.
+- Local server serves both modules over localhost, and Windows preflight includes `npm test` **and** `npm run build`. Offline HTTP smoke tests check that both scripts are actually served.
+- New Node tests `tests/risk-plan.test.js` and `tests/chart-model.test.js` test costs, tick math, long/short symmetry, budget caps, alignment, zoom anchor, viewport bounds, geometry and historical pan.
+
+### Evidence and limitations
+
+A local isolated mirror of the pure chart and risk modules passed **17 focused Node tests**. The committed dashboard was checked for JavaScript syntax and all 68 referenced controls. Those tests do **not** establish a full Windows browser smoke test, working Topstep credentials or official compliance.
+
+**IMPORTANT:** `PLAN_WITHIN_SELF_LIMITS` means only that the hypothetical plan fits the **user-entered planning assumptions**. It does NOT mean Topstep approves it, the contract is tradable, the broker stop can be filled at that level, the account has sufficient margin, or the strategy has a positive expectancy. Stop gaps, slippage spikes, event news, open positions, commissions and account-specific rules may invalidate the estimate. No real order routing exists.
+
+### How to explore v0.10 without connecting a broker
+1. Open `Start-Topstep-Demo.cmd` (Windows) and select the synthetic account.
+2. Select one of the synthetic MES or MNQ expiries. Verify the chart labels its source as synthetic.
+3. Zoom using wheel/+/−; drag to inspect older candles; press **Latest** to jump to the newest bars.
+4. Open the risk worksheet and enter long/short, entry, stop, target, quantity and a **personal risk cap**. Verify the tick-size check and fee/slippage assumptions. If the completed bar context is current, its last completed close can be copied into the entry field via a separate user click.
+5. Run `Run-Topstep-Preflight.cmd` for Python tests, Node tests, and a Vite build. Review any failures before trying real credentials.
+
+This remains an unmerged draft. Before production, test the entire dashboard in Edge/Chrome on Windows and perform an authenticated comparison with the TopstepX Practice account. The risk worksheet is **not** a Topstep official loss-limit engine.
