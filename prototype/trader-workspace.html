@@ -2379,6 +2379,15 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       throw Error("Load OANDA practice M5 receipts. Imported CSV, demo and MES cannot enter FXC.");
     if(S.data.bars.length<48)throw Error("At least 48 received five-minute candles required");
   }
+  function fxEligibleBars(){
+    if(S.data.source!=="oanda-fxpractice")return [];
+    const required=["open","high","low","close",
+      "bidOpen","bidHigh","bidLow","bidClose",
+      "askOpen","askHigh","askLow","askClose"];
+    return S.data.bars.filter(b=>
+      required.every(k=>Number.isFinite(b[k])&&b[k]>0)&&
+      Number.isSafeInteger(b.receivedAt)&&Boolean(b.receiptId));
+  }
   function fxFingerprint(bars){
     // Quick error detection for imported/reloaded research, not a signature.
     let h=2166136261;
@@ -2394,7 +2403,9 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     try{
       ensureFxSource();
       const cutoff=S.replay?S.data.bars[S.reveal].time+300000:S.data.bars.at(-1).time+300000;
-      S.fxSignals=fxEngine().inspect(S.data.bars,{
+      const bars=fxEligibleBars();
+      if(bars.length<48)throw Error("Not enough complete bid/ask M5 candles. Refresh or backfill practice receipts.");
+      S.fxSignals=fxEngine().inspect(bars,{
         symbol:S.data.symbol,source:S.data.source,asOfUtc:cutoff,
         config:fxOptions()
       });
@@ -2410,10 +2421,12 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     try{
       ensureFxSource();
       if(S.replay)throw Error("Exit historical reveal before a complete FX backtest");
-      const options=fxOptions(),report=fxEngine().simulate(S.data.bars,{
+      const bars=fxEligibleBars();
+      if(bars.length<48)throw Error("Not enough full bid/ask M5 bars. Refresh or backfill history.");
+      const options=fxOptions(),report=fxEngine().simulate(bars,{
         symbol:S.data.symbol,source:S.data.source,config:options
       });
-      const savedAt=new Date().toISOString(),fingerprint=fxFingerprint(S.data.bars);
+      const savedAt=new Date().toISOString(),fingerprint=fxFingerprint(bars);
       const trial={
         id:id(),kind:"FXC_SESSION_V1",datasetId:S.data.id,datasetSymbol:S.data.symbol,
         createdAt:savedAt,source:S.data.source,fingerprint,
@@ -2507,8 +2520,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     }
     out.append(htmlText("h4","FXC-001 · historical practice · NOT VERIFIED"));
     out.append(stats);
+    const incompleteCount=S.data.bars.length-fxEligibleBars().length;
     const text=r.completeSessions+" complete sessions · "+r.rejectedSessions.length+
-      " incomplete/excluded · "+r.skips.length+" potential signals skipped for modeled entry rules. "+
+      " incomplete/excluded · "+incompleteCount+" legacy/incomplete-component candles omitted · "+
+      r.skips.length+" potential signals skipped for modeled entry rules. "+
       "NY local time tracks DST.";
     out.append(htmlText("p",text,"small muted"));
     out.append(htmlText("p",
@@ -2536,7 +2551,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       const btn=document.createElement("button");btn.className="btn subtle";btn.textContent="Inspect";
       btn.addEventListener("click",()=>{
         const signal=S.fxSignals?.matches.find(q=>q.day===t.day&&q.side===t.side)
-          ||fxEngine().inspect(S.data.bars,{
+          ||fxEngine().inspect(fxEligibleBars(),{
             symbol:S.data.symbol,source:S.data.source,config:record.options,asOfUtc:t.signalTime
           }).matches.find(q=>q.day===t.day&&q.side===t.side);
         if(signal)focusFxSignal(signal);
@@ -2749,14 +2764,15 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         }
         if(S.data.id!==saved.datasetId||S.data.source!=="oanda-fxpractice")
           throw Error("Original OANDA practice dataset is unavailable");
-        if(fxFingerprint(S.data.bars)!==saved.fingerprint)
+        const eligible=fxEligibleBars();
+        if(fxFingerprint(eligible)!==saved.fingerprint)
           throw Error("Recorded candle selection or prices changed. Saved FX outcome cannot be silently recomputed: use the original receipt snapshot.");
         const o=saved.options;
         $("fxMaxSpread").value=o.maxSpreadPips;
         $("fxSlip").value=o.slippagePipsPerSide;
         $("fxFee").value=o.feesPipsRoundTrip;
         $("fxTarget").value=o.targetR;
-        const report=fxEngine().simulate(S.data.bars,{
+        const report=fxEngine().simulate(eligible,{
           symbol:S.data.symbol,source:S.data.source,config:o
         });
         S.fxRunRecord={...saved,report};
