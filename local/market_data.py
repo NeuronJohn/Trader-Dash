@@ -27,7 +27,7 @@ BASE_URL = "https://api-fxpractice.oanda.com"
 ALLOWED_SYMBOLS = ("EUR_USD", "GBP_USD", "USD_JPY")
 BAR_MS = 300_000
 MAX_FETCH = 1000
-MAX_OUTPUT = 1000
+MAX_OUTPUT = 16000
 MAX_BYTES = 2_500_000
 LOCK = threading.Lock()
 SCHEMA_VERSION = 1
@@ -361,15 +361,25 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise MarketError("OANDA endpoint redirected; credentials were not forwarded")
 
-def fetch_practice_candles(symbol: str, count: int, token: str) -> tuple[dict,str,str,str]:
+def fetch_practice_candles(symbol: str, count: int, token: str, before_ms: int | None = None) -> tuple[dict,str,str,str]:
     if symbol not in ALLOWED_SYMBOLS or type(count) is not int or not 10 <= count <= MAX_FETCH:
         raise MarketError("Only allowed FX pairs and 10–1000 candles are permitted")
     if (not isinstance(token,str) or not token or len(token)>4096 or
             any(ord(ch)<33 or ord(ch)>126 for ch in token)):
         raise MarketError("Set a valid OANDA_PRACTICE_TOKEN in the local server environment")
-    params=urllib.parse.urlencode({
+    request_params={
         "granularity":"M5","price":"MBA","count":count,"smooth":"false"
-    })
+    }
+    if before_ms is not None:
+        if (type(before_ms) is not int or before_ms<=0 or
+                before_ms>now_ms()+BAR_MS):
+            raise MarketError("Invalid UTC historical backfill cutoff")
+        # Provider time bounds are explicit. Never follow provider pagination
+        # links or send credentials anywhere except the fixed practice host.
+        request_params["to"]=dt.datetime.fromtimestamp(
+            before_ms/1000,tz=dt.timezone.utc
+        ).isoformat().replace("+00:00","Z")
+    params=urllib.parse.urlencode(request_params)
     url=f"{BASE_URL}/v3/instruments/{symbol}/candles?{params}"
     request=urllib.request.Request(url,method="GET",headers={
         "Authorization":"Bearer "+token,
@@ -413,6 +423,50 @@ def fetch_into_store(symbol: str, count: int, *, clock_ms: int | None = None) ->
                           raw_sha256=response_hash)
         finally:
             conn.close()
+
+def backfill_into_store(symbol: str, pages: int = 6, *, clock_ms: int | None = None) -> dict:
+    """Explicit, bounded historical retrieval; no timer, account action or live polling."""
+    if symbol not in ALLOWED_SYMBOLS or type(pages) is not int or not 1 <= pages <= 12:
+        raise MarketError("Backfill permits 1–12 pages and fixed practice FX pairs")
+    token=os.environ.get("OANDA_PRACTICE_TOKEN","")
+    received_ms=clock_ms if clock_ms is not None else now_ms()
+    with LOCK:
+        connection=open_store()
+        count_requests,added,repeated,conflicted,augmented=0,0,0,0,0
+        older_than=None
+        try:
+            for page in range(pages):
+                response,http_date,request_id,sha=fetch_practice_candles(
+                    symbol,MAX_FETCH,token,before_ms=older_than
+                )
+                candles=normalize_response(response,symbol,received_ms)
+                if not candles:
+                    break
+                earliest=min(row["time"] for row in candles)
+                if older_than is not None and earliest>=older_than:
+                    raise MarketError("Historical pagination did not advance backward")
+                receipt=ingest(
+                    connection,symbol=symbol,candles=candles,
+                    received_ms=received_ms,provider_http_date=http_date,
+                    provider_request_id=request_id,raw_sha256=sha
+                )
+                count_requests+=1
+                added+=receipt["added"]
+                repeated+=receipt["repeated"]
+                conflicted+=receipt["conflicts"]
+                augmented+=receipt["augmented"]
+                # Strictly before first candle of previous page; accept a
+                # possible small overlap as a duplicate, never hide revision.
+                older_than=earliest-1
+        finally:
+            connection.close()
+    return {
+        "source":SOURCE,"symbol":symbol,"requests":count_requests,
+        "added":added,"repeated":repeated,"conflicts":conflicted,
+        "augmented":augmented,"received_utc_ms":received_ms,
+        "complete_only":True,"verified_broker_fills":0,
+        "warning":"Manually fetched practice historical candles. No executable fills."
+    }
 
 def status() -> dict:
     db=storage_path()
