@@ -152,7 +152,7 @@ class MarketDataTests(unittest.TestCase):
         with self.assertRaisesRegex(md.MarketError,"Invalid requested"):
             md.read_bars(self.conn,"ES")
         with self.assertRaisesRegex(md.MarketError,"Invalid output limit"):
-            md.read_bars(self.conn,"EUR_USD",5001)
+            md.read_bars(self.conn,"EUR_USD",16001)
     def test_provider_host_and_request_method_are_hardcoded(self):
         seen={}
         class MockResponse:
