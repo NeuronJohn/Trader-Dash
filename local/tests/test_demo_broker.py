@@ -1,5 +1,6 @@
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -23,6 +24,17 @@ class DemoFixtureTests(unittest.TestCase):
             delta=(exit["price"]-entry["price"])*direction
             expected=round(delta/c["tickSize"]*c["tickValue"],2)
             self.assertAlmostEqual(expected,exit["profitAndLoss"],places=5)
+
+    def test_historical_demo_candles_are_timestamp_stable(self):
+        current=[datetime(2026,11,6,16,3,tzinfo=timezone.utc)]
+        broker=DemoBroker(clock=lambda:current[0])
+        first={x["time"]:x for x in broker.bars(CONTRACTS[0]["id"],5,80)}
+        current[0]+=timedelta(minutes=5)
+        second={x["time"]:x for x in broker.bars(CONTRACTS[0]["id"],5,80)}
+        overlap=set(first)&set(second)
+        self.assertEqual(len(overlap),79)
+        for stamp in overlap:
+            self.assertEqual(first[stamp],second[stamp])
 
     def test_no_broker_token_issued(self):
         with self.assertRaises(RuntimeError):
