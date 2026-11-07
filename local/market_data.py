@@ -113,8 +113,10 @@ def normalize_response(response: Any, symbol: str, received_ms: int) -> list[dic
         seen.add(stamp)
         out.append({
             "time": stamp, **mid,
-            "bidOpen": bid["open"], "bidClose": bid["close"],
-            "askOpen": ask["open"], "askClose": ask["close"],
+            "bidOpen": bid["open"], "bidHigh": bid["high"],
+            "bidLow": bid["low"], "bidClose": bid["close"],
+            "askOpen": ask["open"], "askHigh": ask["high"],
+            "askLow": ask["low"], "askClose": ask["close"],
             "volume": entry.get("volume") if type(entry.get("volume")) is int else None,
         })
     out.sort(key=lambda x: x["time"])
@@ -123,7 +125,8 @@ def normalize_response(response: Any, symbol: str, received_ms: int) -> list[dic
 def canonical_hash(row: dict) -> str:
     immutable = {k: row[k] for k in (
         "time", "open", "high", "low", "close",
-        "bidOpen", "bidClose", "askOpen", "askClose")}
+        "bidOpen", "bidHigh", "bidLow", "bidClose",
+        "askOpen", "askHigh", "askLow", "askClose")}
     return hashlib.sha256(
         json.dumps(immutable, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
     ).hexdigest()
@@ -269,7 +272,8 @@ def read_bars(connection: sqlite3.Connection, symbol: str, limit: int = 500) -> 
     """,(SOURCE,symbol)).fetchone()
     return {
       "symbol":symbol,"source":SOURCE,"granularity":"M5",
-      "price_component":"M (midpoint), bid/ask open/close retained",
+      "price_component":"M (midpoint), complete bid/ask OHLC retained",
+      "component_quality":"FULL_MID_BID_ASK_OHLC_IF_NEWLY_CAPTURED",
       "provenance":PROVENANCE,
       "timestamp_convention":"UTC 5-minute BAR START",
       "authenticated_practice_api":True,
