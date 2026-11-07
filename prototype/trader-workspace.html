@@ -1854,7 +1854,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         const b={time:raw.time,open:raw.open,high:raw.high,low:raw.low,close:raw.close,
           bidOpen:raw.bidOpen,bidHigh:raw.bidHigh,bidLow:raw.bidLow,bidClose:raw.bidClose,
           askOpen:raw.askOpen,askHigh:raw.askHigh,askLow:raw.askLow,askClose:raw.askClose,
-          receivedAt:raw.receivedAt,receiptId:raw.receiptId};
+          receivedAt:raw.receivedAt,receiptId:raw.receiptId,
+          componentReceivedAt:raw.componentReceivedAt,componentReceiptId:raw.componentReceiptId};
         if(!Number.isSafeInteger(b.time)||b.time<=last||b.time%300000!==0||
           !["open","high","low","close","bidClose","askClose"].every(k=>Number.isFinite(b[k])&&b[k]>0)||
           b.high<Math.max(b.open,b.close,b.low)||b.low>Math.min(b.open,b.close,b.high)||
@@ -1903,7 +1904,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       const receipt=payload.market_receipt;
       if(receipt.source!=="oanda-fxpractice"||receipt.symbol!==symbol)throw Error("Unexpected provider receipt");
       $("fxDetail").textContent="Receipt "+receipt.receipt_id.slice(0,12)+" · "+
-        receipt.added+" new, "+receipt.repeated+" unchanged, "+receipt.conflicts+
+        receipt.added+" new, "+Number(receipt.augmented||0)+" enriched, "+receipt.repeated+" unchanged, "+receipt.conflicts+
         " conflicts · complete M5 only · order execution disabled";
       toast("Practice price receipt saved. "+receipt.added+" new closed bars; "+
         receipt.conflicts+" revisions kept in audit.");
@@ -2346,7 +2347,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     for(const b of bars){
       const raw=[b.time,b.open,b.high,b.low,b.close,
         b.bidOpen,b.bidHigh,b.bidLow,b.bidClose,
-        b.askOpen,b.askHigh,b.askLow,b.askClose,b.receiptId].join("|")+";";
+        b.askOpen,b.askHigh,b.askLow,b.askClose,b.receiptId,b.componentReceiptId].join("|")+";";
       for(let j=0;j<raw.length;j++){h^=raw.charCodeAt(j);h=Math.imul(h,16777619)}
     }
     return (h>>>0).toString(16).padStart(8,"0")+"-"+bars.length+"-"+bars[0]?.time+"-"+bars.at(-1)?.time;
