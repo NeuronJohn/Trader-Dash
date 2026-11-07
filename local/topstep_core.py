@@ -198,9 +198,28 @@ class ProjectXClient:
         account = next((x for x in self.accounts() if x["id"] == account_id), None)
         if account is None:
             raise ValueError("Account not active or inaccessible")
-        since = iso_utc(utc_now() - timedelta(days=days))
-        legs = self.request("/api/Trade/search",
-                            {"accountId": account_id, "startTimestamp": since}).get("trades")
+        end = utc_now()
+        start = end - timedelta(days=days)
+        since = iso_utc(start)
+        # Bounded 14-day windows prevent a single oversized all-year response.
+        # Inclusive boundaries can overlap; keep the most recent copy by broker ID.
+        by_id = {}
+        cursor = start
+        while cursor < end:
+            stop = min(cursor + timedelta(days=14), end)
+            page = self.request("/api/Trade/search", {
+                "accountId": account_id,
+                "startTimestamp": iso_utc(cursor),
+                "endTimestamp": iso_utc(stop),
+            }).get("trades")
+            if not isinstance(page, list):
+                raise GatewayError("Incomplete broker trade history; nothing was committed")
+            for leg in page:
+                if not isinstance(leg, dict) or type(leg.get("id")) is not int:
+                    raise GatewayError("Malformed trade leg in historical response")
+                by_id[leg["id"]] = leg
+            cursor = stop
+        legs = list(by_id.values())
         orders = self.request("/api/Order/searchOpen", {"accountId": account_id}).get("orders")
         positions = self.request("/api/Position/searchOpen", {"accountId": account_id}).get("positions")
         if not all(isinstance(x, list) for x in (legs, orders, positions)):
