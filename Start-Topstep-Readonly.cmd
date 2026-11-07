@@ -20,6 +20,13 @@ if errorlevel 1 (
   if errorlevel 1 goto fail
 )
 
+%PY% -c "import websocket; assert hasattr(websocket, 'create_connection')" >nul 2>&1
+if errorlevel 1 (
+  echo Installing local Topstep SignalR WebSocket client...
+  %PY% -m pip install --user -r requirements-topstep.txt
+  if errorlevel 1 goto fail
+)
+
 %PY% local\topstep_server.py
 if errorlevel 1 goto fail
 exit /b 0
