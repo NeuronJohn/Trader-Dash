@@ -436,7 +436,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._reply(200, {"ok": True, "market": result})
             except (market.MarketError, ValueError) as exc:
                 self._reply(422, {"ok": False, "error": str(exc)})
-            except OSError:
+            except (OSError, sqlite3.Error):
                 self._reply(503, {"ok": False, "error": "Local market store unavailable"})
         elif pathname == "/api/session":
             self._reply(200, {"ok": True, "server": "local-only-research",
