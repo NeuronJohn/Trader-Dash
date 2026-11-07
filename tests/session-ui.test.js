@@ -70,7 +70,7 @@ function createUI(fetchImpl){
   const window={matchMedia(){return {matches:false}},addEventListener(){},confirm(){return true}};
   const inner=script.slice(script.indexOf("(function(){")+"(function(){".length,script.lastIndexOf("})();"));
   const patched=inner.replace(/\n\s*start\(\);\s*$/,
-    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger,checkMarketStatus,fetchPracticeCandles,loadPracticeCandles,backfillPracticeHistory,scanFxHistory,runFxResearch,renderFxResearch,focusFxSignal,fxFingerprint,revealFxReserve,loadExperimentRun,checkForwardStatus,startForwardObserver,stopForwardObserver,renderForwardJournal}));');
+    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger,checkMarketStatus,fetchPracticeCandles,loadPracticeCandles,backfillPracticeHistory,scanFxHistory,runFxResearch,renderFxResearch,focusFxSignal,fxFingerprint,revealFxReserve,loadExperimentRun,checkForwardStatus,startForwardObserver,stopForwardObserver,renderForwardJournal,backupPracticeEvidence}));');
   assert.notEqual(inner,patched);
   const launch=new Function("document","window","globalThis","indexedDB","localStorage","devicePixelRatio",
     "requestAnimationFrame","ResizeObserver","setTimeout","clearTimeout","fetch",patched);
@@ -359,6 +359,8 @@ test("practice observer is off initially; user-approved start and stop are local
       active=true;return response({ok:true,broker_orders:false,
         monitor:{active:true,symbol:"EUR_USD",armedAt:Date.now(),pollCount:0}});
     }
+    if(url==="/api/market/backup")return response({ok:true,broker_orders:false,
+      backup:{ok:true,backup_path:"C:\\\\Research\\\\backups\\\\fixture.sqlite3",size_bytes:1024}});
     if(url==="/api/forward/stop"){
       active=false;return response({ok:true,broker_orders:false,
         monitor:{active:false,symbol:"EUR_USD",armedAt:null,pollCount:1}});
@@ -381,6 +383,12 @@ test("practice observer is off initially; user-approved start and stop are local
   await x.stopForwardObserver();
   assert.equal(x.S.forward.monitor.active,false);
   assert.deepEqual(JSON.parse(sent.find(x=>x.url==="/api/forward/stop").opts.body),{});
+  await x.backupPracticeEvidence();
+  const backed=sent.find(x=>x.url==="/api/market/backup");
+  assert.equal(backed.opts.method,"POST");
+  assert.deepEqual(JSON.parse(backed.opts.body),{});
+  assert.equal(backed.opts.headers["X-Trader-Token"],"session-only-secret");
+  assert.ok(x.nodes.fxBackupStatus.textContent.includes("fixture.sqlite3"));
   assert.equal(sent.some(x=>/order|position|trade/i.test(x.url)),false);
 });
 
