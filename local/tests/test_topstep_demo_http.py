@@ -160,6 +160,29 @@ class DemoHttpSmoke(unittest.TestCase):
             urllib.request.urlopen(req,timeout=5)
         self.assertEqual(exc.exception.code,422)
 
+    def test_forward_journal_in_candle_route_and_strict_demo_provenance(self):
+        a=self.api("/topstep/api/accounts")["accounts"][0]["id"]
+        self.api("/topstep/api/live/subscribe",method="POST",
+                 payload={"account_id":a,"contract_id":"CON.F.US.MES.Z26"},
+                 origin=self.url)
+        data=self.api("/topstep/api/bars?contract=CON.F.US.MES.Z26&minutes=5&account_id="+str(a))
+        self.assertIsInstance(data["journal"],dict)
+        journal=data["journal"]
+        self.assertEqual(journal["source"],"SYNTHETIC_OFFLINE_FIXTURE")
+        self.assertEqual(journal["horizon_bars"],5)
+        self.assertTrue(journal["not_trades"])
+        self.assertFalse(journal["statistical_edge_verified"])
+        self.assertFalse(journal["no_execution"] is False)
+        demo=Path(self.tmp.name)/"demo-observation-journal.sqlite3"
+        real=Path(self.tmp.name)/"topstep-observation-journal.sqlite3"
+        self.assertTrue(demo.exists())
+        self.assertFalse(real.exists())
+
+    def test_forward_journal_denies_inaccessible_account(self):
+        with self.assertRaises(urllib.error.HTTPError) as exc:
+            self.api("/topstep/api/bars?contract=CON.F.US.MES.Z26&minutes=5&account_id=123456")
+        self.assertEqual(exc.exception.code,422)
+
     def test_no_order_endpoint_even_in_demo(self):
         payload={"accountId":9900001,"type":2,"side":0,"size":1}
         req=urllib.request.Request(
