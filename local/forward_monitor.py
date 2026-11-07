@@ -291,6 +291,13 @@ def record_new(connection,symbol,bars,armed_at_ms,received_ms):
                 0<=source_at-close_ms<=MAX_CAPTURE_DELAY_MS):
             continue
         if c["prefix"][-1]["time"]+M5!=close_ms:continue
+        # A provider-price correction already reported for any input candle
+        # makes this historical prefix unfit for a clean new capture.
+        relevant_revision=connection.execute("""
+          SELECT COUNT(*) AS n FROM revisions
+          WHERE symbol=? AND candle_start_ms>=? AND candle_start_ms<=?
+        """,(symbol,c["prefix"][0]["time"],c["prefix"][-1]["time"])).fetchone()["n"]
+        if relevant_revision:continue
         observation={
             "rule":RULE,"version":VERSION,
             "symbol":symbol,"day":day,"side":c["side"],
@@ -342,7 +349,18 @@ def settle_ready(connection,symbol,bars,received_ms):
     settled=[]
     for row in entries:
         c=json.loads(row["capture_json"])
-        if digest(c["prefix"])!=row["prefix_sha256"]:
+        # SQLite first-seen prices never change; separately logged provider
+        # corrections must be inspected or the simulator would silently score
+        # an obsolete first version as if no disagreement occurred.
+        session_start=c["prefix"][0]["time"]
+        session_end=session_start+48*M5
+        revisions=connection.execute("""
+          SELECT COUNT(*) AS n FROM revisions
+          WHERE symbol=? AND candle_start_ms>=? AND candle_start_ms<?
+        """,(symbol,session_start,session_end)).fetchone()["n"]
+        if revisions:
+            outcome={"status":"CONFLICT","reason":"Provider revised one or more session candles after first receipt"}
+        elif digest(c["prefix"])!=row["prefix_sha256"]:
             # Even a malformed local database must never silently invent wins.
             outcome={"status":"CONFLICT","reason":"Saved capture checksum failed"}
         else:
