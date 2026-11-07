@@ -14,6 +14,7 @@ from urllib.parse import urlsplit, parse_qs
 
 import workspace_server as research
 from topstep_core import ProjectXClient, TradeLedger, calculate_stats, GatewayError, iso_utc, utc_now
+from trade_analytics import summarize as summarize_completed
 
 ROOT = Path(__file__).resolve().parents[1]
 DASH = ROOT / "topstep" / "index.html"
@@ -54,7 +55,13 @@ def snapshot_account(account_id, days, force=False):
         ledger().save(account_id, snap["legs"])
         all_legs = ledger().history(account_id, snap["since"])
         stats = calculate_stats(all_legs, snap["since"], snap["synced_at"])
-        result = {"account": snap["account"], "stats": stats, "positions": snap["positions"],
+        try:
+            completed = summarize_completed(all_legs)
+        except (ValueError, KeyError, TypeError, OverflowError):
+            # Fail closed on inconsistent broker legs; never invent a completed trade.
+            completed = {"status": "UNAVAILABLE", "error":
+                         "Complete trades cannot be reconstructed from this broker history"}
+        result = {"account": snap["account"], "stats": stats, "completed_trades": completed, "positions": snap["positions"],
                   "orders": snap["orders"], "synced_at": snap["synced_at"],
                   "record_count": len(all_legs), "historical_window_days": days,
                   "real_time": False, "order_execution_enabled": False}
