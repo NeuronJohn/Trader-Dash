@@ -1,8 +1,10 @@
-## TopstepX read-only workstation (development v0.9)
+## TopstepX read-only workstation (development v0.10)
 
 This branch introduces an authenticated **local-only, read-only TopstepX/ProjectX** integration. It can pull accessible accounts, futures candles, open positions/orders, and execution-leg records and store deduplicated fills in a local SQLite ledger. The browser dashboard is at `http://127.0.0.1:8765/topstep`; the existing research/AI prototype stays at `/`.
 
 The v0.8 workstation adds a completed-position win-rate/expectancy ledger, local-only SignalR subscriptions for selected account and futures expiry, and a **completed-bar-only** 20-bar structure/ATR monitor. It automatically reports stale or gapped data; none of these observations establish a profitable strategy. On Windows the launcher detects and installs missing free Python dependencies for the stream.
+
+**New v0.10:** the Topstep chart supports anchored wheel zoom, click-drag history navigation, a crosshair and visual entry/stop/target planning levels. The new pre-trade worksheet takes contract tick size/value from ProjectX search results, then computes stop ticks, estimated per-contract downside/upside after fee and slippage assumptions, reward/risk and quantity within a *personal user-entered budget*. It never determines official Topstep compliance and cannot submit orders. Use the **Latest** chart button to return to the newest candles. Node tests for both math engines are part of `npm test`.
 
 **Test first without an API:** double-click `Start-Topstep-Demo.cmd` (Windows), or set `TRADER_DEMO=1` and run `python local/topstep_server.py`. This runs an entirely offline, unmistakably labeled SYNTHETIC account and market-feed rehearsal using the same UI and local API routes. It never contacts Topstep. Use `Run-Topstep-Preflight.cmd` to execute the local Python and JavaScript tests without paid CI. Demo fixtures are stored separately from real history.
 
