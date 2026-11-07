@@ -136,7 +136,7 @@ class Handler(research.Handler):
         if not self._trusted_host():
             return self._reply(403, {"ok": False, "error": "Untrusted local Host"})
         path = urlsplit(self.path).path
-        if path in ("/topstep/risk-plan.js", "/topstep/chart-model.js"):
+        if path in ("/topstep/risk-plan.js", "/topstep/chart-model.js", "/topstep/decision-desk.js"):
             script = ROOT / "topstep" / path.rsplit("/", 1)[-1]
             if not script.is_file():
                 return self._reply(404, {"ok": False, "error": "Risk worksheet unavailable"})
