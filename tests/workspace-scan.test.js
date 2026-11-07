@@ -18,7 +18,7 @@ const logic = new Function(
   "const safeStr=v=>String(v==null?'':v);\n"+
   section("  function demo(){","  function splitCSV")+
   section("  function splitCSV","  function openDB")+
-  section("  // Candidate detector:","  function scanHistory()")+
+  section("  // Candidate detector:","  function scanHistory(")+
   "\nreturn {demo,readCSV,searchPatterns};"
 )();
 const {demo,readCSV,searchPatterns}=logic;
