@@ -12,6 +12,7 @@ import webbrowser
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
+import urllib.error
 
 import workspace_server as research
 from topstep_core import ProjectXClient, TradeLedger, calculate_stats, GatewayError, iso_utc, utc_now
@@ -19,6 +20,7 @@ from trade_analytics import summarize as summarize_completed
 from realtime_bridge import LiveBridge, valid_contract
 from demo_broker import DemoBroker, DemoBridge
 from structure_context import analyze as analyze_structure
+from decision_review import explain as explain_decision, bounded_packet
 
 ROOT = Path(__file__).resolve().parents[1]
 DASH = ROOT / "topstep" / "index.html"
@@ -214,8 +216,9 @@ class Handler(research.Handler):
             return self._reply(502, {"ok": False, "error": "Broker data invalid or unavailable"})
 
     def do_POST(self):
-        if urlsplit(self.path).path != "/topstep/api/live/subscribe":
-            if urlsplit(self.path).path.startswith("/topstep"):
+        path = urlsplit(self.path).path
+        if path not in ("/topstep/api/live/subscribe", "/topstep/api/desk/review"):
+            if path.startswith("/topstep"):
                 return self._reply(405, {"ok": False, "error": "No broker order endpoints"})
             return super().do_POST()
         if not self._trusted_host():
@@ -231,22 +234,62 @@ class Handler(research.Handler):
             if not 2 <= size <= 500:
                 return self._reply(413, {"ok": False, "error": "Invalid request size"})
             body = json.loads(self.rfile.read(size))
-            if not isinstance(body, dict) or set(body) != {"account_id", "contract_id"}:
-                raise ValueError("Invalid subscription selection")
+            if not isinstance(body, dict):
+                raise ValueError("Expected a bounded selection")
+            if path == "/topstep/api/live/subscribe":
+                if set(body) != {"account_id", "contract_id"}:
+                    raise ValueError("Invalid subscription selection")
+                acc, con = body["account_id"], body["contract_id"]
+                if type(acc) is not int or not valid_contract(con):
+                    raise ValueError("Invalid account or contract")
+                if not any(a["id"] == acc for a in client().accounts()):
+                    return self._reply(403, {"ok": False, "error": "Account unavailable"})
+                bridge().select(acc, con)
+                return self._reply(200, {"ok": True, "subscribed": True,
+                                         "execution": False})
+            # Decision notes accept only selection IDs, never arbitrary model prompts.
+            if set(body) != {"account_id", "contract_id", "minutes", "confirmed_through_ms"}:
+                raise ValueError("Decision Desk expects only account, contract, timeframe and candle ID")
             acc, con = body["account_id"], body["contract_id"]
-            if type(acc) is not int or not valid_contract(con):
-                raise ValueError("Invalid account or contract")
-            if not any(a["id"] == acc for a in client().accounts()):
-                return self._reply(403, {"ok": False, "error": "Account unavailable"})
-            bridge().select(acc, con)
-            return self._reply(200, {"ok": True, "subscribed": True,
-                                     "execution": False})
+            minutes, expected = body["minutes"], body["confirmed_through_ms"]
+            if (type(acc) is not int or acc <= 0 or not valid_contract(con) or
+                type(minutes) is not int or minutes not in (1, 5, 15, 30, 60) or
+                type(expected) is not int or expected <= 0):
+                raise ValueError("Invalid decision selection")
+            state = BRIDGE.snapshot() if BRIDGE else {}
+            if (state.get("selected_account") != acc or
+                state.get("selected_contract") != con or
+                state.get("quote_fresh") is not True):
+                return self._reply(409, {"ok": False, "error":
+                    "No fresh selected market stream; AI review requires current evidence"})
+            candles = client().bars(con, minutes)
+            structure = analyze_structure(candles, minutes)
+            if (structure.get("status") != "OBSERVATION_ONLY" or
+                structure.get("confirmed_through_ms") != expected or
+                structure.get("completed_data_stale") or structure.get("gaps_in_last_20") or
+                structure.get("range_state") not in ("ABOVE_PRIOR_RANGE", "BELOW_PRIOR_RANGE")):
+                return self._reply(409, {"ok": False, "error":
+                    "Candle changed or no current breakout observation; refresh the chart"})
+            account_data = snapshot_account(acc, 30)
+            if (account_data.get("synthetic") is not DEMO_MODE or
+                account_data.get("account", {}).get("id") != acc):
+                return self._reply(409, {"ok": False, "error": "Account provenance does not match"})
+            source = "SYNTHETIC_OFFLINE_FIXTURE" if DEMO_MODE else "TOPSTEPX_BROKER_REST"
+            packet = bounded_packet(con, minutes, structure,
+                                    account_data["completed_trades"], source)
+            note = explain_decision(packet)
+            return self._reply(200, {"ok": True, "analysis": note,
+                "source": source, "confirmed_through_ms": expected,
+                "model": research.MODEL, "execution": False,
+                "model_role": "UNVERIFIED_EXPLANATION_ONLY"})
         except (ValueError, json.JSONDecodeError):
-            return self._reply(422, {"ok": False, "error": "Invalid subscription request"})
+            return self._reply(422, {"ok": False, "error": "Decision inputs or local model output invalid"})
         except GatewayError as exc:
             return self._reply(exc.status, {"ok": False, "error": str(exc)})
+        except (urllib.error.URLError, TimeoutError):
+            return self._reply(503, {"ok": False, "error": "Local Ollama or broker service unavailable"})
         except (OSError, KeyError, TypeError):
-            return self._reply(502, {"ok": False, "error": "Unable to start read-only stream"})
+            return self._reply(502, {"ok": False, "error": "Unable to complete bounded read-only review"})
 
 
 def main():
