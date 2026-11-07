@@ -307,9 +307,12 @@ class Handler(research.Handler):
             if (account_data.get("synthetic") is not DEMO_MODE or
                 account_data.get("account", {}).get("id") != acc):
                 return self._reply(409, {"ok": False, "error": "Account provenance does not match"})
-            source = "SYNTHETIC_OFFLINE_FIXTURE" if DEMO_MODE else "TOPSTEPX_BROKER_REST"
+            source = SOURCE_DEMO if DEMO_MODE else SOURCE_REAL
+            forward = observation_journal().advance(
+                source, acc, con, minutes, candles, structure,
+                allow_record=False)
             packet = bounded_packet(con, minutes, structure,
-                                    account_data["completed_trades"], source)
+                                    account_data["completed_trades"], source, forward)
             note = explain_decision(packet)
             return self._reply(200, {"ok": True, "analysis": note,
                 "source": source, "confirmed_through_ms": expected,
