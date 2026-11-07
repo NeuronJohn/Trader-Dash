@@ -151,15 +151,21 @@ class LiveBridge:
                 return
             d=args[1]
             if target=="GatewayQuote":
-                if not finite(d.get("lastPrice")) or d["lastPrice"]<=0 or not timestamp(d.get("timestamp")):
-                    return
-                data={"lastPrice":float(d["lastPrice"]),"timestamp":d["timestamp"]}
-                for key in ("bestBid","bestAsk","volume","open","high","low"):
-                    if finite(d.get(key)):data[key]=float(d[key])
+                # GatewayQuote updates can be sparse: e.g. bestBid without lastPrice.
                 with self.lock:
-                    if self.selected_contract==subscribed_contract:
-                        self.quote=data
-                        self.quote_received=self.clock()
+                    if self.selected_contract!=subscribed_contract:return
+                    data=dict(self.quote or {})
+                    if "lastPrice" in d:
+                        if not finite(d["lastPrice"]) or d["lastPrice"]<=0:return
+                        data["lastPrice"]=float(d["lastPrice"])
+                    if "timestamp" in d:
+                        if not timestamp(d["timestamp"]):return
+                        data["timestamp"]=d["timestamp"]
+                    if "lastPrice" not in data or "timestamp" not in data:return
+                    for key in ("bestBid","bestAsk","volume","open","high","low"):
+                        if key in d and finite(d[key]):data[key]=float(d[key])
+                    self.quote=data
+                    self.quote_received=self.clock()
             elif target=="GatewayTrade":
                 if not finite(d.get("price")) or not timestamp(d.get("timestamp")):
                     return
