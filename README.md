@@ -1,10 +1,12 @@
-## TopstepX read-only workstation (development v0.6)
+## TopstepX read-only workstation (development v0.8)
 
 This branch introduces an authenticated **local-only, read-only TopstepX/ProjectX** integration. It can pull accessible accounts, futures candles, open positions/orders, and execution-leg records and store deduplicated fills in a local SQLite ledger. The browser dashboard is at `http://127.0.0.1:8765/topstep`; the existing research/AI prototype stays at `/`.
 
+The v0.8 workstation adds a completed-position win-rate/expectancy ledger, local-only SignalR subscriptions for selected account and futures expiry, and a **completed-bar-only** 20-bar structure/ATR monitor. It automatically reports stale or gapped data; none of these observations establish a profitable strategy. On Windows the launcher detects and installs missing free Python dependencies for the stream.
+
 **Start:** enable your official TopstepX ProjectX API subscription, link it, generate a key, then locally set `TOPSTEPX_USERNAME` and `TOPSTEPX_API_KEY` before running `Start-Topstep-Readonly.cmd`. Never commit or paste your credential. See [TopstepX v0.6 setup, limitations and gates](docs/TOPSTEPX_READONLY_V6.md).
 
-This is **not yet live-account validated**, not a streaming quote feed, not a complete Topstep Maximum Loss Limit calculator, and not an order-entry app. Data remains read-only; performance is computed from broker execution legs, not completed round-trip positions. Use a Practice account for initial validation.
+This is **not yet live-account validated**. The two official TopstepX SignalR hubs are implemented in code and the dashboard has stream/quote freshness indicators, but no real brokerage connection has been verified in this session. It is not a complete Topstep Maximum Loss Limit calculator or order-entry app. Data remains read-only; performance is computed from broker execution legs, not completed round-trip positions. Use a Practice account for initial validation.
 
 # Trader / Lab — Trading Research Workspace
 
