@@ -102,7 +102,8 @@ def tracked_bars(account_id, contract, minutes, bars, structure):
     state = BRIDGE.snapshot() if BRIDGE is not None else {}
     selected = (state.get("selected_account") == account_id and
                 state.get("selected_contract") == contract)
-    fresh = selected and state.get("quote_fresh") is True
+    user_live = state.get("hubs", {}).get("user", {}).get("connected") is True
+    fresh = selected and user_live and state.get("quote_fresh") is True
     source = SOURCE_DEMO if DEMO_MODE else SOURCE_REAL
     return observation_journal().advance(source, account_id, contract, minutes,
                                          bars, structure, allow_record=fresh)
