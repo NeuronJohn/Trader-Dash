@@ -123,6 +123,17 @@ class DemoHttpSmoke(unittest.TestCase):
         self.assertEqual(live["mode"],"DEMO_SYNTHETIC_NO_NETWORK")
         self.assertTrue(live["quote_fresh"])
 
+    def test_risk_and_chart_modules_use_same_origin(self):
+        for path, marker in (
+            ("/topstep/risk-plan.js", b"TraderRisk"),
+            ("/topstep/chart-model.js", b"TraderChart"),
+        ):
+            with urllib.request.urlopen(self.url+path,timeout=5) as response:
+                content=response.read(20000)
+                self.assertEqual(response.status,200)
+                self.assertIn("javascript",response.headers["Content-Type"])
+                self.assertIn(marker,content)
+
     def test_no_order_endpoint_even_in_demo(self):
         payload={"accountId":9900001,"type":2,"side":0,"size":1}
         req=urllib.request.Request(
