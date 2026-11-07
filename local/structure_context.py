@@ -49,6 +49,10 @@ def analyze(bars,minutes,now_ms=None):
     atr=sum(changes)/len(changes)
     state=("ABOVE_PRIOR_RANGE" if last["close"]>high else
            "BELOW_PRIOR_RANGE" if last["close"]<low else "INSIDE_PRIOR_RANGE")
+    recent=closed[-21:]
+    gaps=sum(right["time"]-left["time"]>1.5*interval
+             for left,right in zip(recent,recent[1:]))
+    stale=now_ms-(last["time"]+interval)>2*interval
     return {
         "status":"OBSERVATION_ONLY","source":"TOPSTEPX_REST_COMPLETED_BARS",
         "not_a_trade_signal":True,"rule":"PRIOR_20_COMPLETE_BARS_v1",
@@ -58,6 +62,7 @@ def analyze(bars,minutes,now_ms=None):
         "latest_complete_close":round(last["close"],8),
         "prior_20_high":round(high,8),"prior_20_low":round(low,8),
         "average_true_range_14":round(atr,8),"range_state":state,
+        "gaps_in_last_20":gaps,"completed_data_stale":stale,
         "range_width":round(high-low,8),
         "distance_from_range_high":round(last["close"]-high,8),
         "distance_from_range_low":round(last["close"]-low,8),
