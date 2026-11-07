@@ -63,6 +63,22 @@ class LiveTests(unittest.TestCase):
                    ACCOUNT, CONTRACT)
         self.assertFalse(b.snapshot()["quote_fresh"])
 
+    def test_sparse_quote_updates_keep_last_trade_and_update_bid_ask(self):
+        b = LiveBridge(lambda: "jwt")
+        b.selected_account = ACCOUNT
+        b.selected_contract = CONTRACT
+        now = datetime.now(timezone.utc).isoformat()
+        b._consume("market", event("GatewayQuote", CONTRACT,
+                   {"timestamp": now, "lastPrice": 6000, "bestBid": 5999.75}),
+                   ACCOUNT, CONTRACT)
+        b._consume("market", event("GatewayQuote", CONTRACT,
+                   {"timestamp": now, "bestBid": 6000.0, "bestAsk": 6000.25}),
+                   ACCOUNT, CONTRACT)
+        quote = b.snapshot()["quote"]
+        self.assertEqual(quote["lastPrice"], 6000)
+        self.assertEqual(quote["bestBid"], 6000.0)
+        self.assertEqual(quote["bestAsk"], 6000.25)
+
     def test_selected_account_filters_trade_events(self):
         received = []
         dirty = []
