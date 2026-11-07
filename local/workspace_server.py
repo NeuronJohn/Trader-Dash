@@ -105,7 +105,7 @@ def validate_context(payload: object) -> dict:
         "symbol": compact_text(source.get("symbol"), 45),
         "timeframe": compact_text(source.get("timeframe"), 35),
     }
-    if not source_info["id"] or source_info["kind"] not in ("synthetic", "user-csv-unverified"):
+    if not source_info["id"] or source_info["kind"] not in ("synthetic", "user-csv-unverified", "oanda-fxpractice"):
         raise ValueError("Unsupported source or missing dataset identity")
     window = payload.get("selected_window", {})
     replay = payload.get("replay", {})
@@ -287,6 +287,14 @@ def validate_context(payload: object) -> dict:
     return {
         "question": question,
         "source": source_info,
+        "provider_provenance": {
+            "practice_candles": source_info["kind"] == "oanda-fxpractice",
+            "verified_broker_fills": False,
+            "exchange_signed_receipts": False,
+            "description": "OANDA practice historical M5 midpoint candles; not order-execution prices"
+                           if source_info["kind"] == "oanda-fxpractice"
+                           else "Synthetic or user-imported, unauthenticated market history"
+        },
         "replay": {"enabled": bool(replay.get("enabled")),
                    "cutoff": compact_text(cutoff, 45)},
         "observed_bars": cleaned_bars,
