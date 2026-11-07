@@ -374,7 +374,10 @@ def list_records(connection,symbol,limit=50):
         entries.append({
           "id":row["signal_id"],"symbol":c["symbol"],"day":c["day"],
           "rule":c["rule"],"version":c["version"],"side":c["side"],
-          "signalTime":c["signalTime"],"capturedAt":c["capturedAt"],
+          "signalTime":c["signalTime"],"signalBarStart":c["signalTime"]-M5,
+          "boxHigh":c["boxHigh"],"boxLow":c["boxLow"],
+          "stopReference":c["stopReference"],"signalSpreadPips":c["signalSpreadPips"],
+          "capturedAt":c["capturedAt"],
           "sourceReceiptId":c["sourceReceiptId"],
           "origin":c["origin"],"prefixSha256":row["prefix_sha256"],
           "evidenceIntegrity":"FAILED" if compromised else "LOCAL_CHECKSUM_OK",
