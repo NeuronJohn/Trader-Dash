@@ -34,6 +34,16 @@ if _MARKET_SPEC is None or _MARKET_SPEC.loader is None:
 market = importlib_util.module_from_spec(_MARKET_SPEC)
 _MARKET_SPEC.loader.exec_module(market)
 
+_FORWARD_SPEC = importlib_util.spec_from_file_location(
+    "_trader_forward_monitor", Path(__file__).resolve().with_name("forward_monitor.py")
+)
+if _FORWARD_SPEC is None or _FORWARD_SPEC.loader is None:
+    raise RuntimeError("Forward observation module unavailable")
+forward = importlib_util.module_from_spec(_FORWARD_SPEC)
+_FORWARD_SPEC.loader.exec_module(forward)
+forward.market = market  # exact one read-only practice adapter and request lock
+FORWARD = forward.Monitor()
+
 HOST = "127.0.0.1"
 PORT = int(os.getenv("TRADER_PORT", "8765"))
 MODEL = os.getenv("TRADER_OLLAMA_MODEL", "qwen3.5:9b")
@@ -458,6 +468,31 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
             self.wfile.write(content)
+        elif pathname == "/api/forward/status":
+            try:
+                params = parse_qs(urlsplit(self.path).query, strict_parsing=True)
+                if set(params) - {"symbol"}:
+                    raise forward.ForwardError("Unknown forward status parameter")
+                symbol = params.get("symbol", ["EUR_USD"])[0]
+                if symbol not in forward.PIPS:
+                    raise forward.ForwardError("Unsupported forward observation symbol")
+                records = []
+                if market.storage_path().is_file():
+                    db = market.open_store()
+                    try:
+                        records = forward.list_records(db, symbol, 50)
+                    finally:
+                        db.close()
+                self._reply(200, {
+                    "ok": True, "monitor": FORWARD.state(),
+                    "journal": {"symbol": symbol, "summary": forward.summary(records),
+                                "observations": records},
+                    "broker_orders": False
+                })
+            except (ValueError, forward.ForwardError) as exc:
+                self._reply(422, {"ok": False, "error": str(exc)})
+            except (OSError, sqlite3.Error):
+                self._reply(503, {"ok": False, "error": "Local prospective journal unavailable"})
         elif pathname == "/api/market/status":
             self._reply(200, {"ok": True, "market": market.status()})
         elif pathname == "/api/market/candles":
@@ -506,7 +541,7 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(403, {"ok": False, "error": "Cross-origin requests disabled"})
             return
         pathname = urlsplit(self.path).path
-        if pathname not in ("/api/analyst", "/api/market/fetch", "/api/market/backfill"):
+        if pathname not in ("/api/analyst", "/api/market/fetch", "/api/market/backfill", "/api/forward/start", "/api/forward/stop"):
             self._reply(404, {"ok": False, "error": "No such research action"})
             return
         if not secrets.compare_digest(self.headers.get("X-Trader-Token", ""), TOKEN):
@@ -525,6 +560,20 @@ class Handler(BaseHTTPRequestHandler):
         try:
             raw = self.rfile.read(length)
             payload = json.loads(raw)
+            if pathname in ("/api/forward/start", "/api/forward/stop"):
+                if not isinstance(payload, dict):
+                    raise ValueError("Expected forward monitoring options object")
+                if pathname == "/api/forward/start":
+                    if set(payload) != {"symbol"}:
+                        raise ValueError("Start requires exactly one practice symbol")
+                    result = FORWARD.start(payload["symbol"])
+                else:
+                    if payload:
+                        raise ValueError("Stop does not accept extra options")
+                    result = FORWARD.stop()
+                self._reply(200, {"ok": True, "monitor": result,
+                                  "execution": False, "broker_orders": False})
+                return
             if pathname in ("/api/market/fetch", "/api/market/backfill"):
                 backfill = pathname == "/api/market/backfill"
                 permitted = {"symbol", "pages"} if backfill else {"symbol", "count"}
@@ -573,6 +622,8 @@ class Handler(BaseHTTPRequestHandler):
                 "source_id": evidence["source"]["id"],
                 "replay": evidence["replay"]["enabled"],
             })
+        except forward.ForwardError as exc:
+            self._reply(422, {"ok": False, "error": str(exc)})
         except market.MarketError as exc:
             self._reply(422, {"ok": False, "error": str(exc)})
         except sqlite3.Error:
@@ -610,6 +661,7 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        FORWARD.close()
         server.server_close()
 
 if __name__ == "__main__":
