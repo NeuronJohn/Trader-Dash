@@ -20,7 +20,9 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
+
+import market_data as market
 
 HOST = "127.0.0.1"
 PORT = int(os.getenv("TRADER_PORT", "8765"))
@@ -31,6 +33,7 @@ HTML = ROOT / "prototype" / "trader-workspace.html"
 TOKEN = secrets.token_urlsafe(32)
 MAX_BODY = 120_000
 ANALYST_GATE = threading.BoundedSemaphore(1)
+MARKET_GATE = threading.BoundedSemaphore(1)
 ALLOWED_MODELS = re.compile(r"^[a-zA-Z0-9_.:/-]{1,80}$")
 if not ALLOWED_MODELS.fullmatch(MODEL):
     raise SystemExit("Invalid TRADER_OLLAMA_MODEL value")
@@ -384,6 +387,37 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
             self.wfile.write(content)
+        elif pathname == "/api/market/status":
+            self._reply(200, {"ok": True, "market": market.status()})
+        elif pathname == "/api/market/candles":
+            try:
+                params = parse_qs(urlsplit(self.path).query, strict_parsing=True)
+                if set(params) - {"symbol", "limit"}:
+                    raise market.MarketError("Unknown market query parameter")
+                symbol = params.get("symbol", ["EUR_USD"])[0]
+                count = int(params.get("limit", ["500"])[0])
+                # Do not create an empty DB from a read-only chart request.
+                if market.storage_path().is_file():
+                    connection = market.open_store()
+                    try:
+                        result = market.read_bars(connection, symbol, count)
+                    finally:
+                        connection.close()
+                else:
+                    if symbol not in market.ALLOWED_SYMBOLS:
+                        raise market.MarketError("Unknown market instrument")
+                    result = {
+                        "symbol": symbol, "source": market.SOURCE,
+                        "granularity": "M5", "bars": [],
+                        "conflicts": 0, "last_received_utc_ms": None,
+                        "provenance": market.PROVENANCE,
+                        "exchange_verified": False, "broker_fills_verified": False,
+                    }
+                self._reply(200, {"ok": True, "market": result})
+            except (market.MarketError, ValueError) as exc:
+                self._reply(422, {"ok": False, "error": str(exc)})
+            except OSError:
+                self._reply(503, {"ok": False, "error": "Local market store unavailable"})
         elif pathname == "/api/session":
             self._reply(200, {"ok": True, "server": "local-only-research",
                               "token": TOKEN, "ollama": model_status(), "execution": False})
@@ -398,7 +432,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Origin") not in allowed_origins:
             self._reply(403, {"ok": False, "error": "Cross-origin requests disabled"})
             return
-        if urlsplit(self.path).path != "/api/analyst":
+        pathname = urlsplit(self.path).path
+        if pathname not in ("/api/analyst", "/api/market/fetch"):
             self._reply(404, {"ok": False, "error": "No such research action"})
             return
         if not secrets.compare_digest(self.headers.get("X-Trader-Token", ""), TOKEN):
@@ -417,6 +452,23 @@ class Handler(BaseHTTPRequestHandler):
         try:
             raw = self.rfile.read(length)
             payload = json.loads(raw)
+            if pathname == "/api/market/fetch":
+                if not isinstance(payload, dict) or set(payload) - {"symbol","count"}:
+                    raise ValueError("Unknown practice market fetch parameters")
+                symbol = payload.get("symbol", "EUR_USD")
+                count = payload.get("count", 360)
+                if symbol not in market.ALLOWED_SYMBOLS or type(count) is not int or not 10 <= count <= market.MAX_FETCH:
+                    raise ValueError("Use an allowed practice pair and 10–1000 complete M5 candles")
+                if not MARKET_GATE.acquire(blocking=False):
+                    self._reply(429, {"ok": False, "error": "A market refresh is already running"})
+                    return
+                try:
+                    receipt = market.fetch_into_store(symbol, count)
+                finally:
+                    MARKET_GATE.release()
+                self._reply(200, {"ok": True, "market_receipt": receipt,
+                                  "execution": False, "paid_calls": 0})
+                return
             evidence = validate_context(payload)
             started = time.monotonic()
             if not ANALYST_GATE.acquire(blocking=False):
@@ -443,6 +495,8 @@ class Handler(BaseHTTPRequestHandler):
                 "source_id": evidence["source"]["id"],
                 "replay": evidence["replay"]["enabled"],
             })
+        except market.MarketError as exc:
+            self._reply(422, {"ok": False, "error": str(exc)})
         except urllib.error.URLError:
             self._reply(503, {"ok": False, "error": "Local Ollama is unavailable. Check Ollama is running."})
         except ValueError as exc:
@@ -467,6 +521,7 @@ def main():
     url = f"http://{HOST}:{PORT}/"
     print(f"Trader Research Workspace: {url}")
     print(f"Local Ollama model: {MODEL}")
+    print("OANDA practice-only market reader: "+("configured" if market.status()["configured"] else "not configured"))
     print("Read-only research mode. Close this window (Ctrl+C) to stop.")
     if "--no-browser" not in sys.argv:
         threading.Timer(0.7, lambda: webbrowser.open(url)).start()
