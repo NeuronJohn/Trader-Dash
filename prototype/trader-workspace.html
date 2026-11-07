@@ -1702,6 +1702,106 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     host.classList.toggle("error",failed);
     host.append(htmlText("h3",title),htmlText("p",message));
   }
+
+  // The browser never receives the OANDA token. Only the local Python server
+  // can call the practice-only GET-candles URL using its environment secret.
+  function setPracticeControls(){
+    $("fxLoad").disabled=!S.fx.server||S.fx.busy;
+    $("fxFetch").disabled=!S.fx.server||!S.fx.configured||S.fx.busy||!S.runtime.token;
+    const host=$("fxStatus");host.classList.remove("ok","warn");
+    if(!S.fx.server){host.textContent="Local server offline";host.classList.add("warn")}
+    else if(!S.fx.configured){host.textContent="Practice token not configured";host.classList.add("warn")}
+    else{host.textContent=S.fx.busy?"Fetching closed candles…":"Practice reader ready";host.classList.add("ok")}
+  }
+  async function checkMarketStatus(){
+    try{
+      const response=await fetch("/api/market/status",{cache:"no-store",credentials:"same-origin"});
+      if(!response.ok)throw Error("No market service");
+      const data=await response.json();
+      if(!data.ok||data.market?.provider!=="OANDA practice only")throw Error("Unrecognized practice source");
+      S.fx.server=true;S.fx.configured=Boolean(data.market.configured);
+      const n=data.market.stored_candle_counts?.[$("fxSymbol").value]||0;
+      $("fxDetail").textContent=S.fx.configured?
+        "Practice-only · M5 midpoint + bid/ask receipts · "+n+" locally stored candles for selected pair. Manual fetch only.":
+        "No token loaded. Set OANDA_PRACTICE_TOKEN in the local launch environment. Saved candle history can still be opened.";
+    }catch(e){
+      S.fx.server=false;S.fx.configured=false;
+      $("fxDetail").textContent="Start the local Windows launcher. HTML-only mode does not have price-feed access.";
+    }
+    setPracticeControls();
+  }
+  async function loadPracticeCandles(){
+    if(!S.fx.server||S.fx.busy){toast("Local practice reader unavailable");return}
+    S.fx.busy=true;setPracticeControls();
+    const symbol=$("fxSymbol").value;
+    try{
+      if(!["EUR_USD","GBP_USD","USD_JPY"].includes(symbol))throw Error("Unsupported practice pair");
+      const response=await fetch("/api/market/candles?symbol="+encodeURIComponent(symbol)+"&limit=1000",{
+        method:"GET",credentials:"same-origin",cache:"no-store"
+      });
+      const payload=await response.json();
+      if(!response.ok||!payload.ok)throw Error(payload.error||"Cannot load local OANDA receipts");
+      const market=payload.market;
+      if(market.symbol!==symbol||market.source!=="oanda-fxpractice"||
+         !Array.isArray(market.bars)||market.bars.length>1000)
+        throw Error("Unexpected market data source");
+      if(!market.bars.length)throw Error("No completed practice candles saved for "+symbol+". Fetch once first.");
+      let last=-Infinity;
+      const bars=market.bars.map((raw,i)=>{
+        const b={time:raw.time,open:raw.open,high:raw.high,low:raw.low,close:raw.close,
+          bidClose:raw.bidClose,askClose:raw.askClose,
+          receivedAt:raw.receivedAt,receiptId:raw.receiptId};
+        if(!Number.isSafeInteger(b.time)||b.time<=last||b.time%300000!==0||
+          !["open","high","low","close","bidClose","askClose"].every(k=>Number.isFinite(b[k])&&b[k]>0)||
+          b.high<Math.max(b.open,b.close,b.low)||b.low>Math.min(b.open,b.close,b.high)||
+          b.bidClose>b.askClose)throw Error("Corrupt local practice bar at "+i);
+        last=b.time;return b;
+      });
+      S.fx.market=market;
+      resetDataset({
+        id:"oanda-fxpractice:"+symbol,symbol,
+        label:"OANDA FX Practice API · M5 midpoint, received locally",
+        source:"oanda-fxpractice",timeframe:"5m",bars,
+      });
+      const when=market.last_received_utc_ms?
+        new Date(market.last_received_utc_ms).toLocaleString():"unknown";
+      $("fxDetail").textContent=bars.length+" stored complete bars · latest receipt "+when+
+        " · "+market.conflicts+" revised-price conflicts · NO BROKER FILLS";
+      toast("Opened locally recorded "+symbol+" practice candles. Not an execution feed.");
+    }catch(e){toast("Practice chart: "+e.message)}
+    finally{S.fx.busy=false;setPracticeControls()}
+  }
+  async function fetchPracticeCandles(){
+    if(!S.fx.server||!S.fx.configured||!S.runtime.token||S.fx.busy){
+      toast("Local practice token or server unavailable.");return
+    }
+    const symbol=$("fxSymbol").value;
+    if(!["EUR_USD","GBP_USD","USD_JPY"].includes(symbol)){toast("Unsupported practice pair");return}
+    S.fx.busy=true;setPracticeControls();
+    $("fxDetail").textContent="Reading up to 500 completed OANDA practice M5 candles; writing local first-seen receipts.";
+    try{
+      const response=await fetch("/api/market/fetch",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json","X-Trader-Token":S.runtime.token},
+        body:JSON.stringify({symbol,count:500})
+      });
+      const payload=await response.json();
+      if(!response.ok||!payload.ok)throw Error(payload.error||"Could not retrieve practice candles");
+      const receipt=payload.market_receipt;
+      if(receipt.source!=="oanda-fxpractice"||receipt.symbol!==symbol)throw Error("Unexpected provider receipt");
+      $("fxDetail").textContent="Receipt "+receipt.receipt_id.slice(0,12)+" · "+
+        receipt.added+" new, "+receipt.repeated+" unchanged, "+receipt.conflicts+
+        " conflicts · complete M5 only · order execution disabled";
+      toast("Practice price receipt saved. "+receipt.added+" new closed bars; "+
+        receipt.conflicts+" revisions kept in audit.");
+    }catch(e){$("fxDetail").textContent="Practice fetch failed: "+e.message;toast("Price fetch blocked: "+e.message)}
+    finally{
+      S.fx.busy=false;setPracticeControls();
+    }
+    // Keep receipt and chart loading as separate, inspectable user actions.
+    // The user decides when to replace the active chart with the fetched series.
+  }
+
   async function checkLocalRuntime(){
     try{
       const response=await fetch("/api/session",{method:"GET",credentials:"same-origin",cache:"no-store"});
@@ -2439,6 +2539,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("runMes").addEventListener("click",runMesResearch);
     $("fxFetch").addEventListener("click",fetchPracticeCandles);
     $("fxLoad").addEventListener("click",loadPracticeCandles);
+    $("fxSymbol").addEventListener("change",checkMarketStatus);
     $("capturePaper").addEventListener("click",()=>capturePaperCase(true));
     $("paperCaptureLatest").addEventListener("click",()=>capturePaperCase(false));
     $("paperReconcile").addEventListener("click",reconcilePaperCases);
@@ -2527,7 +2628,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderRunHistory();renderPaperLedger();refreshMarketLibrary(true);checkLocalRuntime();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderRunHistory();renderPaperLedger();refreshMarketLibrary(true);checkLocalRuntime();checkMarketStatus();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
