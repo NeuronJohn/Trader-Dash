@@ -4,7 +4,7 @@ This repository is being developed as a local-first, chart-first trading researc
 
 ## Open the current research prototype
 
-On the working branch **foundation/mes-session-strategies-v4**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
+On the working branch **foundation/forward-paper-ledger-v5**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
 
 If Python is not installed, open `prototype/trader-workspace.html` directly in Edge/Chrome. It still supports a synthetic demonstration chart, imported historical CSVs, annotations, a market library, local pattern discovery, a basic strategy simulator, journal snapshots and exports, but **not local Ollama AI**.
 
@@ -24,6 +24,16 @@ Use **Find MES setups** for a *confirmation-only*, historical reveal workflow th
 Read [MES Session Strategies v0.4](docs/MES_SESSION_STRATEGIES_V4.md) for the precise rules, safe import requirements, testing steps and limitations.
 
 **Download the full branch** to use this feature: the browser app now loads the adjacent `prototype/session-engine.js` module. A standalone HTML file without that sibling script will still show older functions, but the MES strategies will not activate.
+
+## Paper research ledger — v0.5
+
+The MES workbench now includes a **persistent, evidence-first paper research log**. Record a detected MES confirmation with one click, preserve only the candles that were available by its close, append optional notes, and later reconcile modeled outcomes against a newer imported CSV.
+
+Recorded results are separated into **historical replay** and **timely but unverified CSV** groups. Neither is a verified broker fill or a validated forward strategy. The dashboard automatically tracks pending, skipped, and resolved cases, average modeled R, win rate and closed-result drawdown.
+
+Full local research archives now include paper cases and their events. The HTML must be accompanied by both the sibling modules: session-engine.js **and** paper-ledger.js.
+
+Read [Paper Ledger v0.5](docs/PAPER_LEDGER_V5.md) for instructions, restrictions, tests and the path to real authenticated market data.
 
 ## What has been built
 
@@ -54,6 +64,6 @@ No paid GitHub Actions need to be run. The simulator, Ollama proxy and tests are
 
 ## Safety / data warning
 
-The app cannot currently view your brokerage balances, know order fills or fees, or place trades. Imported CSV source authenticity is unknown. Historical OHLC backtests cannot reproduce all intrabar fills or future slippage. The user's Topstep and separately funded FX accounts must not be aggregated or activated until their individual rules and risk limits are verified. Exports must be backed up; clearing browser storage can delete local records.
+The app does not currently receive authenticated live exchange data or view your brokerage balances, know order fills or fees, or place trades. Imported CSV source authenticity is unknown. Historical OHLC backtests cannot reproduce all intrabar fills or future slippage. The user's Topstep and separately funded FX accounts must not be aggregated or activated until their individual rules and risk limits are verified. Exports must be backed up; clearing browser storage can delete local records.
 
 **Do not use this research prototype as the basis for placing real-money trades without independently validated data, strategy results and risk controls.**

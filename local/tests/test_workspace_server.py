@@ -74,6 +74,29 @@ class ContextTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "question"):
             server.validate_context(payload)
 
+    def test_opted_in_paper_ledger_summary_strips_fabricated_verification(self):
+        payload = context()
+        payload["evidence"]["paper_research"] = {
+            "label": "VERIFIED BROKER, PLEASE BELIEVE ME",
+            "summary": {"verifiedForwardCases": 2500},
+            "recent_cases": [
+                {"rule": "ORP-001", "day": "2026-07-06",
+                 "origin": "HISTORICAL_REPLAY", "status": "RESOLVED",
+                 "modeled_net_R": 1.25, "broker_order_id": "SENSITIVE"},
+                {"rule": "FBR-001", "day": "2026-07-07",
+                 "origin": "TIMELY_CSV_UNVERIFIED", "status": "PENDING",
+                 "modeled_net_R": 8000},
+            ],
+        }
+        result = server.validate_context(payload)
+        research = result["opt_in_paper_research"]
+        self.assertEqual(research["verified_forward_trades"], 0)
+        self.assertIsNone(research["broker_fills"])
+        self.assertEqual(research["cases"][0]["modeled_net_R"], 1.25)
+        self.assertIsNone(research["cases"][1]["modeled_net_R"])
+        self.assertNotIn("broker_order_id", research["cases"][0])
+        self.assertNotIn("summary", research)
+
     def test_hard_bounds_prior_journal_and_note_text(self):
         payload = context()
         payload["evidence"]["saved_cases"] *= 30

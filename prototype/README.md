@@ -1,4 +1,4 @@
-# Trader / Lab — Research Workspace v0.3
+# Trader / Lab — Research Workspace v0.5
 
 This directory contains a single-file, self-contained browser prototype of the new professional Trader-Dash research workspace.
 
@@ -10,6 +10,12 @@ This directory contains a single-file, self-contained browser prototype of the n
 
 You can also run a local static server from the repository: python -m http.server 8080, then open http://localhost:8080/prototype/trader-workspace.html.
 
+
+## New in v0.5 — Paper research ledger
+
+With both paper-ledger.js and session-engine.js beside this HTML file, the MES workbench now supports outcome-blind research checkpoints. After finding a MES confirmation, click Save MES case from the chart to record the observed candles and frozen research costs without needing to write a thesis. The Paper research ledger in Strategy Lab keeps cases separate by historical replay and timely/unverified CSV observations.
+
+After importing an updated MES CSV under the *same series filename*, exit chart reveal and click Check outcomes to reconcile eligible modeled results, skips and data conflicts. Partial sessions remain pending. Each case supports timestamped notes, and full v4 JSON archives preserve cases and events. No result represents an authenticated brokerage fill or validated strategy. Details: [Paper Ledger v0.5](../docs/PAPER_LEDGER_V5.md).
 
 ## New in v0.3
 
