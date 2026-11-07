@@ -1,3 +1,11 @@
+## TopstepX read-only workstation (development v0.6)
+
+This branch introduces an authenticated **local-only, read-only TopstepX/ProjectX** integration. It can pull accessible accounts, futures candles, open positions/orders, and execution-leg records and store deduplicated fills in a local SQLite ledger. The browser dashboard is at `http://127.0.0.1:8765/topstep`; the existing research/AI prototype stays at `/`.
+
+**Start:** enable your official TopstepX ProjectX API subscription, link it, generate a key, then locally set `TOPSTEPX_USERNAME` and `TOPSTEPX_API_KEY` before running `Start-Topstep-Readonly.cmd`. Never commit or paste your credential. See [TopstepX v0.6 setup, limitations and gates](docs/TOPSTEPX_READONLY_V6.md).
+
+This is **not yet live-account validated**, not a streaming quote feed, not a complete Topstep Maximum Loss Limit calculator, and not an order-entry app. Data remains read-only; performance is computed from broker execution legs, not completed round-trip positions. Use a Practice account for initial validation.
+
 # Trader / Lab — Trading Research Workspace
 
 This repository is being developed as a local-first, chart-first trading research assistant, now including session-aware historical MES strategy experiments. It is **not** a broker-connected trading application, a verified profitable strategy, or an execution bot.
