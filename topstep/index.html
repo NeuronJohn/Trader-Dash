@@ -23,9 +23,38 @@
  <div><span class="muted small">Last completed close</span><div id="contextClose" class="number" style="font-size:16px">—</div></div>
 </div><p id="structureLabel" class="muted" style="margin-top:11px">Select a contract to analyze completed bars.</p>
 <p class="muted small" style="margin-top:5px">Uses previous 20 fully closed candles as the reference; excludes the forming candle and does not establish a profitable setup.</p></div>
+<section class="panel pad" id="riskWorksheet" style="display:grid;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+  <h2>Pre-trade risk worksheet</h2><span class="tag">PLANNING ONLY · NEVER AN ORDER</span>
+</div>
+<p class="muted small">Your own risk budget, not Topstep maximum loss limit. Costs and stops are estimates, not guarantees of fills or account eligibility.</p>
+<div class="tools" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:10px">
+<label class="small muted">Direction<select id="riskSide" style="display:block;width:100%;margin-top:5px"><option value="LONG">Long</option><option value="SHORT">Short</option></select></label>
+<label class="small muted">Entry price<input id="riskEntry" type="number" step="any" min="0" placeholder="Entry" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Stop price<input id="riskStop" type="number" step="any" min="0" placeholder="Stop" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Target price<input id="riskTarget" type="number" step="any" min="0" placeholder="Target" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Quantity<input id="riskQty" type="number" value="1" step="1" min="1" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Personal risk cap ($)<input id="riskBudget" type="number" step="0.01" min="0" placeholder="Your limit" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Max contracts<input id="riskCap" type="number" step="1" min="1" value="10" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Round-trip fees ($/contract)<input id="riskFees" type="number" step="0.01" min="0" value="3" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Slippage (ticks/side)<input id="riskSlip" type="number" step="0.25" min="0" value="1" style="display:block;width:100%;margin-top:5px"></label>
+</div>
+<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+  <span id="riskSpec" class="muted small">Select an active expiry with confirmed tick specifications.</span>
+  <button id="riskUseClose" type="button">Use last completed close as entry</button>
+</div>
+<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(135px,1fr))">
+  <div><span class="muted small">Estimated total stop loss</span><div class="number" id="riskLoss">—</div></div>
+  <div><span class="muted small">Estimated target profit</span><div class="number" id="riskGain">—</div></div>
+  <div><span class="muted small">Reward / risk</span><div class="number" id="riskRR">—</div></div>
+  <div><span class="muted small">Max qty under self-limit</span><div class="number" id="riskMaxQty">—</div></div>
+</div>
+<p class="small" id="riskMessage" role="status">Enter a trade plan and personal risk budget. No orders can be submitted here.</p>
+</section>
 <div class="tables"><section class="panel"><div class="panelhead"><h2>Daily realized performance</h2><span class="small muted">Chicago futures session</span></div><table><thead><tr><th>Session</th><th>Closing legs</th><th>Net P&L</th></tr></thead><tbody id="daily"></tbody></table></section><section class="panel"><div class="panelhead"><h2>Open positions</h2><span class="small muted">Broker snapshot</span></div><table><thead><tr><th>Contract</th><th>Size</th><th>Avg price</th></tr></thead><tbody id="positions"></tbody></table></section></div><div class="tables"><section class="panel"><div class="panelhead"><h2>Completed trade history</h2><span class="small muted">Full position cycles · most recent 100</span></div><div style="overflow:auto;max-height:420px"><table><thead><tr><th>Exit (CT)</th><th>Contract</th><th>Side</th><th>Qty</th><th>Duration</th><th>Net</th></tr></thead><tbody id="completedRows"></tbody></table></div></section>
 <section class="panel"><div class="panelhead"><h2>Performance patterns</h2><span class="small muted">Observed results, not predictions</span></div><div style="overflow:auto;max-height:420px"><table><thead><tr><th>Breakdown</th><th>Count</th><th>Win %</th><th>Net</th></tr></thead><tbody id="patternRows"></tbody></table></div></section></div><div class="foot">TopstepX REST data refreshed approximately every 30 seconds while visible. Broker authentication remains local. No order execution, live-streaming claim, or guarantee of trading performance.</div></main>
-<script>(()=>{"use strict";const $=id=>document.getElementById(id);let token="",bars=[],count=110,busy=false,demoMode=false;const set=(id,v)=>$(id).textContent=v;const money=x=>Number.isFinite(x)?(x<0?"−":"")+Math.abs(x).toLocaleString("en-US",{style:"currency",currency:"USD"}):"—";const percent=x=>typeof x==="number"?((x*100).toFixed(1)+"%"):"—";const fail=e=>{$("error").textContent=e;$("error").classList.add("active")};const clear=()=>$("error").classList.remove("active");
+<script src="/topstep/risk-plan.js"></script>
+<script>(()=>{"use strict";const $=id=>document.getElementById(id);let token="",bars=[],count=110,busy=false,demoMode=false;let contractSpecs=new Map(),latestStructure=null;const set=(id,v)=>$(id).textContent=v;const money=x=>Number.isFinite(x)?(x<0?"−":"")+Math.abs(x).toLocaleString("en-US",{style:"currency",currency:"USD"}):"—";const percent=x=>typeof x==="number"?((x*100).toFixed(1)+"%"):"—";const fail=e=>{$("error").textContent=e;$("error").classList.add("active")};const clear=()=>$("error").classList.remove("active");
 let selectedStream="",lastAccountSync=0,lastChangeKey="",livePolling=false;
 async function subscribeStream(){
   const accountId=Number($("account").value),contractId=$("contract").value;
@@ -108,7 +137,38 @@ const pattern=[...(c.breakdowns?.side||[]).map(x=>({...x,label:"Direction: "+x.l
  ...(c.breakdowns?.contract_id||[]).map(x=>({...x,label:"Contract: "+x.label.split(".").slice(-2).join(" · ")}))];
 table("patternRows",pattern,[x=>x.label,x=>x.count,x=>percent(x.win_rate),x=>money(x.net_usd)]);
 }
-async function find(){try{const d=await get("/topstep/api/contracts?symbol="+encodeURIComponent($("symbol").value.trim().toUpperCase())),sel=$("contract");sel.replaceChildren(new Option("Choose contract",""));for(const x of d.contracts)if(x.activeContract!==false)sel.add(new Option((x.name||x.id)+" · "+(x.description||""),x.id));if(sel.options.length===1){fail("No active matching futures contract found");return}
+function planRisk(){
+ const meta=contractSpecs.get($("contract").value);
+ const ids=["riskLoss","riskGain","riskRR","riskMaxQty"];
+ for(const id of ids)set(id,"—");
+ if(!meta||!Number.isFinite(meta.tickSize)||!Number.isFinite(meta.tickValue)
+    ||meta.tickSize<=0||meta.tickValue<=0){
+   set("riskSpec","Contract tick specifications unavailable · cannot calculate");
+   set("riskMessage","Select a futures contract with validated tick size and tick value.");
+   return;
+ }
+ set("riskSpec",(demoMode?"SYNTHETIC · ":"")+"Tick size "+meta.tickSize+" · Tick value "+
+     money(meta.tickValue)+" · "+meta.name);
+ try{
+   const parsed=id=>{const raw=$(id).value.trim();return raw===""?NaN:Number(raw)};
+   const result=globalThis.TraderRisk.analyze({
+     side:$("riskSide").value,entry:parsed("riskEntry"),stop:parsed("riskStop"),
+     target:parsed("riskTarget"),quantity:parsed("riskQty"),
+     budgetUsd:parsed("riskBudget"),maxContracts:parsed("riskCap"),
+     feeRoundTripUsd:parsed("riskFees"),slippageTicksPerSide:parsed("riskSlip"),
+     tickSize:meta.tickSize,tickValue:meta.tickValue
+   });
+   set("riskLoss",money(result.riskUsd));
+   set("riskGain",money(result.rewardUsd));
+   set("riskRR",Number.isFinite(result.rewardRiskRatio)?result.rewardRiskRatio.toFixed(2)+"R":"—");
+   set("riskMaxQty",result.suggestedQuantity);
+   set("riskMessage",(result.status==="PLAN_WITHIN_SELF_LIMITS"?
+       "Within your self-imposed worksheet limits. NOT a Topstep rules check or trade recommendation.":
+       "REVIEW REQUIRED · "+result.issues.join("; "))+
+       " · This assumes stop execution plus "+result.slippageTicksPerSide+" ticks of slippage per side.");
+ }catch(e){set("riskMessage",e.message+" · Planning only.");}
+}
+async function find(){try{const d=await get("/topstep/api/contracts?symbol="+encodeURIComponent($("symbol").value.trim().toUpperCase())),sel=$("contract");sel.replaceChildren(new Option("Choose contract",""));contractSpecs=new Map();for(const x of d.contracts)if(x.activeContract!==false){sel.add(new Option((x.name||x.id)+" · "+(x.description||""),x.id));contractSpecs.set(x.id,{name:x.name||x.id,tickSize:x.tickSize,tickValue:x.tickValue})}planRisk();if(sel.options.length===1){fail("No active matching futures contract found");return}
 const previous=localStorage.getItem(demoMode?"topstep_demo_contract_id":"topstep_contract_id");
 if(previous&&[...sel.options].some(x=>x.value===previous)){sel.value=previous;await candles()}
 else if(sel.options.length===2){sel.selectedIndex=1;await candles()}
@@ -117,7 +177,7 @@ set("chartTitle","Futures · Choose expiry");
 set("chartInfo","Select a specific active expiry · no contract guessed");
 set("streamMarket","DISCONNECTED");set("streamAccount","DISCONNECTED");
 set("quoteLast","—");set("quoteSpread","—");set("quoteAge","No fresh quote")}}catch(e){fail(e.message)}}
-function showStructure(c){
+function showStructure(c){latestStructure=c;
  if(!c||c.status!=="OBSERVATION_ONLY"){
    for(const id of ["rangeHigh","rangeLow","contextATR","contextClose"])set(id,"—");
    set("structureLabel",c?.status==="INSUFFICIENT_HISTORY"?"Insufficient complete bars ("+c.closed_bars+"/22)":"Structure not available");
@@ -137,6 +197,17 @@ async function candles(){if(!$("contract").value)return;bars=[];paint();set("cha
 function paint(){const c=$("chart"),r=c.getBoundingClientRect(),scale=Math.min(2,devicePixelRatio||1),w=Math.max(100,r.width),h=Math.max(100,r.height);c.width=Math.round(w*scale);c.height=Math.round(h*scale);const g=c.getContext("2d");g.scale(scale,scale);g.fillStyle="#101924";g.fillRect(0,0,w,h);if(!bars.length)return;const a=bars.slice(-count),l=12,rr=w-66,t=16,b=h-28,lo=Math.min(...a.map(x=>x.low)),hi=Math.max(...a.map(x=>x.high)),pad=(hi-lo)*.07||1,min=lo-pad,max=hi+pad,y=p=>t+(max-p)/(max-min)*(b-t),step=(rr-l)/a.length;g.font="11px Consolas,monospace";for(let j=0;j<=5;j++){const yy=t+(b-t)*j/5;g.strokeStyle="#293645";g.beginPath();g.moveTo(l,yy);g.lineTo(rr,yy);g.stroke();g.fillStyle="#9aabba";g.fillText((max-(max-min)*j/5).toFixed(2),rr+6,yy+4)}a.forEach((q,i)=>{const x=l+(i+.5)*step;g.fillStyle=g.strokeStyle=q.close>=q.open?"#70cbb1":"#e5868d";g.beginPath();g.moveTo(x,y(q.high));g.lineTo(x,y(q.low));g.stroke();g.fillRect(x-Math.min(12,step*.7)/2,Math.min(y(q.open),y(q.close)),Math.max(1,Math.min(12,step*.7)),Math.max(1,Math.abs(y(q.close)-y(q.open))))})}
 $("account").onchange=async()=>{invalidateAccount("Account selection changed");selectedStream="";set("streamMarket","DISCONNECTED");
 set("streamAccount","DISCONNECTED");set("quoteLast","—");set("quoteSpread","—");
-set("quoteAge","No fresh quote");await account();await subscribeStream()};$("days").onchange=account;$("find").onclick=find;$("contract").onchange=candles;$("minutes").onchange=candles;$("zin").onclick=()=>{count=Math.max(25,Math.round(count*.8));paint()};$("zout").onclick=()=>{count=Math.min(bars.length||500,Math.round(count*1.25));paint()};$("refresh").onclick=async()=>{await account();await candles()};window.addEventListener("resize",paint);setInterval(async()=>{if(document.visibilityState==="visible"){await account();if($("contract").value)await candles()}},30000);setInterval(()=>{if(document.visibilityState==="visible")pollStream()},2500);
+set("quoteAge","No fresh quote");await account();await subscribeStream()};$("days").onchange=account;$("find").onclick=find;$("contract").onchange=async()=>{planRisk();await candles()};$("minutes").onchange=candles;$("zin").onclick=()=>{count=Math.max(25,Math.round(count*.8));paint()};$("zout").onclick=()=>{count=Math.min(bars.length||500,Math.round(count*1.25));paint()};$("refresh").onclick=async()=>{await account();await candles()};window.addEventListener("resize",paint);
+for(const id of ["riskSide","riskEntry","riskStop","riskTarget","riskQty","riskBudget","riskCap","riskFees","riskSlip"])
+  $(id).addEventListener("input",planRisk);
+$("riskUseClose").addEventListener("click",()=>{
+ if(!latestStructure||latestStructure.status!=="OBSERVATION_ONLY"||
+    latestStructure.completed_data_stale||latestStructure.gaps_in_last_20){
+   set("riskMessage","Latest completed candle missing, stale or gapped. Enter entry manually.");
+   return;
+ }
+ $("riskEntry").value=latestStructure.latest_complete_close;planRisk();
+});
+setInterval(async()=>{if(document.visibilityState==="visible"){await account();if($("contract").value)await candles()}},30000);setInterval(()=>{if(document.visibilityState==="visible")pollStream()},2500);
 (async()=>{try{const d=await(await fetch("/api/session",{cache:"no-store"})).json();token=d.token||"";const h=await get("/topstep/api/health");demoMode=h.synthetic===true;if(demoMode)$("demoWarning").hidden=false;if(!h.configured){fail("Set TOPSTEPX_USERNAME and TOPSTEPX_API_KEY locally before connecting. Do not paste keys into this page.");return}await accounts();await find()}catch(e){fail(e.message)}})();
 })();</script></body></html>
