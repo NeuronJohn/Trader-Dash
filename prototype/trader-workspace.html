@@ -1342,7 +1342,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         confirmation_close_utc:iso(sig.signalTime),
         boundary:sig.boundary,structural_invalidation:sig.structuralStop,
         status:"HISTORICAL_RESEARCH_MATCH_NOT_A_TRADE",
-        later_bars_visible:S.replay && S.reveal>S.data.bars.findIndex(x=>x.time===sig.signalBarStart)
+        later_bars_visible:!S.replay || S.reveal>S.data.bars.findIndex(x=>x.time===sig.signalBarStart)
       };
     }
     if(S.selectedCandidate)result.pattern_candidate={id:S.selectedCandidate.id,rule_version:S.selectedCandidate.version,kind:S.selectedCandidate.type,detected_at_utc:iso(S.selectedCandidate.at),direction:S.selectedCandidate.side,range_boundary:S.selectedCandidate.boundary,reference_close:S.selectedCandidate.trigger,illustrative_invalidation:S.selectedCandidate.invalidation,confirmation_checks:S.selectedCandidate.checks,profitability:"NOT_TESTED",outcome:"UNKNOWN"};
