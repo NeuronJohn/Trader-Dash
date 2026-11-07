@@ -1,4 +1,4 @@
-# TopstepX read-only workstation v0.10 (development)
+# TopstepX read-only workstation v0.11 (development)
 
 ## What exists
 - Local, browser-based /topstep dashboard reusing the project research server, plus / for the earlier research workspace.
@@ -170,3 +170,17 @@ A local isolated mirror of the pure chart and risk modules passed **17 focused N
 5. Run `Run-Topstep-Preflight.cmd` for Python tests, Node tests, and a Vite build. Review any failures before trying real credentials.
 
 This remains an unmerged draft. Before production, test the entire dashboard in Edge/Chrome on Windows and perform an authenticated comparison with the TopstepX Practice account. The risk worksheet is **not** a Topstep official loss-limit engine.
+
+## v0.11 — integrated Decision Desk (no separate chat)
+
+The trading screen now places a compact **Decision Desk** directly beside the selected chart. It automatically combines the *last completed candle* and prior 20-bar range, data continuity, fresh market quote, current account synchronization, open positions/orders, broker eligibility and the selected contract's tick metadata. It emits **PAUSE / WATCH / REVIEW STRUCTURE**, with clear reasons. **REVIEW STRUCTURE is an exploratory pattern observation, NOT permission to trade.** Existing completed-trade statistics are explicitly labeled general historical account results, never evidence that this pattern is profitable.
+
+When a complete, fresh range-break observation is present, **Draft risk plan** copies a *hypothetical* 1×ATR stop / 2×ATR target and the last completed price into the existing tick-aware risk worksheet. The worksheet starts collapsed to reduce clutter and expands only when requested. The user must enter their own risk cap, check levels, and make their own decision. There is no order submission and no official Topstep loss-limit clearance.
+
+The optional local Ollama bridge `/topstep/api/desk/review` is not a general chat endpoint: it accepts only account ID, contract ID, timeframe and an exact completed-candle timestamp, all checked server-side. The server fetches its own account/candle data, checks matching selected live quote, missing bars and current completed-break status, and sends **only a bounded evidence summary** to the local Ollama process. No raw API credentials, account balances, entire fills or arbitrary browser prompts are passed. The model returns three short **qualitative** phrases (observation, concern, next check). Its output is validated to reject numeric claims, execution instructions and synthetic-source omission. The model cannot modify the computed status or prices. One optional local review is automatically attempted per newly observed candidate when Ollama is installed and the data is current. If unavailable, the deterministic Decision Desk continues normally and shows an honest message.
+
+Synthetic demo mode retains a prominent provenance banner, source-tagged analyst results and a separate SQLite journal. There is no cloud AI call. Local review uses the existing one-request-at-a-time Ollama gate and is strictly read-only.
+
+**Tests:** `tests/decision-desk.test.js` adds deterministic no-data, stale-data, no-quote, no-account, exposure, ineligible real account, missing tick metadata, long/short draft and unverifiable stats checks. `local/tests/test_decision_review.py` checks narrow prompt context and response validation. The offline HTTP regression suite verifies the extra script route and fail-closed invalid/stale AI request. Thirteen focused Decision Desk engine cases were executed successfully against the GitHub branch source in the development environment; the full Python/Node/Windows end-to-end suite and real TopstepX Practice account connection remain unverified.
+
+**Next:** run Windows offline preflight and browser interactions, then connect broker-source setup observations to the automatic review journal and outcome verification. Do not conflate structural observations with trade signals or validated expectancy.
