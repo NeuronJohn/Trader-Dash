@@ -282,8 +282,12 @@ class Handler(research.Handler):
                 "source": source, "confirmed_through_ms": expected,
                 "model": research.MODEL, "execution": False,
                 "model_role": "UNVERIFIED_EXPLANATION_ONLY"})
-        except (ValueError, json.JSONDecodeError):
-            return self._reply(422, {"ok": False, "error": "Decision inputs or local model output invalid"})
+        except ValueError as exc:
+            if str(exc) == "Local research assistant is busy":
+                return self._reply(429, {"ok": False, "error": "Local AI is already reviewing another observation"})
+            return self._reply(422, {"ok": False, "error": "Decision evidence changed or local model output invalid"})
+        except json.JSONDecodeError:
+            return self._reply(422, {"ok": False, "error": "Invalid bounded request"})
         except GatewayError as exc:
             return self._reply(exc.status, {"ok": False, "error": str(exc)})
         except (urllib.error.URLError, TimeoutError):
