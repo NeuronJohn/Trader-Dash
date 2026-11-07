@@ -164,6 +164,32 @@ class ContextTests(unittest.TestCase):
         result=server.validate_context(payload)
         self.assertIsNone(result["opt_in_fx_research"])
 
+    def test_forward_research_opt_in_is_sanitized_and_never_trusts_browser_pnl(self):
+        packet=context()
+        packet["source"]={
+            "id":"oanda-fxpractice:EUR_USD","kind":"oanda-fxpractice",
+            "symbol":"EUR_USD","timeframe":"5m"
+        }
+        packet["replay"]["enabled"]=False
+        packet["evidence"]["forward_practice"]={
+            "status":"PROVIDER_RECEIVED_LOCAL_PRACTICE_OBSERVATIONS_NOT_BROKER_FILLS",
+            "summary":{"averageModeledR":99999999,"actualBrokerFills":30},
+            "verified_broker_fills":10000,
+            "recent":[{"day":"2026-07-06","status":"MODELED",
+                       "modeled_net_R":99999999,"secret_token":"LEAK"}],
+        }
+        cleaned=server.validate_context(packet)
+        forward_info=cleaned["opt_in_forward_practice"]
+        self.assertEqual(forward_info["verified_broker_fills"],0)
+        self.assertIsNone(forward_info["summary"])
+        self.assertEqual(forward_info["recent_cases"],[])
+        self.assertNotIn("secret_token",json.dumps(forward_info))
+        packet["replay"]["enabled"]=True
+        self.assertIsNone(server.validate_context(packet)["opt_in_forward_practice"])
+        packet["replay"]["enabled"]=False
+        packet["source"]["kind"]="user-csv-unverified"
+        self.assertIsNone(server.validate_context(packet)["opt_in_forward_practice"])
+
     def test_oanda_practice_candle_source_stays_nonexecution(self):
         request = context()
         request["source"] = {
@@ -236,6 +262,85 @@ class PracticeEndpointTests(unittest.TestCase):
         handle.do_POST()
         self.assertEqual(len(sent),1)
         return sent[0]
+
+    def test_evidence_backup_is_local_token_gated_and_never_accepts_paths(self):
+        sample={"ok":True,"backup_path":"C:\\local\\private\\snapshot.sqlite3",
+                "size_bytes":1000,"broker_order_data":False}
+        with patch.object(server.market,"backup_store",return_value=sample) as backed:
+            code,result=self.post({},path="/api/market/backup")
+        self.assertEqual(code,200)
+        self.assertFalse(result["broker_orders"])
+        self.assertTrue(result["backup"]["ok"])
+        backed.assert_called_once_with()
+        for body in [
+            {"destination":"C:\\external"},
+            {"url":"https://untrusted.invalid"},{"filename":"data.json"},
+            {"symbol":"EUR_USD"},
+        ]:
+            with patch.object(server.market,"backup_store") as blocked:
+                code,_=self.post(body,path="/api/market/backup")
+                self.assertEqual(code,422)
+                blocked.assert_not_called()
+        with patch.object(server.market,"backup_store") as blocked:
+            code,_=self.post({},path="/api/market/backup",token="INVALID")
+            self.assertEqual(code,403)
+            blocked.assert_not_called()
+
+    def test_prospective_observer_start_requires_local_approval_and_token(self):
+        state={"active":True,"symbol":"EUR_USD","brokerOrdersAllowed":False}
+        with patch.object(server.FORWARD,"start",return_value=state) as started:
+            status,result=self.post({"symbol":"EUR_USD"},path="/api/forward/start")
+        self.assertEqual(status,200)
+        self.assertFalse(result["broker_orders"])
+        self.assertEqual(result["monitor"]["symbol"],"EUR_USD")
+        started.assert_called_once_with("EUR_USD")
+        with patch.object(server.FORWARD,"start") as blocked:
+            status,_=self.post({"symbol":"EUR_USD"},path="/api/forward/start",
+                               token="INVALID")
+        self.assertEqual(status,403)
+        blocked.assert_not_called()
+        with patch.object(server.FORWARD,"start") as blocked:
+            status,_=self.post({"symbol":"EUR_USD"},path="/api/forward/start",
+                               origin="https://malicious.invalid")
+        self.assertEqual(status,403)
+        blocked.assert_not_called()
+
+    def test_prospective_start_stop_accept_only_strict_request_shapes(self):
+        for value in [
+            {"symbol":"MES"},{"symbol":"EUR_USD","order":1},
+            {"symbol":"EUR_USD","poll_seconds":1},{"symbol":"USD_JPY","secret":"X"},
+            {},{"symbol":123},
+        ]:
+            with patch.object(server.FORWARD,"start") as not_called:
+                status,result=self.post(value,path="/api/forward/start")
+            self.assertEqual(status,422)
+            not_called.assert_not_called()
+        with patch.object(server.FORWARD,"stop") as not_called:
+            status,result=self.post({"cancel_order":True},
+                                    path="/api/forward/stop")
+        self.assertEqual(status,422)
+        not_called.assert_not_called()
+        with patch.object(server.FORWARD,"stop",return_value={
+                "active":False,"brokerOrdersAllowed":False}) as stopped:
+            status,result=self.post({},path="/api/forward/stop")
+        self.assertEqual(status,200)
+        self.assertFalse(result["broker_orders"])
+        stopped.assert_called_once()
+
+    def test_get_prospective_status_is_read_only_and_never_exposes_token(self):
+        from pathlib import Path
+        handle=object.__new__(server.Handler)
+        handle.headers={"Host":f"127.0.0.1:{server.PORT}"}
+        handle.path="/api/forward/status?symbol=EUR_USD"
+        sent=[]
+        handle._reply=lambda status,payload:sent.append((status,payload))
+        with patch.object(server.market,"storage_path",
+                          return_value=Path("/nonexistent_forward_market_test_file.sqlite3")):
+            handle.do_GET()
+        self.assertEqual(sent[0][0],200)
+        self.assertEqual(sent[0][1]["journal"]["summary"]["actualBrokerFills"],0)
+        self.assertFalse(sent[0][1]["broker_orders"])
+        self.assertNotIn(server.TOKEN,json.dumps(sent[0][1]))
 
     def test_cross_origin_is_rejected_before_fetch(self):
         status,result=self.post(

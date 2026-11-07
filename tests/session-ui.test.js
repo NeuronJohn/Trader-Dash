@@ -70,7 +70,7 @@ function createUI(fetchImpl){
   const window={matchMedia(){return {matches:false}},addEventListener(){},confirm(){return true}};
   const inner=script.slice(script.indexOf("(function(){")+"(function(){".length,script.lastIndexOf("})();"));
   const patched=inner.replace(/\n\s*start\(\);\s*$/,
-    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger,checkMarketStatus,fetchPracticeCandles,loadPracticeCandles,backfillPracticeHistory,scanFxHistory,runFxResearch,renderFxResearch,focusFxSignal,fxFingerprint,revealFxReserve,loadExperimentRun}));');
+    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger,checkMarketStatus,fetchPracticeCandles,loadPracticeCandles,backfillPracticeHistory,scanFxHistory,runFxResearch,renderFxResearch,focusFxSignal,fxFingerprint,revealFxReserve,loadExperimentRun,checkForwardStatus,startForwardObserver,stopForwardObserver,renderForwardJournal,backupPracticeEvidence}));');
   assert.notEqual(inner,patched);
   const launch=new Function("document","window","globalThis","indexedDB","localStorage","devicePixelRatio",
     "requestAnimationFrame","ResizeObserver","setTimeout","clearTimeout","fetch",patched);
@@ -245,6 +245,8 @@ test("offline standalone workspace leaves provider controls disabled",async()=>{
   assert.equal(x.S.fx.server,false);
   assert.equal(x.nodes.fxFetch.disabled,true);
   assert.equal(x.nodes.fxLoad.disabled,true);
+  assert.equal(x.nodes.fxForwardStart.disabled,true);
+  assert.equal(x.nodes.fxForwardStop.disabled,true);
 });
 
 function fxFixture(day){
@@ -335,4 +337,99 @@ test("legacy OANDA bars missing bid/ask extremes are excluded, not silently appr
   assert.equal(x.S.fxRunRecord.report.rejectedSessions.length,1);
   assert.equal(x.S.fxRunRecord.report.completeSessions,8); // nine weekdays; one excluded
   assert.ok(x.nodes.fxResults.children.length>0);
+});
+
+test("practice observer is off initially; user-approved start and stop are localhost token gated",async()=>{
+  let active=false;
+  const sent=[];
+  const response=body=>({ok:true,json:async()=>body});
+  const fetchLocal=async(url,opts={})=>{
+    sent.push({url,opts});
+    if(url==="/api/session")return response({ok:true,token:"session-only-secret",
+      ollama:{reachable:false,model_available:false,model:"none"}});
+    if(url==="/api/market/status")return response({ok:true,market:{
+      provider:"OANDA practice only",configured:true,stored_candle_counts:{EUR_USD:300}}});
+    if(url==="/api/forward/status?symbol=EUR_USD")return response({
+      ok:true,broker_orders:false,monitor:{active,symbol:"EUR_USD",
+        armedAt:Date.now(),pollCount:active?1:0,brokerOrdersAllowed:false},
+      journal:{symbol:"EUR_USD",summary:{recorded:0,pending:0,modeled:0,actualBrokerFills:0},
+        observations:[]}
+    });
+    if(url==="/api/forward/start"){
+      active=true;return response({ok:true,broker_orders:false,
+        monitor:{active:true,symbol:"EUR_USD",armedAt:Date.now(),pollCount:0}});
+    }
+    if(url==="/api/market/backup")return response({ok:true,broker_orders:false,
+      backup:{ok:true,backup_path:"C:\\\\Research\\\\backups\\\\fixture.sqlite3",size_bytes:1024}});
+    if(url==="/api/forward/stop"){
+      active=false;return response({ok:true,broker_orders:false,
+        monitor:{active:false,symbol:"EUR_USD",armedAt:null,pollCount:1}});
+    }
+    throw Error("unexpected URL "+url);
+  };
+  const x=await createUI(fetchLocal);
+  await x.checkMarketStatus();
+  await x.checkForwardStatus();
+  assert.equal(x.S.forward.monitor.active,false);
+  assert.equal(x.nodes.fxForwardStop.disabled,true);
+  await x.startForwardObserver();
+  assert.equal(x.S.forward.monitor.active,true);
+  assert.equal(x.nodes.fxForwardStart.disabled,true);
+  assert.equal(x.nodes.fxForwardStop.disabled,false);
+  const request=sent.find(x=>x.url==="/api/forward/start");
+  assert.equal(request.opts.method,"POST");
+  assert.equal(request.opts.headers["X-Trader-Token"],"session-only-secret");
+  assert.deepEqual(JSON.parse(request.opts.body),{symbol:"EUR_USD"});
+  await x.stopForwardObserver();
+  assert.equal(x.S.forward.monitor.active,false);
+  assert.deepEqual(JSON.parse(sent.find(x=>x.url==="/api/forward/stop").opts.body),{});
+  await x.backupPracticeEvidence();
+  const backed=sent.find(x=>x.url==="/api/market/backup");
+  assert.equal(backed.opts.method,"POST");
+  assert.deepEqual(JSON.parse(backed.opts.body),{});
+  assert.equal(backed.opts.headers["X-Trader-Token"],"session-only-secret");
+  assert.ok(x.nodes.fxBackupStatus.textContent.includes("fixture.sqlite3"));
+  assert.equal(sent.some(x=>/order|position|trade/i.test(x.url)),false);
+});
+
+test("locally captured forward case renders as separate research evidence and opens outcome-blind chart",async()=>{
+  const bars=fxDataset().bars;
+  const signal=bars[20];
+  const caseRecord={
+    id:"fixture-forward-case",symbol:"EUR_USD",day:"2026-07-06",
+    rule:"FXC-001",version:"FXC-001-v1",side:"LONG",
+    signalTime:signal.time+300000,signalBarStart:signal.time,
+    boxHigh:1.1012,boxLow:1.1004,stopReference:1.1003,
+    sourceReceiptId:"fixture-receipt",
+    capturedAt:signal.time+330000,status:"MODELED",
+    outcome:{status:"MODELED",netR:1.2,netPips:18,
+      brokerFillVerified:false}
+  };
+  const response=body=>({ok:true,json:async()=>body});
+  const fetchLocal=async(url)=>{
+    if(url==="/api/forward/status?symbol=EUR_USD")return response({
+      ok:true,broker_orders:false,monitor:{active:false,symbol:"EUR_USD",
+        brokerOrdersAllowed:false,pollCount:0},
+      journal:{symbol:"EUR_USD",summary:{
+        recorded:1,pending:0,modeled:1,averageModeledR:1.2,actualBrokerFills:0},
+      observations:[caseRecord]}
+    });
+    throw Error("no other endpoints expected");
+  };
+  const x=await createUI(fetchLocal);
+  x.resetDataset(fxDataset());
+  await x.checkForwardStatus();
+  assert.equal(x.nodes.forwardSummary.children.length,4);
+  assert.equal(x.nodes.forwardEntries.children.length,1);
+  assert.equal(x.S.forward.journal.summary.actualBrokerFills,0);
+  assert.equal(x.packet().evidence.forward_practice,undefined);
+  x.S.scopes.forward=true;
+  assert.equal(x.packet().evidence.forward_practice.summary.averageModeledR,1.2);
+  await x.nodes.forwardEntries.children[0].listeners.click[0]();
+  assert.equal(x.S.replay,true);
+  assert.equal(x.visible().bars.at(-1).time,signal.time);
+  assert.equal(x.S.fxSignalPreview.outcomeIncluded,false);
+  assert.equal(x.packet().evidence.fx_historical_signal.status,
+    "HISTORICAL_PRACTICE_CONFIRMATION_NOT_EXECUTED");
+  assert.equal(x.packet().evidence.forward_practice,undefined);
 });

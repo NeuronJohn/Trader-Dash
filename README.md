@@ -4,7 +4,7 @@ This repository is being developed as a local-first, chart-first trading researc
 
 ## Open the current research prototype
 
-On the working branch **foundation/fx-spread-research-v7**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
+On the working branch **foundation/prospective-signal-receipts-v8**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
 
 If Python is not installed, open `prototype/trader-workspace.html` directly in Edge/Chrome. It still supports a synthetic demonstration chart, imported historical CSVs, annotations, a market library, local pattern discovery, a basic strategy simulator, journal snapshots and exports, but **not local Ollama AI**.
 
@@ -50,6 +50,14 @@ The OANDA practice chart now feeds a separate FX research laboratory. **FXC-001*
 A **Backfill history** action manually retrieves up to 12 pages (12,000 completed M5 candles) under a strict local-practice allowlist; the dashboard can open 16,000 stored bars. Older v0.6 receipts are extended by separate bid/ask high-low records, preserving their original first-seen observations. No background polling or order submission is added.
 
 Read [FX Strategy Research v0.7](docs/FX_SPREAD_RESEARCH_V7.md) for full rules, setup steps and evidence limitations. The strategies are **not validated profitable**. The branch is draft until actual Windows/OANDA practice tests pass.
+
+## v0.8 — Opt-in prospective FXC practice observations
+
+The first **process-local automatic observation recorder** is now drafted. Select a practice currency pair, explicitly **Arm paper observer** to request newly completed OANDA fxPractice M5 candles at roughly five-minute intervals while the localhost Python server is running, and record qualifying FXC-001 confirmations before later market candles become available. **Stop observer** disables future checks, and the monitor always starts OFF when the server restarts.
+
+Each captured observation has a local receipt time, an original pre-signal candle prefix, an immutable SHA-256 checksum and a separate, later cost-adjusted **modeled** result. Out-of-order or revised data is rejected or recorded as a conflict; backfilled history cannot be relabeled forward. The FX Strategy Lab shows pending cases, separate modeled paper statistics, no-future chart inspection, and a **Back up local evidence** button creating a transactionally consistent SQLite snapshot under your user-local TraderResearch backups folder.
+
+Read [Prospective Practice Paper v0.8](docs/PROSPECTIVE_PAPER_V8.md) for usage, fixed rules, review and validation. This is locally observed OANDA PRACTICE history, **not** an exchange-signed forward record, an authenticated broker fill, a proven strategy or automatic order execution. Full Python tests and actual provider/Windows behavior still need verification.
 
 ## What has been built
 

@@ -34,6 +34,16 @@ if _MARKET_SPEC is None or _MARKET_SPEC.loader is None:
 market = importlib_util.module_from_spec(_MARKET_SPEC)
 _MARKET_SPEC.loader.exec_module(market)
 
+_FORWARD_SPEC = importlib_util.spec_from_file_location(
+    "_trader_forward_monitor", Path(__file__).resolve().with_name("forward_monitor.py")
+)
+if _FORWARD_SPEC is None or _FORWARD_SPEC.loader is None:
+    raise RuntimeError("Forward observation module unavailable")
+forward = importlib_util.module_from_spec(_FORWARD_SPEC)
+_FORWARD_SPEC.loader.exec_module(forward)
+forward.market = market  # exact one read-only practice adapter and request lock
+FORWARD = forward.Monitor()
+
 HOST = "127.0.0.1"
 PORT = int(os.getenv("TRADER_PORT", "8765"))
 MODEL = os.getenv("TRADER_OLLAMA_MODEL", "qwen3.5:9b")
@@ -327,6 +337,24 @@ def validate_context(payload: object) -> dict:
                     "avg_net_R": finite_price(reserve.get("avgNetR")),
                 }
 
+    prospective = evidence.get("forward_practice")
+    safe_forward = None
+    if (source_info["kind"] == "oanda-fxpractice" and
+            not bool(replay.get("enabled")) and
+            isinstance(prospective, dict) and
+            prospective.get("status") ==
+            "PROVIDER_RECEIVED_LOCAL_PRACTICE_OBSERVATIONS_NOT_BROKER_FILLS"):
+        # Do not trust client-supplied results. The handler will only populate
+        # numeric fields directly from the locally owned SQLite event ledger.
+        safe_forward = {
+            "rule": "FXC-001",
+            "status": "LOCAL_PROSPECTIVE_PRACTICE_RESEARCH_ONLY",
+            "source": "oanda-fxpractice",
+            "summary": None, "recent_cases": [],
+            "independent_market_timestamp_attestation": False,
+            "verified_broker_fills": 0, "trade_qualification": "NONE",
+        }
+
     candidate = payload.get("pattern_candidate")
     if isinstance(candidate, dict):
         candidate = {
@@ -366,6 +394,7 @@ def validate_context(payload: object) -> dict:
         "mes_session_experiment": safe_mes_simulation,
         "fx_historical_signal": safe_fx,
         "opt_in_fx_research": safe_fx_report,
+        "opt_in_forward_practice": safe_forward,
         "opt_in_paper_research": safe_paper,
         "exploratory_simulation": safe_simulation,
         "user_selected_prior_cases": safe_cases,
@@ -458,6 +487,34 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
             self.wfile.write(content)
+        elif pathname == "/api/forward/status":
+            try:
+                params = parse_qs(urlsplit(self.path).query, strict_parsing=True)
+                if set(params) - {"symbol"}:
+                    raise forward.ForwardError("Unknown forward status parameter")
+                symbol = params.get("symbol", ["EUR_USD"])[0]
+                if symbol not in forward.PIPS:
+                    raise forward.ForwardError("Unsupported forward observation symbol")
+                records = []
+                totals = forward.summary([])
+                if market.storage_path().is_file():
+                    db = market.open_store()
+                    try:
+                        records = forward.list_records(db, symbol, 50)
+                        totals = forward.summary_store(db, symbol)
+                    finally:
+                        db.close()
+                self._reply(200, {
+                    "ok": True, "monitor": FORWARD.state(),
+                    "journal": {"symbol": symbol, "summary": totals,
+                                "observations": records,
+                                "visibleLimit": 50},
+                    "broker_orders": False
+                })
+            except (ValueError, forward.ForwardError) as exc:
+                self._reply(422, {"ok": False, "error": str(exc)})
+            except (OSError, sqlite3.Error):
+                self._reply(503, {"ok": False, "error": "Local prospective journal unavailable"})
         elif pathname == "/api/market/status":
             self._reply(200, {"ok": True, "market": market.status()})
         elif pathname == "/api/market/candles":
@@ -506,7 +563,7 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(403, {"ok": False, "error": "Cross-origin requests disabled"})
             return
         pathname = urlsplit(self.path).path
-        if pathname not in ("/api/analyst", "/api/market/fetch", "/api/market/backfill"):
+        if pathname not in ("/api/analyst", "/api/market/fetch", "/api/market/backfill", "/api/forward/start", "/api/forward/stop", "/api/market/backup"):
             self._reply(404, {"ok": False, "error": "No such research action"})
             return
         if not secrets.compare_digest(self.headers.get("X-Trader-Token", ""), TOKEN):
@@ -525,6 +582,33 @@ class Handler(BaseHTTPRequestHandler):
         try:
             raw = self.rfile.read(length)
             payload = json.loads(raw)
+            if pathname == "/api/market/backup":
+                if not isinstance(payload, dict) or payload:
+                    raise ValueError("Backup takes no paths, tokens or custom options")
+                if not MARKET_GATE.acquire(blocking=False):
+                    self._reply(429, {"ok": False, "error": "Another market operation is active"})
+                    return
+                try:
+                    result = market.backup_store()
+                finally:
+                    MARKET_GATE.release()
+                self._reply(200, {"ok": True, "backup": result,
+                                  "broker_orders": False})
+                return
+            if pathname in ("/api/forward/start", "/api/forward/stop"):
+                if not isinstance(payload, dict):
+                    raise ValueError("Expected forward monitoring options object")
+                if pathname == "/api/forward/start":
+                    if set(payload) != {"symbol"}:
+                        raise ValueError("Start requires exactly one practice symbol")
+                    result = FORWARD.start(payload["symbol"])
+                else:
+                    if payload:
+                        raise ValueError("Stop does not accept extra options")
+                    result = FORWARD.stop()
+                self._reply(200, {"ok": True, "monitor": result,
+                                  "execution": False, "broker_orders": False})
+                return
             if pathname in ("/api/market/fetch", "/api/market/backfill"):
                 backfill = pathname == "/api/market/backfill"
                 permitted = {"symbol", "pages"} if backfill else {"symbol", "count"}
@@ -548,6 +632,30 @@ class Handler(BaseHTTPRequestHandler):
                                   "execution": False, "paid_calls": 0})
                 return
             evidence = validate_context(payload)
+            if evidence.get("opt_in_forward_practice") is not None:
+                # Numeric facts come exclusively from the server-owned event
+                # records, never from browser-provided modeled P&L or counts.
+                symbol = evidence["source"]["symbol"]
+                if symbol in forward.PIPS and market.storage_path().is_file():
+                    db = market.open_store()
+                    try:
+                        overview = forward.summary_store(db, symbol)
+                        cases = forward.list_records(db, symbol, 8)
+                    finally:
+                        db.close()
+                else:
+                    overview, cases = forward.summary([]), []
+                evidence["opt_in_forward_practice"]["summary"] = overview
+                evidence["opt_in_forward_practice"]["recent_cases"] = [
+                    {
+                        "day": c["day"], "side": c["side"],
+                        "status": c["status"],
+                        "modeled_net_R": (
+                            c["outcome"].get("netR") if c["status"]=="MODELED" and
+                            isinstance(c["outcome"],dict) else None
+                        ),
+                    } for c in cases
+                ]
             started = time.monotonic()
             if not ANALYST_GATE.acquire(blocking=False):
                 self._reply(429, {"ok": False, "error": "Local analyst is already processing a request"})
@@ -573,6 +681,8 @@ class Handler(BaseHTTPRequestHandler):
                 "source_id": evidence["source"]["id"],
                 "replay": evidence["replay"]["enabled"],
             })
+        except forward.ForwardError as exc:
+            self._reply(422, {"ok": False, "error": str(exc)})
         except market.MarketError as exc:
             self._reply(422, {"ok": False, "error": str(exc)})
         except sqlite3.Error:
@@ -610,6 +720,7 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        FORWARD.close()
         server.server_close()
 
 if __name__ == "__main__":

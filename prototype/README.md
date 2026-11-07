@@ -1,4 +1,4 @@
-# Trader / Lab — Research Workspace v0.7
+# Trader / Lab — Research Workspace v0.8
 
 This directory contains a single-file, self-contained browser prototype of the new professional Trader-Dash research workspace.
 
@@ -10,6 +10,14 @@ This directory contains a single-file, self-contained browser prototype of the n
 
 You can also run a local static server from the repository: python -m http.server 8080, then open http://localhost:8080/prototype/trader-workspace.html.
 
+
+## New in v0.8 — Prospective FX practice observer
+
+The Market workspace now has **Arm paper observer / Stop observer** buttons. After explicit activation, the local Python server can periodically request completed OANDA practice five-minute candles while that server runs, then capture truly *new-to-the-local-recorder* FXC-001 matches before subsequent session candles. It never auto-starts after server restart and cannot place orders.
+
+The FX Strategy Lab includes a prospective-observation journal, pending and modeled outcomes, source receipt references and no-future historical reveal. User-controlled **Back up local evidence** uses SQLite's online backup API rather than a potentially inconsistent live file copy. Forward journal metrics enter local Ollama only when explicitly opted in and not in chart replay, and the server reads its own SQLite numbers rather than trusting browser-submitted P/L.
+
+See [v0.8 guide](../docs/PROSPECTIVE_PAPER_V8.md). All observations are practice-only local receipts, not independently notarized real-money trading performance.
 
 ## New in v0.7 — FXC-001 historical research
 
