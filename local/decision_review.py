@@ -17,7 +17,7 @@ Only discuss facts in the input, do not invent news, trades, win probabilities,
 technical signals, risk-limit compliance, or an edge. Do not instruct buying or selling.
 These records may be SYNTHETIC: explicitly label them synthetic when indicated.
 The completed-position stats describe all positions, NOT performance of this pattern.
-If the source quality is insufficient, say so. No claims of live execution.
+If forward observations are supplied, they are price-only directional changes, not trades, validated expectancy, or predictive win probabilities. A small or overlapping sample establishes no edge. If source quality is insufficient, say so. No claims of live execution.
 JSON only, exactly the three requested keys; keep each under 220 characters.
 """
 
@@ -74,7 +74,7 @@ def explain(evidence):
     return cleaned
 
 
-def bounded_packet(contract,minutes,structure,completed,source):
+def bounded_packet(contract,minutes,structure,completed,source,forward=None):
     if structure.get("status")!="OBSERVATION_ONLY":
         raise ValueError("No completed-bar observation")
     coverage=completed.get("coverage")
@@ -97,6 +97,14 @@ def bounded_packet(contract,minutes,structure,completed,source):
             "completed_positions_count":count if type(count) is int else None,
             "historical_coverage":coverage if isinstance(coverage,str) else "UNVERIFIED",
             "setup_specific_result_available":False,
+        },
+        "forward_observations":{
+            "measurement":"FIVE_FUTURE_BARS_DIRECTIONAL_PRICE_ONLY",
+            "matured_count":forward.get("matured",0) if isinstance(forward,dict) and forward.get("source")==source else 0,
+            "waiting_for_future_bars":forward.get("awaiting_future_bars",0) if isinstance(forward,dict) and forward.get("source")==source else 0,
+            "excluded_missing_data":forward.get("excluded_data_gaps",0) if isinstance(forward,dict) and forward.get("source")==source else 0,
+            "validated_profitability":False,
+            "hypothesis_only":True,
         },
         "risk_warnings":[
             "No validated edge or setup-specific expectancy",
