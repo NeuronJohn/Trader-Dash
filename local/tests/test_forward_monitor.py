@@ -153,6 +153,47 @@ class ForwardObservationTests(unittest.TestCase):
         result=forward.list_records(self.db,"EUR_USD")[0]
         self.assertEqual(result["status"],"CONFLICT")
 
+    def test_price_revision_audit_marks_later_modeled_results_as_conflicted(self):
+        self.capture()
+        self.db.execute("""
+          INSERT INTO receipts(
+            receipt_id,source,symbol,granularity,received_utc_ms,
+            response_sha256,returned_complete,inserted,repeated,conflicted
+          ) VALUES(?,?,?,?,?,?,?,?,?,?)
+        """,("correction-receipt",market.SOURCE,"EUR_USD","M5",
+             self.received+MS,"a"*64,1,0,0,1))
+        self.db.execute("""
+          INSERT INTO revisions(
+            receipt_id,symbol,candle_start_ms,observed_sha256,incoming_sha256
+          ) VALUES(?,?,?,?,?)
+        """,("correction-receipt","EUR_USD",self.bars[21]["time"],
+             "b"*64,"c"*64))
+        self.db.commit()
+        forward.settle_ready(self.db,"EUR_USD",self.bars,
+            self.bars[-1]["receivedAt"])
+        record=forward.list_records(self.db,"EUR_USD")[0]
+        self.assertEqual(record["status"],"CONFLICT")
+        self.assertIn("revised",record["outcome"]["reason"].lower())
+        self.assertNotIn("netR",record["outcome"])
+
+    def test_revision_of_original_prefix_blocks_even_a_new_timely_capture(self):
+        self.db.execute("""
+          INSERT INTO receipts(
+            receipt_id,source,symbol,granularity,received_utc_ms,
+            response_sha256,returned_complete,inserted,repeated,conflicted
+          ) VALUES(?,?,?,?,?,?,?,?,?,?)
+        """,("older-revision",market.SOURCE,"EUR_USD","M5",
+             self.received-1000,"a"*64,1,0,0,1))
+        self.db.execute("""
+          INSERT INTO revisions(
+            receipt_id,symbol,candle_start_ms,observed_sha256,incoming_sha256
+          ) VALUES(?,?,?,?,?)
+        """,("older-revision","EUR_USD",self.bars[4]["time"],
+             "b"*64,"c"*64))
+        self.db.commit()
+        self.assertEqual(self.capture(),[])
+        self.assertEqual(forward.list_records(self.db,"EUR_USD"),[])
+
     def test_changing_research_source_or_wide_spread_blocks_signal(self):
         bar=[dict(b) for b in self.bars[:21]]
         bar[20]["askClose"]=bar[20]["close"]+.0004
