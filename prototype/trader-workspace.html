@@ -1773,6 +1773,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       $("fxDetail").textContent=bars.length+" M5 bars · median closing bid/ask "+
         median.toFixed(2)+" pips · max "+maxSpread.toFixed(2)+" pips · "+
         discontinuities+" time gaps (including market closures) · received "+when+
+        " · receipt "+String(market.last_receipt_id||"none").slice(0,12)+
         " · "+market.conflicts+" revisions · NOT EXECUTABLE SPREADS";
       toast("Opened locally recorded "+symbol+" practice candles. Not an execution feed.");
     }catch(e){toast("Practice chart: "+e.message)}
@@ -1785,6 +1786,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const symbol=$("fxSymbol").value;
     if(!["EUR_USD","GBP_USD","USD_JPY"].includes(symbol)){toast("Unsupported practice pair");return}
     S.fx.busy=true;setPracticeControls();
+    let completed=false;
     $("fxDetail").textContent="Reading up to 500 completed OANDA practice M5 candles; writing local first-seen receipts.";
     try{
       const response=await fetch("/api/market/fetch",{
@@ -1801,12 +1803,14 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         " conflicts · complete M5 only · order execution disabled";
       toast("Practice price receipt saved. "+receipt.added+" new closed bars; "+
         receipt.conflicts+" revisions kept in audit.");
+      completed=true;
     }catch(e){$("fxDetail").textContent="Practice fetch failed: "+e.message;toast("Price fetch blocked: "+e.message)}
     finally{
       S.fx.busy=false;setPracticeControls();
     }
-    // Keep receipt and chart loading as separate, inspectable user actions.
-    // The user decides when to replace the active chart with the fetched series.
+    // One explicit practice fetch automatically refreshes the chart using the
+    // recorded local receipt. Never silently poll or invoke trade endpoints.
+    if(completed)await loadPracticeCandles();
   }
 
   async function checkLocalRuntime(){
