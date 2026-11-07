@@ -21,6 +21,7 @@ from realtime_bridge import LiveBridge, valid_contract
 from demo_broker import DemoBroker, DemoBridge
 from structure_context import analyze as analyze_structure
 from decision_review import explain as explain_decision, bounded_packet
+from observation_journal import ObservationJournal, SOURCE_DEMO, SOURCE_REAL
 
 ROOT = Path(__file__).resolve().parents[1]
 DASH = ROOT / "topstep" / "index.html"
@@ -32,6 +33,7 @@ CACHE = {}
 FULL_SYNC = {}
 DIRTY = set()
 BRIDGE = None
+OBS_JOURNAL = None
 LOCK = threading.RLock()
 
 
@@ -80,6 +82,30 @@ def bridge():
             BRIDGE = LiveBridge(client().bearer_token, on_trade=ingest_trade,
                                 on_user_change=mark_live_dirty)
         return BRIDGE
+
+
+def observation_journal():
+    global OBS_JOURNAL
+    with LOCK:
+        if OBS_JOURNAL is None:
+            from topstep_core import DATA_DIR
+            filename = ("demo-observation-journal.sqlite3" if DEMO_MODE
+                        else "topstep-observation-journal.sqlite3")
+            OBS_JOURNAL = ObservationJournal(DATA_DIR / filename)
+        return OBS_JOURNAL
+
+
+def tracked_bars(account_id, contract, minutes, bars, structure):
+    # Account selection was authenticated by the broker or verified fixture.
+    if not any(a["id"] == account_id for a in client().accounts()):
+        raise ValueError("Requested observation account is inaccessible")
+    state = BRIDGE.snapshot() if BRIDGE is not None else {}
+    selected = (state.get("selected_account") == account_id and
+                state.get("selected_contract") == contract)
+    fresh = selected and state.get("quote_fresh") is True
+    source = SOURCE_DEMO if DEMO_MODE else SOURCE_REAL
+    return observation_journal().advance(source, account_id, contract, minutes,
+                                         bars, structure, allow_record=fresh)
 
 
 def snapshot_account(account_id, days, force=False):
@@ -199,7 +225,14 @@ class Handler(research.Handler):
                 observation = analyze_structure(bars, minutes)
                 if DEMO_MODE:
                     observation["source"] = "SYNTHETIC_OFFLINE_FIXTURE"
+                raw_account = self._query().get("account_id", [None])[0]
+                journal_summary = None
+                if raw_account is not None:
+                    account_id = self._get_int("account_id")
+                    journal_summary = tracked_bars(account_id, contract, minutes,
+                                                   bars, observation)
                 return self._reply(200, {"ok": True, "bars": bars,
+                    "journal": journal_summary,
                     "synthetic": DEMO_MODE, "context": observation,
                     "contract": contract, "minutes": minutes,
                     "synced_at": iso_utc(utc_now()),
