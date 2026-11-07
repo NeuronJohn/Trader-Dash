@@ -23,6 +23,34 @@ class DecisionReviewTests(unittest.TestCase):
         self.assertNotIn("apiKey",str(p))
         self.assertIn("SYNTHETIC",p["source"])
 
+    def test_forward_sample_count_is_source_checked_and_not_a_win_probability(self):
+        forward={"source":"SYNTHETIC_OFFLINE_FIXTURE","matured":7,
+                 "awaiting_future_bars":3,"excluded_data_gaps":1,
+                 "favorable_fraction":0.95}
+        p=desk.bounded_packet("CON.F.US.MES.Z26",5,{
+            "status":"OBSERVATION_ONLY","range_state":"ABOVE_PRIOR_RANGE",
+            "confirmed_through_ms":1700000000000,"latest_complete_close":6000,
+            "prior_20_high":5999,"prior_20_low":5980,
+            "average_true_range_14":4,"completed_data_stale":False,
+            "gaps_in_last_20":0},
+            {"coverage":"MATCHED_IN_FETCH_WINDOW","complete_trade_count":15},
+            "SYNTHETIC_OFFLINE_FIXTURE",forward)
+        data=p["forward_observations"]
+        self.assertEqual(data["matured_count"],7)
+        self.assertEqual(data["waiting_for_future_bars"],3)
+        self.assertFalse(data["validated_profitability"])
+        self.assertNotIn("favorable_fraction",data)
+        forward["source"]="TOPSTEPX_BROKER_REST"
+        p=desk.bounded_packet("CON.F.US.MES.Z26",5,{
+            "status":"OBSERVATION_ONLY","range_state":"ABOVE_PRIOR_RANGE",
+            "confirmed_through_ms":1700000000000,"latest_complete_close":6000,
+            "prior_20_high":5999,"prior_20_low":5980,
+            "average_true_range_14":4,"completed_data_stale":False,
+            "gaps_in_last_20":0},
+            {"coverage":"MATCHED_IN_FETCH_WINDOW","complete_trade_count":15},
+            "SYNTHETIC_OFFLINE_FIXTURE",forward)
+        self.assertEqual(p["forward_observations"]["matured_count"],0)
+
     def test_valid_short_qualitative_local_model(self):
         reply={"message":{"content":json.dumps({
             "observation":"Synthetic prices moved beyond a reference range.",
