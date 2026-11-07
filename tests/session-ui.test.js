@@ -323,3 +323,16 @@ test("reopening a saved FX experiment rejects a modified underlying provider rec
   assert.equal(x.S.fxRunRecord.id,record.id); // loaded record stays in memory; no silent replacement
   assert.equal(x.S.experimentRuns[0].fingerprint,prior);
 });
+
+test("legacy OANDA bars missing bid/ask extremes are excluded, not silently approximated with midpoint",async()=>{
+  const x=await createUI();
+  const d=fxDataset(),whole=d.bars.length;
+  delete d.bars[8].askLow;
+  x.resetDataset(d);
+  assert.equal(x.S.data.bars.length,whole);
+  await x.runFxResearch();
+  assert.ok(x.S.fxRunRecord);
+  assert.equal(x.S.fxRunRecord.report.rejectedSessions.length,1);
+  assert.equal(x.S.fxRunRecord.report.completeSessions,7);
+  assert.ok(x.nodes.fxResults.children.length>0);
+});
