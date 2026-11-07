@@ -1,4 +1,4 @@
-# Trader / Lab — Research Workspace v0.5
+# Trader / Lab — Research Workspace v0.6
 
 This directory contains a single-file, self-contained browser prototype of the new professional Trader-Dash research workspace.
 
@@ -10,6 +10,14 @@ This directory contains a single-file, self-contained browser prototype of the n
 
 You can also run a local static server from the repository: python -m http.server 8080, then open http://localhost:8080/prototype/trader-workspace.html.
 
+
+## New in v0.6 — Practice FX market receipts
+
+The optional **Start-Trader-Practice.cmd** launcher accepts a local OANDA PRACTICE token with hidden input, without storing it in the app or repository. The Market workspace now has a compact OANDA Practice bar: select EUR/USD, GBP/USD or USD/JPY, fetch completed five-minute candles on demand, then open locally stored midpoint candles with a bid/ask spread summary.
+
+Receipts go into a separate local SQLite database and preserve original price observations when later provider data changes. It is not a live executable quote or forward trading service. No Topstep API connection, live-money environment, scheduled polling, or order endpoint is included.
+
+Read [Market Data v0.6](../docs/PRACTICE_MARKET_DATA_V6.md) for setup, backups and remaining limitations.
 
 ## New in v0.5 — Paper research ledger
 
