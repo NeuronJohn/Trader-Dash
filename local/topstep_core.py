@@ -127,6 +127,13 @@ class ProjectXClient:
             self._token_issued = time.monotonic()
             return True
 
+    def bearer_token(self):
+        """Reuse the JWT for the official SignalR hubs; never return to the browser."""
+        with self._lock:
+            if self._token is None or time.monotonic() - self._token_issued > 23 * 3600:
+                self.login()
+            return self._token
+
     def request(self, path, data):
         if path in ("/api/Auth/loginKey",) or path not in ALLOWED_PATHS:
             raise ValueError("Unsupported read-only request")
@@ -190,7 +197,11 @@ class ProjectXClient:
         out.sort(key=lambda x: x["time"])
         return list({x["time"]: x for x in out}.values())
 
-    def snapshot(self, account_id, days=30):
+    def snapshot(self, account_id, days=30, reconcile_days=None):
+        """Full initial import; subsequent syncs can reconcile recent correction windows."""
+        if reconcile_days is not None and (type(reconcile_days) is not int or
+                                           not 1 <= reconcile_days <= days):
+            raise ValueError("Invalid reconciliation lookback")
         if type(account_id) is not int or account_id <= 0:
             raise ValueError("Select an actual account")
         if type(days) is not int or days not in (7, 30, 90, 365):
@@ -199,8 +210,8 @@ class ProjectXClient:
         if account is None:
             raise ValueError("Account not active or inaccessible")
         end = utc_now()
-        start = end - timedelta(days=days)
-        since = iso_utc(start)
+        start = end - timedelta(days=days if reconcile_days is None else reconcile_days)
+        since = iso_utc(end - timedelta(days=days))
         # Bounded 14-day windows prevent a single oversized all-year response.
         # Inclusive boundaries can overlap; keep the most recent copy by broker ID.
         by_id = {}
