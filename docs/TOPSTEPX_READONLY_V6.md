@@ -1,4 +1,4 @@
-# TopstepX read-only workstation v0.7 (development)
+# TopstepX read-only workstation v0.8 (development)
 
 ## What exists
 - Local, browser-based /topstep dashboard reusing the project research server, plus / for the earlier research workspace.
@@ -53,3 +53,54 @@ For initial long-window imports, the adapter now requests trade legs in consecut
 **Verification status:** nine isolated deterministic completed-trade tests were executed successfully in the development environment. Additional checked-in tests cover historical backfill and SQLite timestamp filtering, but the complete repository test suite and Windows launcher have not been run against a genuine TopstepX Practice account. The new JavaScript parsed successfully, with no missing referenced DOM element IDs. No live quotes, balance, orders or executions were seen by this development session.
 
 **Remaining:** authenticated Practice-account handshake/snapshots, live SignalR user and market hubs, robust reconnection and stale indicators, contract rollover calendar, full broker-history provenance, genuine account-specific drawdown and daily loss controls, strategy/risk tagging, feeding Topstep candles directly into the research scanner, independent forward performance verification, and user-gated execution if ever separately authorized.
+
+## v0.8 — local-only live ProjectX stream bridge
+
+Official ProjectX real-time API uses separate **user** and **market** SignalR hubs; this version implements both via an optional Python `websocket-client` transport, keeping the JWT exclusively on the local Python backend.
+
+### Data and UI
+
+- The market hub subscribes to `SubscribeContractQuotes` and `SubscribeContractTrades` for the contract selected in the dashboard. The account hub subscribes to `SubscribeAccounts`, `SubscribeOrders`, `SubscribePositions` and `SubscribeTrades` for the selected account.
+- The browser POSTs only an account ID and contract ID to **`/topstep/api/live/subscribe`**, a same-origin localhost-only operation that controls subscriptions. There is **no broker order endpoint**.
+- The browser polls **`/topstep/api/live`** every 2.5 seconds for a sanitized stream snapshot; the JWT is never included. Price displays include last, bid, ask, stream connection state and a freshness warning. A fresh badge requires both a connected market hub, recent local receipt and a recent provider timestamp; open socket alone does not count.
+- ProjectX GatewayQuote events can contain only changed fields. Partial quote messages are merged only into the selected contract's prior quote. Invalid or missing initial prices never create synthetic quotes.
+- GatewayUserTrade updates are upserted by broker `id`, including corrected and voided legs; client-side account statistics are refreshed through REST reconciliation after user events. User order/position stream events signal an upcoming REST refresh rather than inventing position state.
+- Long-window history is fully backfilled initially and refreshed every six hours. Between full passes, the recent two-day trade window is reconciled. Deep late corrections may remain unseen until the next full pass. The snapshot remains explicitly marked REST-derived rather than true tick-by-tick P&L.
+- On account/contract changes, the old worker socket closes and a new subscription begins. On disconnect, the workers reconnect with bounded backoff, handshake again and replay subscriptions.
+- Quotes are **not** treated as chart OHLC bars. Broker REST still supplies historical chart candles, which are polled at a slower cadence.
+
+### Deterministic market context
+
+`local/structure_context.py` computes a **completed-candle-only** reference using the previous 20 closed bars, last closed bar, ATR14 and whether the latest close is inside/outside that range. It excludes the current forming candle and flags stale data or gaps. It is exploratory structure labeling, not a backtested strategy, validated edge, order recommendation or Topstep compliance check.
+
+### Start on Windows
+
+The `Start-Topstep-Readonly.cmd` script detects and installs missing `websocket-client` and `tzdata` dependencies using pip, then opens the local service. Internet access may be required on first install. Use an existing TopstepX Practice account with API access enabled; no dedicated API sandbox exists. Ensure another server is not already using port 8765.
+
+Set the two credentials in your local Command Prompt session only:
+
+```bat
+set "TOPSTEPX_USERNAME=YOUR_PLATFORM_LOGIN_USERNAME"
+set "TOPSTEPX_API_KEY=YOUR_API_KEY"
+Start-Topstep-Readonly.cmd
+```
+
+Visit `http://127.0.0.1:8765/topstep`, select an account and **specific contract expiry**, and inspect the user/market stream state. Nothing starts streaming until both are selected. The older research workspace remains at `/`. Do not send API keys in chat or commit them to GitHub. Both the model and broker connectors remain local to your machine.
+
+### Local testing
+
+```sh
+python -m unittest discover -s local/tests -p "test_*.py"
+npm test
+npm run build
+```
+
+A local isolated test copy of the stream/frame and completed-candle algorithms passed 12 deterministic tests. The committed browser JavaScript was separately syntax-checked and DOM IDs were checked for missing references. **The full GitHub branch tests have not been executed together in this session**, and actual Windows/TopstepX authentication and streaming have not been witnessed. Run the entire suite locally and test the stream against the Practice account before promoting this draft PR.
+
+### Required before production
+
+1. Real authenticated Practice-account user/market SignalR handshake, receipt of genuine quotes and fills, reconnect/late correction tests and broker/SQLite match reconciliation.
+2. Authenticate account/contract eligibility and exchange session calendars across DST and contract rolls. Display explicit disconnected/stale indicators during maintenance/holidays.
+3. Point-in-time broker-source scanner and walk-forward strategy experiments with real trading costs, risk/position tag capture, and validated no-lookahead evidence.
+4. Agreement-specific Topstep maximum loss limit, drawdown and daily loss-rule monitoring derived from **verified authoritative account data**, not historical P&L approximations.
+5. Only separately authorized, supervised trade execution, with explicit consent and safety gates, if ever requested.
