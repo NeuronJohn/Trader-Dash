@@ -93,6 +93,8 @@ class DemoHttpSmoke(unittest.TestCase):
         data=self.api(f"/topstep/api/account?id={a['id']}&days=30")
         self.assertTrue(data["synthetic"])
         self.assertEqual(data["source"],"SYNTHETIC_OFFLINE_FIXTURE")
+        self.assertEqual(data["stats"]["source"],"SYNTHETIC_OFFLINE_FIXTURE")
+        self.assertEqual(data["completed_trades"]["source"],"SYNTHETIC_OFFLINE_FIXTURE")
         self.assertGreater(data["stats"]["active_legs"],0)
         self.assertGreater(data["completed_trades"]["complete_trade_count"],0)
         self.assertFalse(data["order_execution_enabled"])
@@ -106,7 +108,7 @@ class DemoHttpSmoke(unittest.TestCase):
         data=self.api(query)
         self.assertTrue(data["synthetic"])
         self.assertGreater(len(data["bars"]),100)
-        self.assertEqual(data["context"]["source"],"TOPSTEPX_REST_COMPLETED_BARS")
+        self.assertEqual(data["context"]["source"],"SYNTHETIC_OFFLINE_FIXTURE")
         self.assertTrue(data["context"]["not_a_trade_signal"])
 
     def test_demo_live_subscription_never_connects_to_broker(self):
