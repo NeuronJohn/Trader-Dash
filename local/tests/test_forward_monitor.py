@@ -172,6 +172,38 @@ class ForwardObservationTests(unittest.TestCase):
         self.assertEqual(result["exitReason"],"STOP_FIRST")
         self.assertLess(result["netR"],-1)
 
+    def test_full_store_summary_counts_all_observations_and_not_just_last_fifty(self):
+        self.capture()
+        self.assertEqual(forward.summary_store(self.db,"EUR_USD")["pending"],1)
+        forward.settle_ready(self.db,"EUR_USD",
+            self.bars,self.bars[-1]["receivedAt"])
+        aggregate=forward.summary_store(self.db,"EUR_USD")
+        self.assertEqual(aggregate["recorded"],1)
+        self.assertEqual(aggregate["modeled"],1)
+        self.assertGreater(aggregate["averageModeledR"],0)
+        self.assertGreaterEqual(aggregate["modeledClosedDrawdownR"],0)
+        self.assertFalse(aggregate["verifiedLivePerformance"])
+        self.assertEqual(aggregate["actualBrokerFills"],0)
+
+    def test_windows_timezone_database_fallback_matches_iana_dst_rules(self):
+        original=forward.TZ
+        try:
+            forward.TZ=None
+            summer=forward.local_clock(START)
+            winter=int(dt.datetime(2026,1,5,12,0,
+                tzinfo=dt.timezone.utc).timestamp()*1000)
+            self.assertEqual(summer[1],420)
+            self.assertEqual(forward.local_clock(winter)[1],420)
+            # US DST changes on second Sunday in March and first Sunday Nov.
+            pre=int(dt.datetime(2026,3,8,6,59,
+                tzinfo=dt.timezone.utc).timestamp()*1000)
+            post=int(dt.datetime(2026,3,8,7,0,
+                tzinfo=dt.timezone.utc).timestamp()*1000)
+            self.assertEqual(forward.local_clock(pre)[1],119) # 01:59 ET
+            self.assertEqual(forward.local_clock(post)[1],180) # 03:00 ET
+        finally:
+            forward.TZ=original
+
     def test_default_monitor_is_off_and_does_not_call_provider(self):
         mon=forward.Monitor()
         with patch.object(market,"fetch_into_store") as fake:
