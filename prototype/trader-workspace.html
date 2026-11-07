@@ -2258,6 +2258,198 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
 
 
+
+  function fxEngine(){
+    const fx=globalThis.TraderFxResearch;
+    if(!fx||fx.version!=="FXC-001-v1")
+      throw Error("FX research module unavailable. Keep fx-research.js beside the HTML.");
+    return fx;
+  }
+  function fxOptions(){
+    const config={
+      maxSpreadPips:Number($("fxMaxSpread").value),
+      slippagePipsPerSide:Number($("fxSlip").value),
+      feesPipsRoundTrip:Number($("fxFee").value),
+      targetR:Number($("fxTarget").value),
+    };
+    const defaults=fxEngine().defaults;
+    for(const [key,value] of Object.entries(config)){
+      if(!$("fxMaxSpread").value && key==="maxSpreadPips")
+        throw Error("Supply the spread limit");
+      if(!Number.isFinite(value))throw Error("Invalid FX assumption "+key);
+    }
+    return {...defaults,...config};
+  }
+  function ensureFxSource(){
+    if(S.data.source!=="oanda-fxpractice")
+      throw Error("Load OANDA practice M5 receipts. Imported CSV, demo and MES cannot enter FXC.");
+    if(S.data.bars.length<48)throw Error("At least 48 received five-minute candles required");
+  }
+  function fxFingerprint(bars){
+    // Quick error detection for imported/reloaded research, not a signature.
+    let h=2166136261;
+    for(const b of bars){
+      const raw=[b.time,b.open,b.high,b.low,b.close,
+        b.bidOpen,b.bidHigh,b.bidLow,b.bidClose,
+        b.askOpen,b.askHigh,b.askLow,b.askClose,b.receiptId].join("|")+";";
+      for(let j=0;j<raw.length;j++){h^=raw.charCodeAt(j);h=Math.imul(h,16777619)}
+    }
+    return (h>>>0).toString(16).padStart(8,"0")+"-"+bars.length+"-"+bars[0]?.time+"-"+bars.at(-1)?.time;
+  }
+  function scanFxHistory(){
+    try{
+      ensureFxSource();
+      const cutoff=S.replay?S.data.bars[S.reveal].time+300000:S.data.bars.at(-1).time+300000;
+      S.fxSignals=fxEngine().inspect(S.data.bars,{
+        symbol:S.data.symbol,source:S.data.source,asOfUtc:cutoff,
+        config:fxOptions()
+      });
+      renderFxResearch();
+      toast(S.fxSignals.matches.length+" historical FX confirmations · none are executable signals.");
+    }catch(e){toast("FX scan: "+e.message);showFxError(e.message)}
+  }
+  function showFxError(msg){
+    const host=$("fxResults");host.textContent="";
+    host.append(htmlText("p",msg,"report-warning"));
+  }
+  async function runFxResearch(){
+    try{
+      ensureFxSource();
+      if(S.replay)throw Error("Exit historical reveal before a complete FX backtest");
+      const options=fxOptions(),report=fxEngine().simulate(S.data.bars,{
+        symbol:S.data.symbol,source:S.data.source,config:options
+      });
+      const savedAt=new Date().toISOString(),fingerprint=fxFingerprint(S.data.bars);
+      const trial={
+        id:id(),kind:"FXC_SESSION_V1",datasetId:S.data.id,datasetSymbol:S.data.symbol,
+        createdAt:savedAt,source:S.data.source,fingerprint,
+        holdoutRevealedAt:null,options,report
+      };
+      if(S.experimentRuns.length>=250)throw Error("Research history full; export archive first");
+      // Strip ALL reserve information from initially persisted runs. The active
+      // in-memory report may be revealed only after a deliberate user action.
+      const trainingThrough=report.split.trainThrough;
+      const storedReport={...report,status:"RESEARCH_ONLY_NOT_VERIFIED",
+        reserve:null,reserveTrades:[],
+        trades:report.trades.filter(t=>trainingThrough&&t.day<=trainingThrough),
+        skips:report.skips.filter(t=>trainingThrough&&t.day<=trainingThrough),
+        noSignals:report.noSignals.filter(t=>trainingThrough&&t.day<=trainingThrough),
+        rejectedSessions:report.rejectedSessions.filter(t=>trainingThrough&&t.day<=trainingThrough)
+      };
+      const safe={...trial,report:storedReport};
+      if(S.db)await dbAction("experiments","readwrite",store=>store.put(safe));
+      S.experimentRuns.unshift(safe);
+      S.fxRunRecord=trial;S.fxReserveVisible=false;
+      renderFxResearch();renderRunHistory();
+      toast("FXC research recorded. Indicative historical bid/ask modeling, not real fills.");
+    }catch(e){toast("FX research: "+e.message);showFxError(e.message)}
+  }
+  async function revealFxReserve(){
+    const record=S.fxRunRecord;
+    if(!record||record.holdoutRevealedAt)return;
+    if(!window.confirm("Reveal FX reserved results? You cannot use this same dataset as a fresh, independent holdout again."))return;
+    record.holdoutRevealedAt=new Date().toISOString();
+    const stored={...record,report:{...record.report,status:"RESEARCH_ONLY_NOT_VERIFIED"}};
+    const oldIndex=S.experimentRuns.findIndex(e=>e.id===record.id);
+    try{
+      if(S.db)await dbAction("experiments","readwrite",store=>store.put(stored));
+      if(oldIndex>=0)S.experimentRuns[oldIndex]=stored;
+      S.holdoutExposures.add(record.datasetId);
+      S.fxReserveVisible=true;renderFxResearch();renderRunHistory();
+      toast("Reserved FX outcomes revealed. Dataset exposure was recorded.");
+    }catch(e){toast("FX reserve exposure could not be saved: "+e.message)}
+  }
+  function focusFxSignal(q){
+    const i=S.data.bars.findIndex(b=>b.time===q.signalBarStart);
+    if(i<0){toast("Source FX signal candle missing");return}
+    S.fxSignalPreview={...q};S.mesSignalPreview=null;S.mesPreview=null;S.selectedCandidate=null;
+    S.replay=true;S.reveal=i;S.viewportEnd=i;S.selection=[Math.max(0,i-24),i];
+    S.replayDrawings=[];S.selectedDrawing=null;S.drag=null;
+    $("replayToggle").checked=true;S.packet=null;
+    $("setupName").value=q.rule+" · "+q.side+" · "+q.day+" (historical practice)";
+    setPage("workspace");renderDrawingList();updateContext();renderScanner();
+    toast("FX historical confirmation only. Use +1 to reveal the next closed candle.");
+  }
+  function renderFxResearch(){
+    const search=$("fxMatches"),out=$("fxResults");search.textContent="";out.textContent="";
+    if(S.data?.source!=="oanda-fxpractice"){
+      search.append(htmlText("p","Load OANDA Practice FX bars to activate FXC-001.","small muted"));
+      out.append(htmlText("p","OANDA research remains separate from MES and user-imported CSVs.","empty"));
+      return;
+    }
+    if(!S.fxSignals){
+      search.append(htmlText("p","Find historical confirmations without subsequent outcomes, then open a case in chart reveal mode.","small muted"));
+    }else{
+      search.append(htmlText("p",S.fxSignals.matches.length+" completed-bar matches, "+
+        S.fxSignals.rejections.length+" sessions without a valid confirmation. Practice prices are indicative.","small muted"));
+      const list=document.createElement("div");list.className="fx-cases";
+      for(const q of S.fxSignals.matches.slice(-15).reverse()){
+        const b=document.createElement("button");b.className="fx-hit";b.type="button";
+        b.append(htmlText("strong",q.day+" · "+q.side+" FXC-001"),
+          htmlText("small","Confirm "+new Date(q.signalTime).toISOString().slice(11,16)+
+          "Z · "+q.boxPips.toFixed(1)+" pip box · "+
+          q.signalSpreadPips.toFixed(1)+" pip closing spread"));
+        b.addEventListener("click",()=>focusFxSignal(q));list.append(b);
+      }
+      if(!S.fxSignals.matches.length)list.append(htmlText("p","No confirmations under the frozen rule. Empty searches are valid results.","small muted"));
+      search.append(list);
+    }
+    const record=S.fxRunRecord;
+    if(!record){
+      out.append(htmlText("p","Run historical FXC-001 to see cost-adjusted training statistics and a deliberately reserved period.","empty"));return;
+    }
+    if(record.datasetId!==S.data.id){
+      out.append(htmlText("p","This research record belongs to a different instrument. Select its saved run.","report-warning"));return;
+    }
+    const r=record.report,stats=document.createElement("div");stats.className="fx-statgrid";
+    for(const [label,value] of [
+      ["NY sessions",String(r.completeSessions)],
+      ["Training trades",String(r.train.trades)],
+      ["Training average net",r.train.avgNetR==null?"—":numberText(r.train.avgNetR)+"R"],
+      ["Training win rate",r.train.winRate==null?"—":(r.train.winRate*100).toFixed(1)+"%"],
+    ]){
+      const b=document.createElement("div");b.className="fx-stat";
+      b.append(htmlText("span",label),htmlText("strong",value));stats.append(b);
+    }
+    out.append(htmlText("h4","FXC-001 · historical practice · NOT VERIFIED"));
+    out.append(stats);
+    const text=r.completeSessions+" complete sessions · "+r.rejectedSessions.length+
+      " incomplete/excluded · "+r.skips.length+" potential signals skipped for modeled entry rules. "+
+      "NY local time tracks DST.";
+    out.append(htmlText("p",text,"small muted"));
+    out.append(htmlText("p",
+      "Bid/ask OHLC estimates can miss tick sequencing, slippage, account-specific spreads, market impact, swap/financing and rejected fills. No USD P/L or positive edge is claimed.",
+      "report-warning"));
+    if(r.train.trades<30||r.split.reserveDays<20)
+      out.append(htmlText("p","Statistical sample is too small for trustworthy edge claims; gather more complete provider sessions.","notice-small"));
+    if(S.holdoutExposures.has(record.datasetId))
+      out.append(htmlText("p","This dataset's reserved period has been examined. Further tuning on it is no longer independent.","report-warning"));
+    if(record.holdoutRevealedAt){
+      out.append(htmlText("p","Reserved: "+r.reserve.trades+" modeled trades · "+
+        (r.reserve.avgNetR==null?"—":numberText(r.reserve.avgNetR)+"R/trade")+
+        ". These are hypothetical, not executed fills.","notice-small"));
+    }else{
+      const b=document.createElement("button");b.className="btn";b.textContent="Reveal reserved results";
+      b.addEventListener("click",revealFxReserve);out.append(b);
+    }
+    const trainEnd=r.split.trainThrough;
+    const candidates=record.holdoutRevealedAt?r.trades:r.trades.filter(t=>trainEnd&&t.day<=trainEnd);
+    const list=document.createElement("div");
+    for(const t of candidates.slice(0,25)){
+      const row=document.createElement("div");row.className="fx-result-trade";
+      row.append(htmlText("span",t.day+" "+t.side+" · "+t.exitReason,"detail"));
+      row.append(htmlText("span",numberText(t.netPips,1)+"p · "+numberText(t.netR)+"R","dim"));
+      const btn=document.createElement("button");btn.className="btn subtle";btn.textContent="Inspect";
+      btn.addEventListener("click",()=>{
+        const signal=S.fxSignals?.matches.find(q=>q.day===t.day&&q.side===t.side);
+        if(signal)focusFxSignal(signal);
+        else toast("Run Find FX confirmations to open this trade's confirmation without the later outcome.");
+      });row.append(btn);list.append(row);
+    }
+    if(!candidates.length)list.append(htmlText("p","No qualifying trades in this displayed period.","small muted"));
+    out.append(list);
+  }
+
   function paperEngine(){
     const e=globalThis.TraderPaperLedger;
     if(!e||e.version!=="PAPER-LEDGER-v1")throw Error("Paper ledger script unavailable. Keep paper-ledger.js beside the HTML.");
