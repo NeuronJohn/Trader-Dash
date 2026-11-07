@@ -17,6 +17,7 @@ import workspace_server as research
 from topstep_core import ProjectXClient, TradeLedger, calculate_stats, GatewayError, iso_utc, utc_now
 from trade_analytics import summarize as summarize_completed
 from realtime_bridge import LiveBridge, valid_contract
+from structure_context import analyze as analyze_structure
 
 ROOT = Path(__file__).resolve().parents[1]
 DASH = ROOT / "topstep" / "index.html"
@@ -161,7 +162,10 @@ class Handler(research.Handler):
             if path == "/topstep/api/bars":
                 contract = self._query().get("contract", [""])[0]
                 minutes = self._get_int("minutes", (1, 5, 15, 30, 60))
-                return self._reply(200, {"ok": True, "bars": client().bars(contract, minutes),
+                bars = client().bars(contract, minutes)
+                observation = analyze_structure(bars, minutes)
+                return self._reply(200, {"ok": True, "bars": bars,
+                    "context": observation,
                     "contract": contract, "minutes": minutes,
                     "synced_at": iso_utc(utc_now()), "transport": "REST_POLL"})
             if path == "/topstep/api/account":
