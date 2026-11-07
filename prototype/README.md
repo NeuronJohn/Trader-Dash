@@ -1,4 +1,4 @@
-# Trader / Lab — Research Workspace v0.6
+# Trader / Lab — Research Workspace v0.7
 
 This directory contains a single-file, self-contained browser prototype of the new professional Trader-Dash research workspace.
 
@@ -10,6 +10,14 @@ This directory contains a single-file, self-contained browser prototype of the n
 
 You can also run a local static server from the repository: python -m http.server 8080, then open http://localhost:8080/prototype/trader-workspace.html.
 
+
+## New in v0.7 — FXC-001 historical research
+
+The Market workspace now has an explicitly approved **Backfill history** action for up to 12 OANDA fxPractice pages, without background polling. The saved chart window extends to 16,000 five-minute candles. After opening an OANDA practice pair, Strategy Lab shows an FXC-001 panel with a small set of spread/slippage/fee controls, no-future confirmation discovery, conservative bid/ask historical simulation, segregated training/reserved statistics, and saved rule-versioned experiments.
+
+Older provider receipts remain immutable; if they lack bid/ask extrema, supplemental values are recorded with new receipt IDs instead of overwriting the original series. The local Ollama analyst gets strategy statistics only when explicitly enabled, and never receives the hidden reserved outcomes.
+
+See [v0.7 FX research guide](../docs/FX_SPREAD_RESEARCH_V7.md). Neither an indicative candle test nor a historical fit demonstrates tradeable future edge.
 
 ## New in v0.6 — Practice FX market receipts
 
