@@ -29,7 +29,7 @@ function createUI(fetchImpl){
   class Node{
     constructor(id){
       this.id=id;
-      this.value=id==="scanFilter"||id==="simKind"?"all":
+      this.value=id==="fxSymbol"?"EUR_USD":id==="scanFilter"||id==="simKind"?"all":
         id==="mesRule"?"ORP-001":id==="mesSlip"?"1":id==="mesFee"?"2.5":
         id==="mesReward"?"2":id==="simSlip"||id==="simFee"?"1":
         id==="simTarget"?"2":id==="simHold"?"12":"";
