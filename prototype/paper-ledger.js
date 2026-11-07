@@ -158,27 +158,56 @@ function appendNote(c,note,clockMs){
   return out;
 }
 function summary(cases){
-  const groups={
-    HISTORICAL_REPLAY:{total:0,pending:0,resolved:0,skipped:0,conflicts:0,averageNetR:null,netR:null},
-    TIMELY_CSV_UNVERIFIED:{total:0,pending:0,resolved:0,skipped:0,conflicts:0,averageNetR:null,netR:null}
-  };
-  const sums={HISTORICAL_REPLAY:0,TIMELY_CSV_UNVERIFIED:0};
+  const names=["HISTORICAL_REPLAY","TIMELY_CSV_UNVERIFIED"];
+  const groups=Object.fromEntries(names.map(name=>[name,{
+    total:0,pending:0,resolved:0,skipped:0,conflicts:0,wins:0,
+    winRate:null,averageNetR:null,netR:null,closedDrawdownR:null,
+    byRule:{}
+  }]));
+  const all={};
   for(const c of cases){
     verifyCase(c);
     const g=groups[c.origin];g.total++;
+    const key=c.origin+"|"+c.rule;
+    if(!all[key])all[key]={count:0,results:[]};
+    const r=all[key];
     if(c.status==="PENDING")g.pending++;
-    if(c.status==="RESOLVED"){g.resolved++;sums[c.origin]+=c.outcome.netR}
+    if(c.status==="RESOLVED"){
+      g.resolved++;r.results.push({at:c.signalTime,value:c.outcome.netR});
+      r.count++;
+      if(c.outcome.netR>0)g.wins++;
+    }
     if(c.status==="SKIPPED")g.skipped++;
     if(c.status==="CONFLICT")g.conflicts++;
   }
-  for(const name of Object.keys(groups)){
-    const g=groups[name];
-    g.netR=g.resolved?sums[name]:null;
-    g.averageNetR=g.resolved?sums[name]/g.resolved:null;
+  for(const name of names){
+    const g=groups[name],series=[];
+    for(const rule of RULES){
+      const data=all[name+"|"+rule];
+      if(!data)continue;
+      const results=data.results.sort((a,b)=>a.at-b.at);
+      let eq=0,peak=0,dd=0,wins=0;
+      for(const x of results){eq+=x.value;peak=Math.max(peak,eq);dd=Math.max(dd,peak-eq);if(x.value>0)wins++}
+      g.byRule[rule]={
+        count:results.length,wins,winRate:results.length?wins/results.length:null,
+        averageNetR:results.length?eq/results.length:null,
+        netR:results.length?eq:null,closedDrawdownR:results.length?dd:null
+      };
+      series.push(...results);
+    }
+    series.sort((a,b)=>a.at-b.at);
+    let equity=0,peak=0,dd=0;
+    for(const x of series){equity+=x.value;peak=Math.max(peak,equity);dd=Math.max(dd,peak-equity)}
+    g.netR=g.resolved?equity:null;
+    g.averageNetR=g.resolved?equity/g.resolved:null;
+    g.winRate=g.resolved?g.wins/g.resolved:null;
+    g.closedDrawdownR=g.resolved?dd:null;
   }
-  return {schema:"trader.paper-summary.v1",sourceVerified:false,brokerFillsVerified:false,
+  return {
+    schema:"trader.paper-summary.v1",sourceVerified:false,brokerFillsVerified:false,
     verifiedForwardCases:0,groups,
-    warning:"Replay and user-attested CSV observations are NEVER combined into independently verified forward performance."};
+    warning:"Research-only closed-trade R metrics. Replay and user-attested timely CSV observations are NEVER independently verified forward performance."
+  };
 }
 root.TraderPaperLedger=Object.freeze({
   version:"PAPER-LEDGER-v1",newCase,verifyCase,reconcile,appendResolution,appendNote,summary,prefixFor,checksum
