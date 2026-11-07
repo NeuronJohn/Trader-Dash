@@ -245,6 +245,8 @@ test("offline standalone workspace leaves provider controls disabled",async()=>{
   assert.equal(x.S.fx.server,false);
   assert.equal(x.nodes.fxFetch.disabled,true);
   assert.equal(x.nodes.fxLoad.disabled,true);
+  assert.equal(x.nodes.fxForwardStart.disabled,true);
+  assert.equal(x.nodes.fxForwardStop.disabled,true);
 });
 
 function fxFixture(day){
@@ -412,10 +414,14 @@ test("locally captured forward case renders as separate research evidence and op
   assert.equal(x.nodes.forwardSummary.children.length,4);
   assert.equal(x.nodes.forwardEntries.children.length,1);
   assert.equal(x.S.forward.journal.summary.actualBrokerFills,0);
+  assert.equal(x.packet().evidence.forward_practice,undefined);
+  x.S.scopes.forward=true;
+  assert.equal(x.packet().evidence.forward_practice.summary.averageModeledR,1.2);
   await x.nodes.forwardEntries.children[0].listeners.click[0]();
   assert.equal(x.S.replay,true);
   assert.equal(x.visible().bars.at(-1).time,signal.time);
   assert.equal(x.S.fxSignalPreview.outcomeIncluded,false);
   assert.equal(x.packet().evidence.fx_historical_signal.status,
     "HISTORICAL_PRACTICE_CONFIRMATION_NOT_EXECUTED");
+  assert.equal(x.packet().evidence.forward_practice,undefined);
 });
