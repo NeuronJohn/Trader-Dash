@@ -23,6 +23,7 @@ This creates a stronger **locally recorded prospective practice observation** th
 8. Once the complete 07:00–11:00 New York session has been received, the local server can record a second, **modeled** result under the frozen original FXC-001 rules. It never fills an actual broker order. Model statuses are `MODELED`, `SKIPPED` or `CONFLICT`; interrupted sessions remain pending.
 9. **Stop observer** halts new fetch scheduling while keeping saved SQLite history. Closing the local server also ends the daemon process-bound observer. Restarting the server leaves monitoring OFF; no old signals are imported into forward status.
 10. The local paper journal shows recorded counts, pending cases, modeled results and average modeled R from the **full SQLite record**, plus the latest 50 cases. A user-triggered refresh requests current local statistics. The interface may read status roughly every 30 seconds while open; these are **local status GETs**, not extra OANDA provider polls.
+11. Click **Back up local evidence** from the prospective paper journal. The local Python server creates a distinct transactionally consistent **SQLite online backup**, verifies it with SQLite `PRAGMA quick_check`, and shows the resulting private path. This is a file saved under your user-local `TraderResearch/backups` folder, not a browser download. It contains market price receipts, revision audits and prospective observation/outcome tables. Do not share it publicly.
 
 **Important:** The FX Strategy Lab's independent historical results still exist, including hidden training/holdout exposure. They are **not** automatically merged into forward-paper statistics.
 
@@ -51,6 +52,7 @@ All statistics remain unqualified: `actualBrokerFills=0`, `verifiedLivePerforman
 - No account ID, balances, credential values or actual order routes are stored or emitted. Do not run a real-money token in this proof of concept.
 - User consent to include the local journal in AI context is a separate, **off-by-default** evidence toggle, `Prospective practice journal`. Server-side numeric AI evidence is loaded from **SQLite**, not from user/browser-provided values. When historical replay is enabled, forward outcomes are withheld to prevent hindsight contamination.
 - The observer itself runs on the user's own PC. It cannot monitor after the local server quits and has no ChatGPT automation or push-notification bridge.
+- A **POST /api/market/backup** action creates a unique local snapshot through SQLite's online backup API and verifies the snapshot. It accepts **no destination path** or arbitrary options, requires same-origin and a session token, and never copies a live WAL database file raw. Both the browser JSON archive and the server SQLite snapshot remain useful: they are distinct artifacts and neither alone is a complete substitute for the other.
 - Some stock Windows Python installs lack the `America/New_York` IANA time zone. A deterministic 2007+ US Eastern daylight-saving fallback supports the 2026 research period without installing additional packages.
 - All local SQLite tables, hashes, browser controls and OS timestamps remain under the user's control. They **cannot provide independently trusted, exchange-signed evidence** without a separate protected receipt service.
 
@@ -58,10 +60,10 @@ All statistics remain unqualified: `actualBrokerFills=0`, `verifiedLivePerforman
 
 New tests:
 - `local/tests/test_forward_monitor.py`: 14 unit tests with entirely fabricated FX candles for timely capture, zero retroactive reclassification, no-gap rule detection, New York DST, duplicate suppression, delayed model outcome, stop-first exits, changed candle prefixes and provider revisions, all-history statistics, and disabled-by-default watcher.
-- `local/tests/test_workspace_server.py`: strict forward start/stop scopes and anti-CSRF token tests, read-only status response, local AI context opt-in, forged client profitability rejection and replay suppression.
+- `local/tests/test_workspace_server.py`: strict forward start/stop scopes and anti-CSRF token tests, read-only status response, fixed-path backup permission tests, local AI context opt-in, forged client profitability rejection and replay suppression.
 - `tests/session-ui.test.js`: observer arm/stop UI, safe localhost actions, read-only source, time-scoped research journal and chart outcome-blind reveal.
 
-**65/65 JavaScript regression tests** passed in an equivalent V8 test environment. Additional Python tests are **written but have not been executed** in the user's actual Windows Python environment. A real OANDA practice connection, browser rendering and real receipt persistence must be verified before production or claims of a working real-money trading system.
+**65/65 JavaScript regression tests** passed in an equivalent V8 test environment, including UI tests of the backup action. More Python backup-integrity tests were authored but are not yet executed. Additional Python tests are **written but have not been executed** in the user's actual Windows Python environment. A real OANDA practice connection, browser rendering and real receipt persistence must be verified before production or claims of a working real-money trading system.
 
 Developer validation commands from repository root:
 
@@ -73,14 +75,14 @@ Manual acceptance checks:
 - Validate the real fxPractice API completion timing under a dedicated practice credential and confirm that 30-second boundary fetches return the newly completed candle.
 - Test no false capture when arming in the middle of a session, crossing daylight saving, losing internet, restarting the server, receiving a revision or importing old data.
 - Confirm the exact versioned Python forward detector and JS FXC-001 historical detector produce matching confirmations and modeled results on identical fixture candles; cross-language parity is **not yet fully established** by real-source tests.
-- Verify sqlite3 data persistence on Windows, and a WAL-safe one-click backup before relying on the journal.
+- Verify SQLite journal persistence, new one-click WAL-safe snapshot creation and an actual backup **restore** on Windows before relying on the journal.
 - Verify that TopstepX remains unconnected and no live execution route is available.
 
 ## Next work toward a trading-ready dashboard
 
 1. Run Python tests and genuine OANDA practice collection on Windows, compare server-side vs JavaScript strategy results, and fix any divergences before forward qualification.
 2. Add full **market coverage** auditing (every expected M5 slot and no-signal day), connectivity losses, missing signals and exclusion reasons. Missing data must not be disguised as favorable selection.
-3. Implement SQLite WAL-safe backups and optionally a user-owned local tray process so stopping the browser cannot accidentally stop the server; any auto-start must still be explicitly authorized.
+3. Validate SQLite backup **restore**, user-friendly backup organization and optionally a local tray process so closing the browser does not confuse monitoring state; any auto-start must still be explicitly authorized.
 4. Add read-only real fill/balance reconciliation for eligible OANDA and Topstep accounts (with careful management of order-capable credentials), account-specific risk and drawdown rules, untouched forward-paper validation and statistical uncertainty.
 5. Build professional source-grounded AI training reviews: explain misses, rule violations, missed/favorable setups, visual annotations and confidence bounds, without delegating capital allocation or orders to the model.
 
