@@ -1,4 +1,4 @@
-# TopstepX read-only workstation v0.11 (development)
+# TopstepX read-only workstation v0.12 (development)
 
 ## What exists
 - Local, browser-based /topstep dashboard reusing the project research server, plus / for the earlier research workspace.
@@ -184,3 +184,29 @@ Synthetic demo mode retains a prominent provenance banner, source-tagged analyst
 **Tests:** `tests/decision-desk.test.js` adds deterministic no-data, stale-data, no-quote, no-account, exposure, ineligible real account, missing tick metadata, long/short draft and unverifiable stats checks. `local/tests/test_decision_review.py` checks narrow prompt context and response validation. The offline HTTP regression suite verifies the extra script route and fail-closed invalid/stale AI request. Thirteen focused Decision Desk engine cases were executed successfully against the GitHub branch source in the development environment; the full Python/Node/Windows end-to-end suite and real TopstepX Practice account connection remain unverified.
 
 **Next:** run Windows offline preflight and browser interactions, then connect broker-source setup observations to the automatic review journal and outcome verification. Do not conflate structural observations with trade signals or validated expectancy.
+
+## v0.12 — forward observation journal (still no broker key required)
+
+The Decision Desk now has an integrated prospective observation loop: a completed-candle, prior-20-bar range break is recorded once into an account/contract/timeframe/source-keyed SQLite table **only when the user/account stream and selected live quote are fresh** and the signal candle was just confirmed. It cannot retrospectively import an entire chart as though the system observed historical setups in real time. The original reference close and discovery time are immutable.
+
+The journal then waits until **five strictly later, fully closed, contiguous candles** are available. It measures signed fifth-bar close change relative to the original signal close, not actual entry/exit P&L. It never assumes an order, entry fill, stop fill, fee, commission, or target execution. Missing required bars become excluded DATA_GAP observations; a corrected original signal price becomes SIGNAL_REVISED and is excluded; corrected later prices are re-evaluated when the full window overlaps the available data. Events older than the price history window remain pending or previously recorded rather than being fabricated.
+
+The Journal is included in the existing `GET /topstep/api/bars` response only when the frontend supplies a valid `account_id`. There is no new panel hierarchy or user action needed. Beside the Decision Desk's explanation, it shows the observed / pending / matured / excluded counts. Recent observation details are accessible under one collapsed "See recorded observations" disclosure. Fewer than **30** matured observations receive **no displayed directional fraction**; with 30 or more, the positive-direction fraction is descriptive only—not a setup win probability or profitability estimate. Signals can overlap, and no inferential statistical significance is asserted.
+
+The real journal database is `topstep-observation-journal.sqlite3`; the completely synthetic offline demo writes **only** `demo-observation-journal.sqlite3`. The source namespace is also keyed within the database. A demo dataset cannot become live trading evidence. Demo OHLC fixtures are now pure functions of contract + timestamp so earlier candles never silently repaint when new bars arrive.
+
+The local AI Decision Desk receives a bounded, source-checked count of matured and awaiting observations. It cannot invent a setup-specific hit rate or overwrite the deterministic observation math, statuses, account risk data, prices, or trade journal.
+
+### Validation and remaining work
+
+- `local/tests/test_observation_journal.py`: completed-bar timing, five-bar maturation, missing bars, revisions, deduplication, account and source separation, restart persistence, no retrospective signal capture and malformed OHLC rejection.
+- `local/tests/test_topstep_demo_http.py`: journal through actual localhost candle endpoint, API account authorization and separate demo/live journal files.
+- `local/tests/test_demo_broker.py`: timestamp-stable historical synthetic candles.
+
+Run `Run-Topstep-Preflight.cmd` locally to execute the full Python suite, JavaScript tests and Vite build with no Topstep subscription or paid GitHub Actions. **These new Python and HTTP tests are committed but not yet executed in this session.** The dashboard JavaScript syntax and DOM references were checked in this development environment; a full Windows browser smoke test and real TopstepX Practice-account verification are still outstanding.
+
+### What is NOT being measured
+
+These outcomes are **five-bar directional reference price changes**, not trades. They cannot establish win rate, risk/reward, maximum favorable/adverse excursion within an actual filled position, transaction costs, risk-adjusted expectancy, or whether a strategy outperforms a null hypothesis. They are not evidence that Topstep officially permits a trade. Future strategy validation requires timestamped fill assumptions, out-of-sample testing, realistic costs, sample-size and dependency controls, and actual broker reconciliations.
+
+The visual goal remains one compact Decision Desk bridging chart, market status, risk worksheet and observations—no separate chat requirement.
