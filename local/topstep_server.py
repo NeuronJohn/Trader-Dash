@@ -153,7 +153,7 @@ class Handler(research.Handler):
             return self._reply(403, {"ok": False, "error": "Session token required"})
         try:
             if path == "/topstep/api/health":
-                return self._reply(200, {"ok": True, "mode": "TOPSTEPX_READ_ONLY",
+                return self._reply(200, {"ok": True, "mode": "DEMO_SYNTHETIC_NO_NETWORK" if DEMO_MODE else "TOPSTEPX_READ_ONLY",
                     "configured": DEMO_MODE or bool(os.getenv("TOPSTEPX_USERNAME") and os.getenv("TOPSTEPX_API_KEY")),
                     "synthetic": DEMO_MODE,
                     "clock_utc": iso_utc(utc_now()), "execution": False})
@@ -172,7 +172,8 @@ class Handler(research.Handler):
             if path == "/topstep/api/contracts":
                 symbol = self._query().get("symbol", ["MES"])[0]
                 values = client().contracts(symbol)
-                return self._reply(200, {"ok": True, "contracts": values})
+                return self._reply(200, {"ok": True, "contracts": values,
+                    "synthetic": DEMO_MODE})
             if path == "/topstep/api/bars":
                 contract = self._query().get("contract", [""])[0]
                 minutes = self._get_int("minutes", (1, 5, 15, 30, 60))
@@ -181,7 +182,8 @@ class Handler(research.Handler):
                 return self._reply(200, {"ok": True, "bars": bars,
                     "synthetic": DEMO_MODE, "context": observation,
                     "contract": contract, "minutes": minutes,
-                    "synced_at": iso_utc(utc_now()), "transport": "REST_POLL"})
+                    "synced_at": iso_utc(utc_now()),
+                    "transport": "OFFLINE_SYNTHETIC" if DEMO_MODE else "REST_POLL"})
             if path == "/topstep/api/account":
                 account_id = self._get_int("id")
                 days = self._get_int("days", (7, 30, 90, 365))
