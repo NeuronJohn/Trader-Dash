@@ -95,8 +95,12 @@ def snapshot_account(account_id, days, force=False):
         ledger().save(account_id, snap["legs"])
         all_legs = ledger().history(account_id, snap["since"])
         stats = calculate_stats(all_legs, snap["since"], snap["synced_at"])
+        if DEMO_MODE:
+            stats["source"] = "SYNTHETIC_OFFLINE_FIXTURE"
+            stats["warning"] = "SYNTHETIC DATA: invented account and fills; no Topstep connection"
         try:
             completed = summarize_completed(all_legs)
+            completed["source"] = "SYNTHETIC_OFFLINE_FIXTURE" if DEMO_MODE else "TOPSTEPX_BROKER_REST"
         except (ValueError, KeyError, TypeError, OverflowError):
             # Fail closed on inconsistent broker legs; never invent a completed trade.
             completed = {"status": "UNAVAILABLE", "error":
@@ -179,6 +183,8 @@ class Handler(research.Handler):
                 minutes = self._get_int("minutes", (1, 5, 15, 30, 60))
                 bars = client().bars(contract, minutes)
                 observation = analyze_structure(bars, minutes)
+                if DEMO_MODE:
+                    observation["source"] = "SYNTHETIC_OFFLINE_FIXTURE"
                 return self._reply(200, {"ok": True, "bars": bars,
                     "synthetic": DEMO_MODE, "context": observation,
                     "contract": contract, "minutes": minutes,
