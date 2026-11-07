@@ -2,13 +2,30 @@
 setlocal
 cd /d "%~dp0"
 where py >nul 2>&1
-if %errorlevel%==0 (
-  py -3 local\topstep_server.py
+if not errorlevel 1 (
+  set "PY=py -3"
 ) else (
-  python local\topstep_server.py
+  set "PY=python"
 )
+
+%PY% -c "import sys; assert sys.version_info >= (3,10); from zoneinfo import ZoneInfo; ZoneInfo('America/Chicago')" >nul 2>&1
 if errorlevel 1 (
-  echo.
-  echo Could not start Topstep read-only workstation. Install Python 3.10+.
-  pause
+  echo Checking Python 3.10+ and Windows timezone support...
+  %PY% -c "import sys; assert sys.version_info >= (3,10)" >nul 2>&1
+  if errorlevel 1 goto fail
+  echo Installing missing IANA timezone database for Chicago sessions...
+  %PY% -m pip install --user tzdata
+  if errorlevel 1 goto fail
+  %PY% -c "from zoneinfo import ZoneInfo; ZoneInfo('America/Chicago')" >nul 2>&1
+  if errorlevel 1 goto fail
 )
+
+%PY% local\topstep_server.py
+if errorlevel 1 goto fail
+exit /b 0
+
+:fail
+echo.
+echo Topstep read-only workstation could not start. Python 3.10+ and internet access for first-time timezone setup may be required.
+pause
+exit /b 1
