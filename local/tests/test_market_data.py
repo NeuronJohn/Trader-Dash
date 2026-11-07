@@ -216,6 +216,43 @@ class MarketDataTests(unittest.TestCase):
             "SELECT COUNT(*) FROM receipts"
         ).fetchone()[0],1) # first page persists with its own audit receipt
 
+    def test_wal_safe_snapshot_contains_provider_bars_and_forward_events(self):
+        from unittest.mock import patch as with_patch
+        database=Path(self.tmp.name)/"test.sqlite3"
+        candles=self.normalize(candle())
+        market_receipt=md.ingest(self.conn,symbol="EUR_USD",candles=candles,
+                                 received_ms=self.received)
+        self.conn.execute("""
+          CREATE TABLE IF NOT EXISTS forward_observations (
+            signal_id TEXT PRIMARY KEY, evidence TEXT NOT NULL
+          )
+        """)
+        self.conn.execute("""
+          INSERT INTO forward_observations(signal_id,evidence)
+          VALUES(?,?)
+        """,("demo-observation","local, nonexecuted"))
+        self.conn.commit()
+        with with_patch.dict(os.environ,{"TRADER_MARKET_DB":str(database)},clear=False):
+            details=md.backup_store()
+        backup=Path(details["backup_path"])
+        self.assertTrue(backup.is_file())
+        self.assertIn("backups",str(backup))
+        self.assertTrue(details["ok"])
+        self.assertGreater(details["size_bytes"],0)
+        self.assertFalse(details["broker_order_data"])
+        snapshot=sqlite3.connect(str(backup))
+        try:
+            self.assertEqual(snapshot.execute(
+                "SELECT COUNT(*) FROM bars").fetchone()[0],1)
+            self.assertEqual(snapshot.execute(
+                "SELECT COUNT(*) FROM forward_observations").fetchone()[0],1)
+            self.assertEqual(snapshot.execute(
+                "PRAGMA quick_check").fetchone()[0],"ok")
+        finally:snapshot.close()
+        with with_patch.dict(os.environ,{"TRADER_MARKET_DB":str(Path(self.tmp.name)/"missing.sqlite3")},clear=False):
+            with self.assertRaisesRegex(md.MarketError,"No locally recorded"):
+                md.backup_store()
+
     def test_no_token_required_to_read_offline_status(self):
         with patch.dict(os.environ,{"TRADER_MARKET_DB":str(Path(self.tmp.name)/"test.sqlite3")},
                         clear=False):
