@@ -279,6 +279,54 @@ def validate_context(payload: object) -> dict:
             "trading_qualification": "NONE",
         }
 
+    fx = evidence.get("fx_historical_signal")
+    safe_fx = None
+    if (source_info["kind"] == "oanda-fxpractice" and isinstance(fx, dict)
+            and fx.get("status") == "HISTORICAL_PRACTICE_CONFIRMATION_NOT_EXECUTED"):
+        safe_fx = {
+            "rule": "FXC-001",
+            "version": compact_text(fx.get("version"), 40),
+            "day": compact_text(fx.get("day"), 20),
+            "side": compact_text(fx.get("side"), 10),
+            "confirmation_close_utc": compact_text(fx.get("signal_time_utc"), 40),
+            "box_high": finite_price(fx.get("box_high")),
+            "box_low": finite_price(fx.get("box_low")),
+            "signal_spread_pips": finite_price(fx.get("signal_spread_pips")),
+            "provider_receipt_id": compact_text(fx.get("source_receipt"), 120),
+            "later_bars_visible": bool(fx.get("later_bars_visible", False)),
+            "status": "HISTORICAL_PRACTICE_CONFIRMATION_NOT_EXECUTED",
+            "actual_order_fills": None,
+        }
+    fx_report = evidence.get("fx_research")
+    safe_fx_report = None
+    if (source_info["kind"] == "oanda-fxpractice" and
+            not bool(replay.get("enabled")) and isinstance(fx_report, dict)
+            and fx_report.get("status") == "UNVERIFIED_FX_RESEARCH_ONLY"):
+        training = fx_report.get("training", {})
+        if not isinstance(training, dict):
+            training = {}
+        safe_fx_report = {
+            "rule": "FXC-001",
+            "version": compact_text(fx_report.get("version"), 40),
+            "status": "UNVERIFIED_FX_RESEARCH_ONLY",
+            "training_trades": (training.get("trades")
+                                if type(training.get("trades")) is int else None),
+            "training_avg_net_R": finite_price(training.get("avgNetR")),
+            "training_win_rate": finite_price(training.get("winRate")),
+            "reserve_unseen": bool(fx_report.get("reserve_unseen", True)),
+            "reserve_results": None,
+            "broker_fills_verified": False,
+            "trade_qualification": "NONE",
+        }
+        if not safe_fx_report["reserve_unseen"]:
+            reserve = fx_report.get("reserve")
+            if isinstance(reserve, dict):
+                safe_fx_report["reserve_results"] = {
+                    "trades": reserve.get("trades")
+                              if type(reserve.get("trades")) is int else None,
+                    "avg_net_R": finite_price(reserve.get("avgNetR")),
+                }
+
     candidate = payload.get("pattern_candidate")
     if isinstance(candidate, dict):
         candidate = {
@@ -316,12 +364,14 @@ def validate_context(payload: object) -> dict:
         "candidate": candidate,
         "mes_signal": safe_mes_signal,
         "mes_session_experiment": safe_mes_simulation,
+        "fx_historical_signal": safe_fx,
+        "opt_in_fx_research": safe_fx_report,
         "opt_in_paper_research": safe_paper,
         "exploratory_simulation": safe_simulation,
         "user_selected_prior_cases": safe_cases,
         "disclaimers": [
             "Historical structural matches have not been tested for edge",
-            "No connected broker fills, bid/ask spread, margin, or verified prices",
+            "No connected broker fills, account pricing, margin, or verified execution costs",
             "Model can only review provided evidence; no order actions possible",
         ],
     }
