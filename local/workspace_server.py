@@ -337,6 +337,24 @@ def validate_context(payload: object) -> dict:
                     "avg_net_R": finite_price(reserve.get("avgNetR")),
                 }
 
+    prospective = evidence.get("forward_practice")
+    safe_forward = None
+    if (source_info["kind"] == "oanda-fxpractice" and
+            not bool(replay.get("enabled")) and
+            isinstance(prospective, dict) and
+            prospective.get("status") ==
+            "PROVIDER_RECEIVED_LOCAL_PRACTICE_OBSERVATIONS_NOT_BROKER_FILLS"):
+        # Do not trust client-supplied results. The handler will only populate
+        # numeric fields directly from the locally owned SQLite event ledger.
+        safe_forward = {
+            "rule": "FXC-001",
+            "status": "LOCAL_PROSPECTIVE_PRACTICE_RESEARCH_ONLY",
+            "source": "oanda-fxpractice",
+            "summary": None, "recent_cases": [],
+            "independent_market_timestamp_attestation": False,
+            "verified_broker_fills": 0, "trade_qualification": "NONE",
+        }
+
     candidate = payload.get("pattern_candidate")
     if isinstance(candidate, dict):
         candidate = {
@@ -376,6 +394,7 @@ def validate_context(payload: object) -> dict:
         "mes_session_experiment": safe_mes_simulation,
         "fx_historical_signal": safe_fx,
         "opt_in_fx_research": safe_fx_report,
+        "opt_in_forward_practice": safe_forward,
         "opt_in_paper_research": safe_paper,
         "exploratory_simulation": safe_simulation,
         "user_selected_prior_cases": safe_cases,
@@ -600,6 +619,30 @@ class Handler(BaseHTTPRequestHandler):
                                   "execution": False, "paid_calls": 0})
                 return
             evidence = validate_context(payload)
+            if evidence.get("opt_in_forward_practice") is not None:
+                # Numeric facts come exclusively from the server-owned event
+                # records, never from browser-provided modeled P&L or counts.
+                symbol = evidence["source"]["symbol"]
+                if symbol in forward.PIPS and market.storage_path().is_file():
+                    db = market.open_store()
+                    try:
+                        overview = forward.summary_store(db, symbol)
+                        cases = forward.list_records(db, symbol, 8)
+                    finally:
+                        db.close()
+                else:
+                    overview, cases = forward.summary([]), []
+                evidence["opt_in_forward_practice"]["summary"] = overview
+                evidence["opt_in_forward_practice"]["recent_cases"] = [
+                    {
+                        "day": c["day"], "side": c["side"],
+                        "status": c["status"],
+                        "modeled_net_R": (
+                            c["outcome"].get("netR") if c["status"]=="MODELED" and
+                            isinstance(c["outcome"],dict) else None
+                        ),
+                    } for c in cases
+                ]
             started = time.monotonic()
             if not ANALYST_GATE.acquire(blocking=False):
                 self._reply(429, {"ok": False, "error": "Local analyst is already processing a request"})
