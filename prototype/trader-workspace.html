@@ -278,6 +278,21 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .paper-stat-line{font-size:10px;color:#91a7b3;padding:5px 0;display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid #26343d}
 .paper-stat-line strong{font:11px var(--mono);color:#cfdfdd}
 @media(max-width:550px){.paper-cohorts{grid-template-columns:1fr}}
+
+.market-feed{padding:10px 14px;margin-bottom:12px;display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:7px 14px;align-items:center}
+.feed-identity{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px}
+.feed-identity .eyebrow{font-size:9px}
+.feed-identity strong{font-size:12px;color:#d0e4e1}
+.feed-status{font-size:10px;color:#a1b4bd;border-left:1px solid #34434c;padding-left:10px}
+.feed-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.feed-actions .field{margin:0;width:110px;font-size:11px;padding:8px 10px}
+.feed-actions .btn{font-size:11px}
+.feed-detail{grid-column:1/-1;font-size:10px;color:#8e9faa;line-height:1.55;margin:0}
+.feed-status.ok{color:#9edfc0}
+.feed-status.warn{color:#e8be8e}
+.feed-actions button:disabled{opacity:.45;cursor:not-allowed}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media(max-width:850px){.market-feed{grid-template-columns:1fr}.feed-actions{justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -310,6 +325,24 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     <section id="view-workspace">
       <div class="workspace-title"><div><h1>Market workspace</h1><p>Find candidate setups, understand the structure, then decide what deserves a note.</p></div>
       <div class="action-row"><input id="importCsv" type="file" accept=".csv,text/csv" multiple class="hidden"><button class="btn" id="importBtn">Import candles</button><button class="btn" id="resetDemo">Demo</button><button class="btn primary" id="scanTop">⌕ &nbsp; Find setups</button><button class="btn" id="capturePaper" title="Preserve the selected MES confirmation as a research checkpoint">Save MES case</button></div></div>
+      <div class="market-feed panel">
+        <div class="feed-identity">
+          <span class="eyebrow">READ-ONLY MARKET DATA</span>
+          <strong>OANDA Practice</strong>
+          <span class="feed-status" id="fxStatus">Local provider not connected</span>
+        </div>
+        <div class="feed-actions">
+          <label class="sr-only" for="fxSymbol">Practice currency pair</label>
+          <select class="field" id="fxSymbol" title="OANDA practice currency pair">
+            <option value="EUR_USD">EUR/USD</option>
+            <option value="GBP_USD">GBP/USD</option>
+            <option value="USD_JPY">USD/JPY</option>
+          </select>
+          <button class="btn" id="fxLoad" disabled>Open saved prices</button>
+          <button class="btn primary" id="fxFetch" disabled>Fetch completed candles</button>
+        </div>
+        <p class="feed-detail" id="fxDetail">Launch the local server to use practice data. No automatic polling or order execution.</p>
+      </div>
       <div class="panel chartbox">
         <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span><button class="btn subtle" id="latestCase" title="Jump to most recently detected historical candidate">No scan yet</button></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
         <div class="chart-toolbar">
@@ -539,7 +572,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,mesSignals:null,mesSignalPreview:null,paperCases:[],paperSelected:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,mesSignals:null,mesSignalPreview:null,paperCases:[],paperSelected:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),fx:{server:false,configured:false,busy:false,market:null},
     scopes:{candles:true,marks:true,notes:true,history:false,experiments:false,paper:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -622,7 +655,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       lows.push(S.mesSignalPreview.boundary,S.mesSignalPreview.structuralStop);
     }
     const maxPrice=Math.max(...highs),minPrice=Math.min(...lows);
-    const padding=Math.max((maxPrice-minPrice)*.10,Math.abs(maxPrice)*.00003,.005);
+    const minPadding=S.data.source==="oanda-fxpractice"?(.00002*(S.data.symbol==="USD_JPY"?100:1)):.005;
+    const padding=Math.max((maxPrice-minPrice)*.10,Math.abs(maxPrice)*.00003,minPadding);
     const max=maxPrice+padding,min=minPrice-padding,plotW=width-padR-padL,plotH=height-padT-padB;
     return {a,w:width,h:height,L:padL,T:padT,R:padR,B:padB,plotW,plotH,max,min,step:plotW/Math.max(a.bars.length,1)}
   }
@@ -651,7 +685,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     ctx.fillStyle="#0f1a23";ctx.fillRect(m.L,m.T,m.plotW,m.plotH);
     ctx.font="11px ui-monospace,Consolas,monospace";ctx.textBaseline="middle";
     const range=m.max-m.min;
-    const digits=range<.05?5:range<1?4:range<20?3:2;
+    const digits=S.data.source==="oanda-fxpractice"?(S.data.symbol==="USD_JPY"?3:5):(range<.05?5:range<1?4:range<20?3:2);
     ctx.textAlign="left";
     for(let t=0;t<=5;t++){
       const p=m.min+range*t/5,y=yFor(p,m);
@@ -1238,15 +1272,15 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
 
   function updateContext(){const a=visible(),bars=a.bars;
-    $("chartSymbol").textContent=S.data.symbol+ " · "+(S.data.source==="synthetic"?"Practice":"Imported data");
+    $("chartSymbol").textContent=S.data.symbol+ " · "+(S.data.source==="synthetic"?"Practice":S.data.source==="oanda-fxpractice"?"OANDA practice":"Imported data");
     $("chartPeriod").textContent=S.data.timeframe;$("chartCount").textContent=S.data.bars.length+" bars";
     $("sideSymbol").textContent=S.data.symbol;
-    $("sideMarketSub").textContent=S.data.source==="synthetic"?"Synthetic training chart":"User CSV / unverified";
+    $("sideMarketSub").textContent=S.data.source==="synthetic"?"Synthetic training chart":S.data.source==="oanda-fxpractice"?"OANDA Practice · read only":"User CSV / unverified";
     const demo=S.data.source==="synthetic";
-    $("sourceTag").textContent=demo?"SYNTHETIC":"USER CSV";
+    $("sourceTag").textContent=demo?"SYNTHETIC":S.data.source==="oanda-fxpractice"?"OANDA PRACTICE":"USER CSV";
     $("sourceTag").classList.toggle("imported",!demo);
     $("aiMarks").textContent=activeDrawings().length+" attached";
-    $("aiSource").textContent=S.data.source==="synthetic"?"Synthetic demo":"Imported / unverified";
+    $("aiSource").textContent=S.data.source==="synthetic"?"Synthetic demo":S.data.source==="oanda-fxpractice"?"OANDA Practice · API":"Imported / unverified";
     $("aiSymbol").textContent=S.data.symbol;
     $("aiCases").textContent=S.snapshots.length+" snapshots";
     $("zoomLabel").textContent=S.visible+" bars";
@@ -1279,6 +1313,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       {label:"Observed range",detail:"High "+fmt(high)+" · Low "+fmt(low)+" · Range "+fmt(spread)+". No inferred support or resistance quality."}
     ];
     if(S.data.source==="synthetic")output.push({label:"Data integrity",detail:"These candles were generated mathematically for layout/testing. No market or strategy conclusions are valid.",warn:true});
+    else if(S.data.source==="oanda-fxpractice")output.push({label:"Data integrity",detail:"Authenticated OANDA practice historical candles with stored first-receipt metadata. No exchange-signed timestamps or broker fills. The feed is not a real-money execution quote.",warn:true});
     else output.push({label:"Data integrity",detail:"CSV prices have not been verified against an authorized provider. Timeframes, fees, spreads and sessions are not authenticated.",warn:true});
     return output;
   }
@@ -2402,6 +2437,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     document.querySelectorAll("[data-scope]").forEach(b=>b.addEventListener("click",()=>{const name=b.dataset.scope;S.scopes[name]=!S.scopes[name];b.classList.toggle("active",S.scopes[name]);b.setAttribute("aria-pressed",String(S.scopes[name]));S.packet=null}));
     $("runExperiment").addEventListener("click",runResearchExperiment);
     $("runMes").addEventListener("click",runMesResearch);
+    $("fxFetch").addEventListener("click",fetchPracticeCandles);
+    $("fxLoad").addEventListener("click",loadPracticeCandles);
     $("capturePaper").addEventListener("click",()=>capturePaperCase(true));
     $("paperCaptureLatest").addEventListener("click",()=>capturePaperCase(false));
     $("paperReconcile").addEventListener("click",reconcilePaperCases);
