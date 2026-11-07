@@ -614,7 +614,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <button class="active" data-scope="candles" aria-pressed="true">Candles</button>
         <button class="active" data-scope="marks" aria-pressed="true">Annotations</button>
         <button class="active" data-scope="notes" aria-pressed="true">Draft notes</button>
-        <button data-scope="history" aria-pressed="false">Journal cases</button><button data-scope="experiments" aria-pressed="false">Experiment statistics</button><button data-scope="paper" aria-pressed="false">My paper research</button>
+        <button data-scope="history" aria-pressed="false">Journal cases</button><button data-scope="experiments" aria-pressed="false">Experiment statistics</button><button data-scope="paper" aria-pressed="false">My paper research</button><button data-scope="forward" aria-pressed="false">Prospective practice journal</button>
       </div><p class="small dim" style="margin-top:10px;line-height:1.7">Only selected sources enter a prepared context packet. Sensitive account credentials are never included.</p></div>
       </details>
       <details class="ai-section advanced"><summary>Local observations</summary><div id="aiObservations" style="margin-top:9px"></div></details>
@@ -645,7 +645,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
   const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,mesSignals:null,mesSignalPreview:null,paperCases:[],paperSelected:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),fx:{server:false,configured:false,busy:false,market:null},forward:{monitor:null,journal:null,error:null},fxSignals:null,fxRunRecord:null,fxSignalPreview:null,fxReserveVisible:false,
-    scopes:{candles:true,marks:true,notes:true,history:false,experiments:false,paper:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
+    scopes:{candles:true,marks:true,notes:true,history:false,experiments:false,paper:false,forward:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
   const iso = ms => new Date(ms).toISOString();
@@ -1451,6 +1451,24 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         reserve:r.holdoutRevealedAt?r.report.reserve:null
       };
     }
+    if(S.scopes.forward && !S.replay && S.data.source==="oanda-fxpractice" &&
+       S.forward.journal?.symbol===S.data.symbol){
+      const journal=S.forward.journal;
+      result.evidence.forward_practice={
+        status:"PROVIDER_RECEIVED_LOCAL_PRACTICE_OBSERVATIONS_NOT_BROKER_FILLS",
+        rule:"FXC-001",source:"oanda-fxpractice",
+        summary:journal.summary,
+        recent:journal.observations.slice(0,10).map(c=>({
+          day:c.day,side:c.side,rule:c.rule,status:c.status,
+          signal_time_utc:new Date(c.signalTime).toISOString(),
+          captured_at_utc:new Date(c.capturedAt).toISOString(),
+          modeled_net_R:c.status==="MODELED"?c.outcome?.netR:null
+        })),
+        verified_broker_fills:0,external_timestamp_attestation:false
+      };
+    }
+    if(S.scopes.forward && S.replay)
+      result.missing.push("Prospective journal results withheld during historical candle reveal");
     if(S.scopes.paper && !S.replay){
       const scoped=S.paperCases.filter(c=>c.seriesSymbol===S.data.symbol);
       result.evidence.paper_research={
@@ -2125,6 +2143,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       S.scopes,S.mesSignalPreview?.signalBarStart,S.mesRun?.id,
       S.fxSignalPreview?.signalBarStart,S.fxRunRecord?.id,
       S.scopes.paper?S.paperCases.map(c=>[c.id,c.status,c.events.length]):null,
+      S.scopes.forward&&!S.replay?S.forward.journal?.summary:null,
       S.scopes.marks?activeDrawings():null,
       S.scopes.notes?[$("setupName").value,$("thesis").value]:null,
       S.scopes.experiments?S.experiment?.id:null,
