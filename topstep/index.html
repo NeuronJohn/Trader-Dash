@@ -184,7 +184,8 @@ function renderJournal(){
    : " · Too few matured observations to display a directional fraction";
  set("deskJournal",(demoMode?"SYNTHETIC · ":"")+"Forward journal: "+j.recorded+
    " observed, "+j.awaiting_future_bars+" awaiting future bars, "+count+
-   " measured, "+j.excluded_data_gaps+" excluded for gaps"+rate+
+   " measured, "+j.excluded_data_gaps+" gaps, "+
+   (j.excluded_revised_signals||0)+" revised signals excluded"+rate+
    ". Price-only, not fills or P&L.");
  const rows=$("deskJournalRows");rows.replaceChildren();
  for(const item of (j.recent||[])){
@@ -192,7 +193,7 @@ function renderJournal(){
    const date=new Date(item.observed_at_ms).toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
    const result=item.status==="MATURED"&&Number.isFinite(item.directional_pct)
       ? (item.directional_pct>=0?"+":"")+item.directional_pct.toFixed(3)+"% price change"
-      : item.status==="DATA_GAP"?"Excluded · missing bars":"Awaiting bars";
+      : item.status==="DATA_GAP"?"Excluded · missing bars":item.status==="SIGNAL_REVISED"?"Excluded · source revised":"Awaiting bars";
    for(const value of [date,item.direction,result]){
      const td=document.createElement("td");td.textContent=value;tr.appendChild(td);
    }
