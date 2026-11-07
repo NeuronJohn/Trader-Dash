@@ -1,4 +1,4 @@
-# TopstepX read-only workstation v0.8 (development)
+# TopstepX read-only workstation v0.9 (development)
 
 ## What exists
 - Local, browser-based /topstep dashboard reusing the project research server, plus / for the earlier research workspace.
@@ -104,3 +104,45 @@ A local isolated test copy of the stream/frame and completed-candle algorithms p
 3. Point-in-time broker-source scanner and walk-forward strategy experiments with real trading costs, risk/position tag capture, and validated no-lookahead evidence.
 4. Agreement-specific Topstep maximum loss limit, drawdown and daily loss-rule monitoring derived from **verified authoritative account data**, not historical P&L approximations.
 5. Only separately authorized, supervised trade execution, with explicit consent and safety gates, if ever requested.
+
+## v0.9 — no-API offline rehearsal and fail-closed UI
+
+This version includes an **explicitly synthetic** broker and stream provider at `local/demo_broker.py`. It exercises the *same* HTTP endpoints, dashboard, journal SQLite class, fee-adjusted ledger and completed-bar market-context engine as the live implementation. The two fake futures expiries for MES and one for MNQ, 42 deterministic round trips, a voided execution, synthetic chart candles and invented quotes are purely test fixtures. They are not Topstep data, any past trading performance or real streaming.
+
+### Run without any credentials
+Download/extract the latest `foundation/topstepx-readonly-v6` branch and double-click **`Start-Topstep-Demo.cmd`** on Windows. A local browser opens at `http://127.0.0.1:8765/topstep`. If your environment lacks Python 3.10+ or the Chicago timezone database, the launcher explains the problem; it may install the freely available `tzdata` package. The demo never needs a Topstep API key, `websocket-client`, a ProjectX subscription or an external trading service.
+
+Alternatively from a terminal:
+```sh
+# Windows CMD
+set TRADER_DEMO=1
+python local/topstep_server.py
+
+# PowerShell
+$env:TRADER_DEMO="1"
+python local/topstep_server.py
+```
+Stop the process with Ctrl+C. Never put actual credentials into the demo launcher.
+
+### What to exercise
+- Select `SYNTHETIC Practice — Not Topstep` and review synthetic performance history.
+- Switch between both synthetic MES expiries and the MNQ contract; ensure chart, research structure and quote labels cannot retain the previous instrument.
+- Change timeframes and history windows (7/30/90/365 days), inspect the completed-trade list and fee accounting.
+- Inspect the mock market/user stream status and synthetic bid/ask changes.
+- Use the separate Research workspace link to confirm the older MES strategy lab, annotation tools and local Ollama integration are still accessible. It is not yet wired to receive broker-source live candles.
+
+**The page displays a prominent 'OFFLINE SYNTHETIC DEMO' banner** and the API returns `synthetic: true`. The browser refuses to display account snapshots or candle responses whose provenance does not match the server's declared mode.
+
+Demo fills are stored only under `TraderDash/demo-fixture-ledger.sqlite3`, never in `topstep-ledger.sqlite3`. The demo server returns no broker token and makes no real broker connection; account canTrade is false and no order endpoints exist.
+
+### Automated no-API smoke test
+```sh
+python -m unittest local.tests.test_topstep_demo_http -v
+```
+This starts the actual server on an ephemeral localhost port with no API credentials, checks synthetic account data and completed-trade accounting, loads candle history and completed-bar indicators, starts the synthetic stream, checks CSRF/session-token protections, verifies no broker order route exists, and confirms the live database was not touched. It is **committed but has not been executed in this chat session**; run locally and inspect failures before using the release branch.
+
+### v0.9 reliability hardening
+When a broker account refresh fails, last-seen values are blanked and an explicit synchronization failure is shown. On market stream failure, previous bid/ask and last-price values are cleared. Changing account or futures expiry clears the existing selection's quotes/charts. Real API credentials are never stored or copied into the offline mode. The Windows demo launcher skips unneeded WebSocket package installation.
+
+### Boundaries
+Even a full successful offline rehearsal **does not prove actual Topstep connectivity, correct broker fee reconciliation or production readiness**. Next release gate remains a Practice-account API smoke test with authorized credentials kept exclusively on your machine, matched against the official TopstepX UI. No order execution is permitted by either development mode.
