@@ -477,16 +477,19 @@ class Handler(BaseHTTPRequestHandler):
                 if symbol not in forward.PIPS:
                     raise forward.ForwardError("Unsupported forward observation symbol")
                 records = []
+                totals = forward.summary([])
                 if market.storage_path().is_file():
                     db = market.open_store()
                     try:
                         records = forward.list_records(db, symbol, 50)
+                        totals = forward.summary_store(db, symbol)
                     finally:
                         db.close()
                 self._reply(200, {
                     "ok": True, "monitor": FORWARD.state(),
-                    "journal": {"symbol": symbol, "summary": forward.summary(records),
-                                "observations": records},
+                    "journal": {"symbol": symbol, "summary": totals,
+                                "observations": records,
+                                "visibleLimit": 50},
                     "broker_orders": False
                 })
             except (ValueError, forward.ForwardError) as exc:
