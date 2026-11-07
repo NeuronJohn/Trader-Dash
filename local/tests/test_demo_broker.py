@@ -32,6 +32,9 @@ class DemoFixtureTests(unittest.TestCase):
         a=self.broker.accounts()[0]
         self.assertEqual(a["id"],DEMO_ACCOUNT_ID)
         self.assertFalse(a["canTrade"])
+        net=sum((x["profitAndLoss"] or 0)-x["fees"]-x["commissions"]
+                for x in self.broker._fills if not x["voided"])
+        self.assertAlmostEqual(a["balance"],round(50000+net,2))
 
     def test_synthetic_stream_respects_contract_selection(self):
         bridge=DemoBridge()
