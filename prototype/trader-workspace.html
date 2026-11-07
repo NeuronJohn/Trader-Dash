@@ -293,6 +293,28 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .feed-actions button:disabled{opacity:.45;cursor:not-allowed}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 @media(max-width:850px){.market-feed{grid-template-columns:1fr}.feed-actions{justify-content:flex-start}}
+
+.fx-lab{margin-bottom:14px;overflow:hidden}
+.fx-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:4px 16px 14px}
+.fx-fields .label{font-size:10px}
+.fx-fields .field{margin-top:6px;width:100%;padding:9px 10px;font-size:12px}
+.fx-caution{margin:0 16px 12px;font-size:11px;line-height:1.55;color:#bfcaaf;border:1px solid #3e4840;background:#1b2825;border-radius:7px;padding:10px}
+.fx-findings,.fx-results{border-top:1px solid var(--hair);padding:12px 16px}
+.fx-findings .fx-cases{display:flex;gap:8px;flex-wrap:wrap;max-height:245px;overflow:auto;margin:10px 0}
+.fx-hit{border:1px solid #31444a;border-radius:7px;background:#14232b;padding:10px 12px;min-width:180px;flex:1;text-align:left}
+.fx-hit:hover{border-color:#81aea6}
+.fx-hit strong{display:block;font-size:11px;color:#d1e2e1}
+.fx-hit small{display:block;font-size:10px;margin-top:5px;color:#9eaeb9}
+.fx-results .fx-statgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:12px}
+.fx-stat{border:1px solid #2b4147;border-radius:7px;padding:10px;background:#14242b;min-width:0}
+.fx-stat span{font-size:10px;color:#96a6af;display:block}
+.fx-stat strong{font:18px var(--mono);display:block;margin-top:8px;color:#d4e3e0}
+.fx-result-trade{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #293941}
+.fx-result-trade .detail{font-size:11px;color:#bed0d6}
+.fx-result-trade .dim{font-size:10px}
+.fx-results .warning{font-size:11px;line-height:1.6}
+@media(max-width:800px){.fx-fields,.fx-results .fx-statgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:450px){.fx-fields{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -432,6 +454,28 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <div class="summary-item"><p class="eyebrow">Validated strategies</p><div class="value">00</div><div class="hint">No historical tests imported</div></div>
         <div class="summary-item"><p class="eyebrow">Approved for live</p><div class="value">00</div><div class="hint">Requires independent risk checks</div></div>
       </div>
+      <section class="panel fx-lab hidden" id="fxLab">
+        <div class="research-head">
+          <div>
+            <div class="eyebrow">OANDA fxPractice · frozen hypothesis · historical only</div>
+            <h3>FX contraction → breakout <span class="pill">FXC-001</span></h3>
+            <p class="small muted">New York 07:00–11:00 ET · 08:00–08:40 contraction · M5 bid/ask OHLC · no orders</p>
+          </div>
+          <div class="action-row">
+            <button class="btn" id="fxScan">Find FX confirmations</button>
+            <button class="btn primary" id="fxRun">Run FX research</button>
+          </div>
+        </div>
+        <div class="fx-fields">
+          <label class="label">Max spread (pips)<input class="field mono" id="fxMaxSpread" type="number" min="0" max="20" step=".1" value="2"></label>
+          <label class="label">Slippage / side (pips)<input class="field mono" id="fxSlip" type="number" min="0" max="10" step=".1" value=".2"></label>
+          <label class="label">Fees round-trip (pips)<input class="field mono" id="fxFee" type="number" min="0" max="30" step=".1" value="0"></label>
+          <label class="label">Target risk multiple<input class="field mono" id="fxTarget" type="number" min=".5" max="5" step=".25" value="1.5"></label>
+        </div>
+        <div class="fx-caution">Rule frozen: baseline 07:20–08:00, compression 08:00–08:40, first closing breakout after 08:40, modeled next-open entry before 10:00 ET; stop across the compression box. Longs buy ask/sell bid; shorts sell bid/buy ask. An indicative OHLC model is not a broker fill.</div>
+        <div class="fx-findings" id="fxMatches"><p class="small muted">Open recorded OANDA practice candles, then search historical confirmations without viewing future results.</p></div>
+        <div class="fx-results" id="fxResults" aria-live="polite"><p class="empty">Run the strategy on a complete received NY morning session to inspect costs, rejected days and a hidden reserved period.</p></div>
+      </section>
       <section class="panel mes-research" id="mesLab">
         <div class="research-head">
           <div>
@@ -560,6 +604,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 <div class="toast hidden" role="status" id="toast"></div>
 <script src="session-engine.js"></script>
 <script src="paper-ledger.js"></script>
+<script src="fx-research.js"></script>
 <script>
 "use strict";
 (function(){
@@ -572,7 +617,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,mesSignals:null,mesSignalPreview:null,paperCases:[],paperSelected:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),fx:{server:false,configured:false,busy:false,market:null},
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,mesSignals:null,mesSignalPreview:null,paperCases:[],paperSelected:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),fx:{server:false,configured:false,busy:false,market:null},fxSignals:null,fxRunRecord:null,fxSignalPreview:null,fxReserveVisible:false,
     scopes:{candles:true,marks:true,notes:true,history:false,experiments:false,paper:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -1212,7 +1257,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   }
 
   function selectCandidate(candidate){
-    S.selectedCandidate=candidate;S.mesPreview=null;S.mesSignalPreview=null;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
+    S.selectedCandidate=candidate;S.mesPreview=null;S.mesSignalPreview=null;S.fxSignalPreview=null;S.selection=[Math.max(0,candidate.lookbackStart),candidate.confirmationIndex];
     const end=S.replay?S.reveal:S.data.bars.length-1;
     S.viewportEnd=Math.min(end,candidate.index+Math.round(S.visible*.35));
     S.packet=null;
@@ -1400,9 +1445,13 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   function resetDataset(data){S.data=data;S.drawings=[];S.replayDrawings=[];S.selectedDrawing=null;S.selection=null;S.hover=null;S.replay=false;S.reveal=data.bars.length-1;S.viewportEnd=null;S.strategy=null;S.selectedCandidate=null;
     $("replayToggle").checked=false;S.packet=null;$("packetPreview").textContent="Select evidence and prepare an analysis.";
     S.experiment=null;S.mesRun=null;S.mesPreview=null;S.mesSignals=null;S.mesSignalPreview=null;
+    S.fxSignals=null;S.fxRunRecord=null;S.fxSignalPreview=null;S.fxReserveVisible=false;
+    $("fxLab").classList.toggle("hidden",data.source!=="oanda-fxpractice");
+    $("mesLab").classList.toggle("hidden",data.source==="oanda-fxpractice");
+    $("paperLab").classList.toggle("hidden",data.source==="oanda-fxpractice");
     $("mesConfirm").checked=false;
     $("simTick").value=data.source==="synthetic"?"0.25":"";
-    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderPaperLedger();}
+    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderPaperLedger();renderFxResearch();}
   async function importFile(event){
     const files=[...(event.target.files||[])].slice(0,12);
     event.target.value="";
@@ -1749,7 +1798,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       let last=-Infinity;
       const bars=market.bars.map((raw,i)=>{
         const b={time:raw.time,open:raw.open,high:raw.high,low:raw.low,close:raw.close,
-          bidClose:raw.bidClose,askClose:raw.askClose,
+          bidOpen:raw.bidOpen,bidHigh:raw.bidHigh,bidLow:raw.bidLow,bidClose:raw.bidClose,
+          askOpen:raw.askOpen,askHigh:raw.askHigh,askLow:raw.askLow,askClose:raw.askClose,
           receivedAt:raw.receivedAt,receiptId:raw.receiptId};
         if(!Number.isSafeInteger(b.time)||b.time<=last||b.time%300000!==0||
           !["open","high","low","close","bidClose","askClose"].every(k=>Number.isFinite(b[k])&&b[k]>0)||
@@ -2550,6 +2600,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("runExperiment").addEventListener("click",runResearchExperiment);
     $("runMes").addEventListener("click",runMesResearch);
     $("fxFetch").addEventListener("click",fetchPracticeCandles);
+    $("fxScan").addEventListener("click",scanFxHistory);
+    $("fxRun").addEventListener("click",runFxResearch);
     $("fxLoad").addEventListener("click",loadPracticeCandles);
     $("fxSymbol").addEventListener("change",checkMarketStatus);
     $("capturePaper").addEventListener("click",()=>capturePaperCase(true));
@@ -2640,7 +2692,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderRunHistory();renderPaperLedger();refreshMarketLibrary(true);checkLocalRuntime();checkMarketStatus();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderRunHistory();renderPaperLedger();renderFxResearch();refreshMarketLibrary(true);checkLocalRuntime();checkMarketStatus();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
