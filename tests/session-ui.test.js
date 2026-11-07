@@ -214,7 +214,8 @@ test("OANDA practice controls load provider receipts without leaking tokens or e
   assert.equal(outbound.headers["X-Trader-Token"],"local-session-token");
   assert.deepEqual(JSON.parse(outbound.body),{symbol:"EUR_USD",count:500});
   assert.equal(outbound.body.includes("password"),false);
-  await x.loadPracticeCandles();
+  // The successful explicit fetch automatically opens the locally persisted
+  // candle chart, without requiring a second manual interaction.
   assert.equal(x.S.data.source,"oanda-fxpractice");
   assert.equal(x.S.data.symbol,"EUR_USD");
   assert.equal(x.S.data.bars.length,2);
