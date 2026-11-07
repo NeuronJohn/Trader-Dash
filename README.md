@@ -4,7 +4,7 @@ This repository is being developed as a local-first, chart-first trading researc
 
 ## Open the current research prototype
 
-On the working branch **foundation/market-data-receipts-oanda-v6**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
+On the working branch **foundation/fx-spread-research-v7**, download the full repository ZIP and extract it. Double-click **Start-Trader-Research.cmd** on Windows (requires Python 3.10+). It opens the workspace in your browser at http://127.0.0.1:8765/. The service binds to 127.0.0.1 only and stops when you close its terminal. There are no broker order endpoints.
 
 If Python is not installed, open `prototype/trader-workspace.html` directly in Edge/Chrome. It still supports a synthetic demonstration chart, imported historical CSVs, annotations, a market library, local pattern discovery, a basic strategy simulator, journal snapshots and exports, but **not local Ollama AI**.
 
@@ -42,6 +42,14 @@ The first authenticated-provider **read-only research adapter** has been added f
 Use **Start-Trader-Practice.cmd** to enter a dedicated PRACTICE token privately into a local Python process (never in GitHub or the HTML page). Or keep using **Start-Trader-Research.cmd** without provider credentials. The OANDA source is strictly separate from MES/Topstep futures research, and there are no order routes or background price monitoring.
 
 Read [OANDA Practice Market Data v0.6](docs/PRACTICE_MARKET_DATA_V6.md) for the provider-specific setup, receipt audit, credential limits, backups and current Topstep API considerations.
+
+## v0.7 — FXC-001 strategy experiments and longer OANDA history
+
+The OANDA practice chart now feeds a separate FX research laboratory. **FXC-001** is a frozen New York morning contraction/breakout hypothesis that detects historical completed-bar setups and simulates conservative **bid/ask-aware** next-open entries and stop-first exits. Its costs are modeled in pips and R, not verified account dollars. Training and reserved results are separated, saved experiment assumptions are versioned, and a selected confirmation opens a no-future chart reveal.
+
+A **Backfill history** action manually retrieves up to 12 pages (12,000 completed M5 candles) under a strict local-practice allowlist; the dashboard can open 16,000 stored bars. Older v0.6 receipts are extended by separate bid/ask high-low records, preserving their original first-seen observations. No background polling or order submission is added.
+
+Read [FX Strategy Research v0.7](docs/FX_SPREAD_RESEARCH_V7.md) for full rules, setup steps and evidence limitations. The strategies are **not validated profitable**. The branch is draft until actual Windows/OANDA practice tests pass.
 
 ## What has been built
 
