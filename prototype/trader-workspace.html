@@ -1402,6 +1402,28 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(S.scopes.notes)result.evidence.notes={setup:$("setupName").value,thesis:$("thesis").value};
     if(S.scopes.history && !S.replay)result.evidence.saved_cases=S.snapshots.slice(0,10).map(s=>({id:s.id,at:s.at,symbol:s.symbol,setup:s.setup,note:s.note,source:s.source}));
     if(S.scopes.history && S.replay)result.missing.push("Saved journal cases omitted from reveal mode to avoid retrospective outcome leakage");
+    if(S.fxSignalPreview){
+      const q=S.fxSignalPreview;
+      result.evidence.fx_historical_signal={
+        rule:q.rule,version:q.version,day:q.day,side:q.side,
+        signal_time_utc:iso(q.signalTime),box_high:q.boxHigh,
+        box_low:q.boxLow,signal_spread_pips:q.signalSpreadPips,
+        source_receipt:q.sourceReceiptId,
+        later_bars_visible:!S.replay||S.reveal>S.data.bars.findIndex(b=>b.time===q.signalBarStart),
+        status:"HISTORICAL_PRACTICE_CONFIRMATION_NOT_EXECUTED"
+      };
+    }
+    if(S.scopes.experiments&&S.fxRunRecord&&!S.replay&&S.fxRunRecord.datasetId===S.data.id){
+      const r=S.fxRunRecord;
+      result.evidence.fx_research={
+        rule:r.report.rule,version:r.report.version,
+        status:"UNVERIFIED_FX_RESEARCH_ONLY",
+        practice_source:true,broker_fills:0,
+        training:r.report.train,
+        reserve_unseen:!r.holdoutRevealedAt,
+        reserve:r.holdoutRevealedAt?r.report.reserve:null
+      };
+    }
     if(S.scopes.paper && !S.replay){
       const scoped=S.paperCases.filter(c=>c.seriesSymbol===S.data.symbol);
       result.evidence.paper_research={
@@ -1612,7 +1634,12 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       setup:$("setupName").value.trim(),note:$("thesis").value.trim(),
       selected_range:S.selection?[...S.selection]:null,window:{start_utc:iso(a.bars[0].time),end_utc:iso(a.bars[a.bars.length-1].time)},
       candles:b.map(x=>({...x})),drawings:activeDrawings().map(x=>({...x})),
-      image:canvas.toDataURL("image/png"),review:"",experiment_id:S.mesRun?.id||S.experiment?.id||S.strategy||null,
+      image:canvas.toDataURL("image/png"),review:"",experiment_id:S.fxRunRecord?.id||S.mesRun?.id||S.experiment?.id||S.strategy||null,
+      historical_fx_confirmation:S.fxSignalPreview?{
+        rule:S.fxSignalPreview.rule,side:S.fxSignalPreview.side,day:S.fxSignalPreview.day,
+        confirmation_close_utc:iso(S.fxSignalPreview.signalTime),
+        source_receipt:S.fxSignalPreview.sourceReceiptId,
+        status:"RESEARCH_MATCH_NO_FUTURE_OUTCOME"}:null,
       historical_mes_signal:S.mesSignalPreview?{
         rule:S.mesSignalPreview.rule,day:S.mesSignalPreview.day,
         observed_at:iso(S.mesSignalPreview.signalTime),
@@ -1691,7 +1718,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
            !r.report||typeof r.report!=="object"||
            !["RESEARCH_ONLY_NOT_VERIFIED","UNVERIFIED_RESEARCH_ONLY"].includes(r.report.status)||
            !(r.kind==="MES_SESSION_V1"?Array.isArray(r.report.allTrades)&&r.report.allTrades.length<=20000:
-             Array.isArray(r.report.trades)&&r.report.trades.length<=20000))
+             Array.isArray(r.report.trades)&&r.report.trades.length<=20000)||
+           (r.kind==="FXC_SESSION_V1"&&(
+             typeof r.fingerprint!=="string"||r.fingerprint.length>100||
+             r.source!=="oanda-fxpractice"||r.report.rule!=="FXC-001")))
           throw Error("Invalid historical research run");
       }
       for(const record of paperCases)paperEngine().verifyCase(record);
@@ -1922,6 +1952,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       S.data?.id,S.selectedCandidate?.id||"none",
       S.replay?S.reveal:"all",S.selection,bars.map(c=>c.time),
       S.scopes,S.mesSignalPreview?.signalBarStart,S.mesRun?.id,
+      S.fxSignalPreview?.signalBarStart,S.fxRunRecord?.id,
       S.scopes.paper?S.paperCases.map(c=>[c.id,c.status,c.events.length]):null,
       S.scopes.marks?activeDrawings():null,
       S.scopes.notes?[$("setupName").value,$("thesis").value]:null,
@@ -2465,7 +2496,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       row.append(htmlText("span",numberText(t.netPips,1)+"p · "+numberText(t.netR)+"R","dim"));
       const btn=document.createElement("button");btn.className="btn subtle";btn.textContent="Inspect";
       btn.addEventListener("click",()=>{
-        const signal=S.fxSignals?.matches.find(q=>q.day===t.day&&q.side===t.side);
+        const signal=S.fxSignals?.matches.find(q=>q.day===t.day&&q.side===t.side)
+          ||fxEngine().inspect(S.data.bars,{
+            symbol:S.data.symbol,source:S.data.source,config:record.options,asOfUtc:t.signalTime
+          }).matches.find(q=>q.day===t.day&&q.side===t.side);
         if(signal)focusFxSignal(signal);
         else toast("Run Find FX confirmations to open this trade's confirmation without the later outcome.");
       });row.append(btn);list.append(row);
@@ -2651,7 +2685,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     for(const entry of entries.slice(0,40)){
       const button=document.createElement("button");button.type="button";button.className="run-item";
       const left=document.createElement("div");
-      left.append(htmlText("strong",(entry.datasetSymbol||"Market")+" · "+(entry.kind==="MES_SESSION_V1" ? entry.options?.rule+" · MES session" : (entry.options?.type||"all")+" patterns")));
+      left.append(htmlText("strong",(entry.datasetSymbol||"Market")+" · "+(
+        entry.kind==="MES_SESSION_V1" ? entry.options?.rule+" · MES session" :
+        entry.kind==="FXC_SESSION_V1" ? "FXC-001 · bid/ask FX" :
+        (entry.options?.type||"all")+" patterns")));
       const when=entry.createdAt?new Date(entry.createdAt).toLocaleString():"Unknown date";
       left.append(htmlText("p",when+" · Target "+Number(entry.options?.targetR??entry.options?.rewardR??0)+"R · "+
         (entry.holdoutRevealedAt?"Reserve examined":"Reserve hidden")));
@@ -2665,6 +2702,31 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   async function loadExperimentRun(runId){
     const saved=S.experimentRuns.find(e=>e.id===runId);if(!saved)return;
     try{
+      if(saved.kind==="FXC_SESSION_V1"){
+        if(S.data.id!==saved.datasetId){
+          if(!S.fx.server)throw Error("Start the local service and open the original saved practice pair");
+          $("fxSymbol").value=saved.datasetSymbol;
+          await loadPracticeCandles();
+        }
+        if(S.data.id!==saved.datasetId||S.data.source!=="oanda-fxpractice")
+          throw Error("Original OANDA practice dataset is unavailable");
+        if(fxFingerprint(S.data.bars)!==saved.fingerprint)
+          throw Error("Recorded candle selection or prices changed. Saved FX outcome cannot be silently recomputed: use the original receipt snapshot.");
+        const o=saved.options;
+        $("fxMaxSpread").value=o.maxSpreadPips;
+        $("fxSlip").value=o.slippagePipsPerSide;
+        $("fxFee").value=o.feesPipsRoundTrip;
+        $("fxTarget").value=o.targetR;
+        const report=fxEngine().simulate(S.data.bars,{
+          symbol:S.data.symbol,source:S.data.source,config:o
+        });
+        S.fxRunRecord={...saved,report};
+        S.fxReserveVisible=Boolean(saved.holdoutRevealedAt);
+        renderFxResearch();setPage("lab");
+        $("fxLab").scrollIntoView?.({block:"start",behavior:"smooth"});
+        toast("Loaded frozen FXC-001 experiment on unchanged practice receipts.");
+        return;
+      }
       if(S.data.id!==saved.datasetId){
         let d=S.dataLibrary.find(x=>x.id===saved.datasetId);
         if(!d&&S.db)d=await dbAction("datasets","readonly",store=>store.get(saved.datasetId));
