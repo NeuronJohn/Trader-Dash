@@ -271,6 +271,13 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .paper-case-detail textarea{margin-top:8px;min-height:60px}
 .paper-case-detail .actions{margin-top:9px;display:flex;flex-wrap:wrap;gap:8px}
 @media(max-width:540px){.paper-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.paper-metric{padding:9px}.paper-metric strong{font-size:16px}}
+
+.paper-cohorts{padding:0 16px 12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.paper-cohort{border:1px solid #2e4149;border-radius:8px;background:#142029;padding:12px}
+.paper-cohort h4{font-size:11px;margin:0 0 8px;color:#dce9e7}
+.paper-stat-line{font-size:10px;color:#91a7b3;padding:5px 0;display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid #26343d}
+.paper-stat-line strong{font:11px var(--mono);color:#cfdfdd}
+@media(max-width:550px){.paper-cohorts{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -441,6 +448,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
           <div class="paper-metric"><strong>0</strong><span>Pending</span></div>
           <div class="paper-metric"><strong>0</strong><span>Resolved</span></div>
         </div>
+        <div id="paperCohorts" class="paper-cohorts"></div>
         <div class="paper-note">Imported CSV data is unverified. Timely observations are not authenticated live or broker-forward performance. The app does not monitor markets when closed.</div>
         <div id="paperCases" class="paper-cases" aria-live="polite"><p class="empty">No setup checkpoints saved. Find a MES confirmation first.</p></div>
         <div id="paperCaseDetail" class="paper-case-detail hidden"></div>
@@ -2131,6 +2139,30 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     for(const [value,name] of [[total,"Recorded checkpoints"],[pending,"Pending"],[resolved,"Modeled outcomes"]]){
       const b=document.createElement("div");b.className="paper-metric";
       b.append(htmlText("strong",String(value)),htmlText("span",name));stat.append(b);
+    }
+    const cohorts=$("paperCohorts");cohorts.textContent="";
+    for(const [name,label] of [
+      ["HISTORICAL_REPLAY","Historical replay"],
+      ["TIMELY_CSV_UNVERIFIED","Timely CSV · unverified"]
+    ]){
+      const g=summary.groups[name],box=document.createElement("div");box.className="paper-cohort";
+      box.append(htmlText("h4",label));
+      const rows=[
+        ["Recorded",String(g.total)],
+        ["Modeled outcomes",String(g.resolved)],
+        ["Average modeled R",g.averageNetR==null?"—":numberText(g.averageNetR)+"R"],
+        ["Modeled win rate",g.winRate==null?"—":(g.winRate*100).toFixed(1)+"%"],
+        ["Closed-outcome drawdown",g.closedDrawdownR==null?"—":g.closedDrawdownR.toFixed(2)+"R"],
+      ];
+      for(const [key,value] of rows){
+        const line=document.createElement("div");line.className="paper-stat-line";
+        line.append(htmlText("span",key),htmlText("strong",value));box.append(line);
+      }
+      const sub=htmlText("p",g.resolved<30?
+        "Small sample. Not enough evidence for an edge.":
+        "Historical results still require untouched validation and real fill data.","small muted");
+      sub.style.marginTop="10px";box.append(sub);
+      cohorts.append(box);
     }
     const note=$("paperLab").querySelector?.(".paper-note");
     if(note)note.textContent=summary.groups.TIMELY_CSV_UNVERIFIED.resolved+
