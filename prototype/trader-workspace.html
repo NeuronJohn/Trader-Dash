@@ -1765,8 +1765,15 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       });
       const when=market.last_received_utc_ms?
         new Date(market.last_received_utc_ms).toLocaleString():"unknown";
-      $("fxDetail").textContent=bars.length+" stored complete bars · latest receipt "+when+
-        " · "+market.conflicts+" revised-price conflicts · NO BROKER FILLS";
+      const pip=symbol==="USD_JPY"?.01:.0001;
+      const spreads=bars.map(b=>(b.askClose-b.bidClose)/pip).filter(Number.isFinite).sort((a,b)=>a-b);
+      const median=spreads[Math.floor(spreads.length/2)];
+      const maxSpread=spreads.at(-1);
+      const discontinuities=bars.filter((b,i)=>i>0&&b.time-bars[i-1].time>300000).length;
+      $("fxDetail").textContent=bars.length+" M5 bars · median closing bid/ask "+
+        median.toFixed(2)+" pips · max "+maxSpread.toFixed(2)+" pips · "+
+        discontinuities+" time gaps (including market closures) · received "+when+
+        " · "+market.conflicts+" revisions · NOT EXECUTABLE SPREADS";
       toast("Opened locally recorded "+symbol+" practice candles. Not an execution feed.");
     }catch(e){toast("Practice chart: "+e.message)}
     finally{S.fx.busy=false;setPracticeControls()}
