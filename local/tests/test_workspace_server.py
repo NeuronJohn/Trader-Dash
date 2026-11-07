@@ -263,6 +263,29 @@ class PracticeEndpointTests(unittest.TestCase):
         self.assertEqual(len(sent),1)
         return sent[0]
 
+    def test_evidence_backup_is_local_token_gated_and_never_accepts_paths(self):
+        sample={"ok":True,"backup_path":"C:\\local\\private\\snapshot.sqlite3",
+                "size_bytes":1000,"broker_order_data":False}
+        with patch.object(server.market,"backup_store",return_value=sample) as backed:
+            code,result=self.post({},path="/api/market/backup")
+        self.assertEqual(code,200)
+        self.assertFalse(result["broker_orders"])
+        self.assertTrue(result["backup"]["ok"])
+        backed.assert_called_once_with()
+        for body in [
+            {"destination":"C:\\external"},
+            {"url":"https://untrusted.invalid"},{"filename":"data.json"},
+            {"symbol":"EUR_USD"},
+        ]:
+            with patch.object(server.market,"backup_store") as blocked:
+                code,_=self.post(body,path="/api/market/backup")
+                self.assertEqual(code,422)
+                blocked.assert_not_called()
+        with patch.object(server.market,"backup_store") as blocked:
+            code,_=self.post({},path="/api/market/backup",token="INVALID")
+            self.assertEqual(code,403)
+            blocked.assert_not_called()
+
     def test_prospective_observer_start_requires_local_approval_and_token(self):
         state={"active":True,"symbol":"EUR_USD","brokerOrdersAllowed":False}
         with patch.object(server.FORWARD,"start",return_value=state) as started:
