@@ -315,6 +315,16 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .fx-results .warning{font-size:11px;line-height:1.6}
 @media(max-width:800px){.fx-fields,.fx-results .fx-statgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:450px){.fx-fields{grid-template-columns:1fr}}
+
+.forward-panel{margin:13px 0;overflow:hidden}
+.forward-panel .research-head{align-items:center}
+.forward-caution{margin:0 16px 12px;padding:10px;border:1px solid #554536;background:#24241f;border-radius:7px;color:#cdbd9b;font-size:11px;line-height:1.55}
+.forward-entries{padding:0 16px 15px;max-height:340px;overflow:auto}
+.forward-entry{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid #2d4148;border-radius:7px;background:#15242a;margin:6px 0;text-align:left;width:100%}
+.forward-entry strong{font-size:11px;color:#d5e3e5}
+.forward-entry small{display:block;font-size:10px;color:#8d9eaa;margin-top:5px}
+.forward-entry .forward-state{font:10px var(--mono);color:#d4c49b}
+.forward-entry:hover{border-color:#8caea7}
 </style>
 </head>
 <body>
@@ -363,8 +373,11 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
           <button class="btn" id="fxLoad" disabled>Open saved prices</button>
           <button class="btn primary" id="fxFetch" disabled>Refresh chart</button>
           <button class="btn" id="fxBackfill" disabled title="Manually retrieve up to 12 historical pages, never orders">Backfill history</button>
+          <button class="btn" id="fxForwardStart" disabled title="Explicitly start a read-only prospective local practice-price recorder">Arm paper observer</button>
+          <button class="btn" id="fxForwardStop" disabled title="Stop the local practice-price observer">Stop observer</button>
         </div>
         <p class="feed-detail" id="fxDetail">Launch the local server to use practice data. No automatic polling or order execution.</p>
+        <p class="feed-detail" id="fxForwardState">Paper observer off by default · no automated orders · saved observations remain local.</p>
       </div>
       <div class="panel chartbox">
         <div class="chart-header"><div class="flex"><div class="instrument-name" id="chartSymbol">DEMO · Synthetic</div><span class="sourcetag" id="sourceTag">SYNTHETIC</span><button class="btn subtle" id="latestCase" title="Jump to most recently detected historical candidate">No scan yet</button></div><div class="instrument-meta"><span id="chartPeriod">5m</span><span>·</span><span id="chartCount">320 bars</span><span>·</span><span>UTC</span></div></div>
@@ -476,6 +489,19 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
         <div class="fx-caution">Rule frozen: baseline 07:20–08:00, compression 08:00–08:40, first closing breakout after 08:40, modeled next-open entry before 10:00 ET; stop across the compression box. Longs buy ask/sell bid; shorts sell bid/buy ask. An indicative OHLC model is not a broker fill.</div>
         <div class="fx-findings" id="fxMatches"><p class="small muted">Open recorded OANDA practice candles, then search historical confirmations without viewing future results.</p></div>
         <div class="fx-results" id="fxResults" aria-live="polite"><p class="empty">Run the strategy on a complete received NY morning session to inspect costs, rejected days and a hidden reserved period.</p></div>
+      </section>
+      <section class="panel forward-panel hidden" id="forwardPanel">
+        <div class="research-head">
+          <div>
+            <div class="eyebrow">Opt-in · Locally received · Practice only</div>
+            <h3>Prospective paper observations <span class="pill">v0.8</span></h3>
+            <p class="small muted">The local server may check completed candles after you arm it. A setup is saved only if it is observed promptly after closing and after monitoring began.</p>
+          </div>
+          <button class="btn" id="fxForwardRefresh">Refresh local journal</button>
+        </div>
+        <div class="paper-summary" id="forwardSummary"></div>
+        <div class="forward-caution">Not an executable signal, independently timestamped feed, real account fill, or validated edge. The monitor runs only while your local Python server remains running. Historical backfills cannot become prospective cases.</div>
+        <div class="forward-entries" id="forwardEntries"><p class="empty">Observer is off. Arm it from the Market workspace when you are ready to collect future practice candles.</p></div>
       </section>
       <section class="panel mes-research" id="mesLab">
         <div class="research-head">
@@ -618,7 +644,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     "or-fail": {name:"Failed-breakout reversal",detail:"Freeze: opening-range definition; minimum excursion beyond range; re-entry window; reclaim-failure confirmation; stop beyond excursion high/low; exit at internal range level or time stop; news filters. Test multiple volatility regimes and avoid cherry-picked chart examples."},
     "fx-expand": {name:"FX contraction → expansion",detail:"Freeze: EUR/USD session overlap in UTC including DST handling; compression percentile and lookback; expansion threshold; spread/liquidity filter; invalidation price; exit logic and time stop. Test separate calendar periods with actual spot FX spreads and rollover conditions."}
   };
-  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,mesSignals:null,mesSignalPreview:null,paperCases:[],paperSelected:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),fx:{server:false,configured:false,busy:false,market:null},fxSignals:null,fxRunRecord:null,fxSignalPreview:null,fxReserveVisible:false,
+  const S = {page:"workspace",data:null,drawings:[],replayDrawings:[],tool:"inspect",visible:90,viewportEnd:null,replay:false,reveal:0,hover:null,selection:null,drag:null,candidates:[],selectedCandidate:null,selectedDrawing:null,drawingLoadId:0,markWriteQueue:Promise.resolve(),experiment:null,experimentRuns:[],holdoutExposures:new Set(),mesRun:null,mesPreview:null,mesSignals:null,mesSignalPreview:null,paperCases:[],paperSelected:null,dataLibrary:[],libraryMatches:[],libraryBusy:false,runtime:{token:null,ready:false,model:null},localAnalysisSerial:0,assistTimer:null,modelCache:new Map(),fx:{server:false,configured:false,busy:false,market:null},forward:{monitor:null,journal:null,error:null},fxSignals:null,fxRunRecord:null,fxSignalPreview:null,fxReserveVisible:false,
     scopes:{candles:true,marks:true,notes:true,history:false,experiments:false,paper:false},mode:"quiet",snapshots:[],selectedSnapshot:null,strategy:null,packet:null,db:null};
   function id(){return typeof crypto!=="undefined" && crypto.randomUUID?crypto.randomUUID():"local-"+Date.now()+"-"+Math.random().toString(36).slice(2)}
   const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
@@ -1496,9 +1522,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("fxLab").classList.toggle("hidden",data.source!=="oanda-fxpractice");
     $("mesLab").classList.toggle("hidden",data.source==="oanda-fxpractice");
     $("paperLab").classList.toggle("hidden",data.source==="oanda-fxpractice");
+    $("forwardPanel").classList.toggle("hidden",data.source!=="oanda-fxpractice");
     $("mesConfirm").checked=false;
     $("simTick").value=data.source==="synthetic"?"0.25":"";
-    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderPaperLedger();renderFxResearch();}
+    savePrefs();scanHistory(true);loadDrawingSet();renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderPaperLedger();renderFxResearch();renderForwardJournal();}
   async function importFile(event){
     const files=[...(event.target.files||[])].slice(0,12);
     event.target.value="";
@@ -1813,6 +1840,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("fxLoad").disabled=!S.fx.server||S.fx.busy;
     $("fxFetch").disabled=!S.fx.server||!S.fx.configured||S.fx.busy||!S.runtime.token;
     $("fxBackfill").disabled=!S.fx.server||!S.fx.configured||S.fx.busy||!S.runtime.token;
+    $("fxForwardStart").disabled=!S.fx.server||!S.fx.configured||!S.runtime.token||S.forward.monitor?.active;
+    $("fxForwardStop").disabled=!S.fx.server||!S.runtime.token||!S.forward.monitor?.active;
     const host=$("fxStatus");host.classList.remove("ok","warn");
     if(!S.fx.server){host.textContent="Local server offline";host.classList.add("warn")}
     else if(!S.fx.configured){host.textContent="Practice token not configured";host.classList.add("warn")}
@@ -1954,6 +1983,109 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       S.fx.busy=false;setPracticeControls();
     }
     if(successful)await loadPracticeCandles();
+  }
+
+
+  async function checkForwardStatus(){
+    try{
+      const symbol=$("fxSymbol").value;
+      if(!["EUR_USD","GBP_USD","USD_JPY"].includes(symbol))throw Error("Unsupported practice pair");
+      const response=await fetch("/api/forward/status?symbol="+encodeURIComponent(symbol),{
+        method:"GET",credentials:"same-origin",cache:"no-store"
+      });
+      if(!response.ok)throw Error("Local observer status unavailable");
+      const result=await response.json();
+      if(!result.ok||result.broker_orders!==false||!result.monitor||!result.journal||
+         result.journal.symbol!==symbol)throw Error("Invalid observer response");
+      S.forward.monitor=result.monitor;
+      S.forward.journal=result.journal;
+      S.forward.error=null;
+      const state=result.monitor.active?
+        "Observer ON: "+result.monitor.symbol+" · monitoring armed "+
+        new Date(result.monitor.armedAt).toLocaleString()+" · "+
+        result.monitor.pollCount+" fetches":"Paper observer OFF";
+      $("fxForwardState").textContent=state+(result.monitor.lastError?
+        " · Last error: "+result.monitor.lastError:"")+
+        " · local research only, no order routing.";
+    }catch(e){
+      S.forward.monitor=null;S.forward.journal=null;
+      S.forward.error=e.message;
+      $("fxForwardState").textContent="Observer unavailable. Start the v0.8 local server; no watcher active in this page.";
+    }
+    setPracticeControls();renderForwardJournal();
+  }
+  async function setForwardObserver(enabled){
+    if(!S.runtime.token||!S.fx.server){toast("Start the local Python server to control observations");return}
+    const symbol=$("fxSymbol").value;
+    if(enabled&&!window.confirm("Arm prospective OANDA PRACTICE observation for "+symbol+
+      "? The local server will fetch completed M5 candles about once every five minutes until stopped or closed. "+
+      "No account orders. Past signals will NOT be counted as new."))return;
+    try{
+      const response=await fetch(enabled?"/api/forward/start":"/api/forward/stop",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json","X-Trader-Token":S.runtime.token},
+        body:JSON.stringify(enabled?{symbol}:{})
+      });
+      const result=await response.json();
+      if(!response.ok||!result.ok||result.broker_orders!==false)
+        throw Error(result.error||"Observer action rejected by local server");
+      S.forward.monitor=result.monitor;
+      toast(enabled?"Practice observation armed. Only future timely confirmations can be recorded.":
+        "Practice observer disarmed. Saved local evidence remains.");
+      await checkForwardStatus();
+    }catch(e){toast("Observer: "+e.message);await checkForwardStatus()}
+  }
+  function startForwardObserver(){return setForwardObserver(true)}
+  function stopForwardObserver(){return setForwardObserver(false)}
+  function renderForwardJournal(){
+    const host=$("forwardEntries"),summary=$("forwardSummary");
+    if(!host||!summary)return;
+    host.textContent="";summary.textContent="";
+    const journal=S.forward.journal;
+    if(!journal){
+      host.append(htmlText("p","No connected local forward journal. Start the v0.8 server, then arm from the Market workspace.","small muted"));
+      return;
+    }
+    const metrics=journal.summary||{};
+    for(const [label,value] of [
+      ["Saved observations",metrics.recorded??0],
+      ["Awaiting full session",metrics.pending??0],
+      ["Modeled outcomes",metrics.modeled??0],
+      ["Mean modeled R",metrics.averageModeledR==null?"—":numberText(metrics.averageModeledR)+"R"],
+    ]){
+      const div=document.createElement("div");div.className="paper-metric";
+      div.append(htmlText("strong",String(value)),htmlText("span",label));
+      summary.append(div);
+    }
+    const cases=Array.isArray(journal.observations)?journal.observations:[];
+    if(!cases.length){
+      host.append(htmlText("p","No locally observed FXC confirmations yet. Recording begins only after arming, never from historical backfills.","small muted"));
+      return;
+    }
+    for(const c of cases){
+      const b=document.createElement("button");b.type="button";b.className="forward-entry";
+      const left=document.createElement("div");
+      left.append(htmlText("strong",c.day+" · "+c.side+" · "+c.rule),
+        htmlText("small","Observed "+new Date(c.capturedAt).toLocaleString()+
+          " · source "+String(c.sourceReceiptId).slice(0,12)+
+          (c.outcome?.status==="MODELED"?" · "+numberText(c.outcome.netR)+"R modeled":"")));
+      b.append(left,htmlText("span",c.status,"forward-state"));
+      b.addEventListener("click",async()=>{
+        try{
+          if(S.data.source!=="oanda-fxpractice"||S.data.symbol!==c.symbol||
+             !S.data.bars.some(x=>x.time===c.signalBarStart)){
+            $("fxSymbol").value=c.symbol;
+            await loadPracticeCandles();
+          }
+          if(S.data.bars.some(x=>x.time===c.signalBarStart)){
+            focusFxSignal({...c,signalBarStart:c.signalBarStart,
+              signalTime:c.signalTime,rule:c.rule,version:c.version,
+              outcomeIncluded:false});
+          }else toast("Source candle no longer in the current chart window. Preserve the SQLite receipt archive.");
+        }catch(e){toast("Unable to inspect observation: "+e.message)}
+      });
+      host.append(b);
+    }
   }
 
   async function checkLocalRuntime(){
@@ -2934,10 +3066,15 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("runMes").addEventListener("click",runMesResearch);
     $("fxFetch").addEventListener("click",fetchPracticeCandles);
     $("fxBackfill").addEventListener("click",backfillPracticeHistory);
+    $("fxForwardStart").addEventListener("click",startForwardObserver);
+    $("fxForwardStop").addEventListener("click",stopForwardObserver);
+    $("fxForwardRefresh").addEventListener("click",checkForwardStatus);
     $("fxScan").addEventListener("click",scanFxHistory);
     $("fxRun").addEventListener("click",runFxResearch);
     $("fxLoad").addEventListener("click",loadPracticeCandles);
-    $("fxSymbol").addEventListener("change",checkMarketStatus);
+    $("fxSymbol").addEventListener("change",()=>{
+      checkMarketStatus();checkForwardStatus();
+    });
     $("capturePaper").addEventListener("click",()=>capturePaperCase(true));
     $("paperCaptureLatest").addEventListener("click",()=>capturePaperCase(false));
     $("paperReconcile").addEventListener("click",reconcilePaperCases);
@@ -3026,7 +3163,9 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     window.addEventListener("resize",resized);
     if(typeof ResizeObserver!=="undefined")new ResizeObserver(resized).observe($("chartWrap"));
   }
-  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderRunHistory();renderPaperLedger();renderFxResearch();refreshMarketLibrary(true);checkLocalRuntime();checkMarketStatus();resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
+  async function start(){S.data=demo();S.reveal=S.data.bars.length-1;bind();await loadSaved();S.reveal=S.data.bars.length-1;await loadDrawingSet();$("simTick").value=S.data.source==="synthetic"?"0.25":"";scanHistory(true);renderExperiment();renderMesReport();renderMesScans();runMesAudit();renderRunHistory();renderPaperLedger();renderFxResearch();renderForwardJournal();refreshMarketLibrary(true);checkLocalRuntime();checkMarketStatus();checkForwardStatus();
+    if(typeof window.setInterval==="function")window.setInterval(checkForwardStatus,30000);
+    resized();toast("Research workspace ready · Historical scanner only · No broker connected");}
   start();
 })();
 </script>
