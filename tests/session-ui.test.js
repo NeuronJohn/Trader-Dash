@@ -5,6 +5,7 @@ import {dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import "../prototype/session-engine.js";
 import "../prototype/paper-ledger.js";
+import "../prototype/fx-research.js";
 
 const html=readFileSync(join(dirname(fileURLToPath(import.meta.url)),"../prototype/trader-workspace.html"),"utf8");
 const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
@@ -29,7 +30,9 @@ function createUI(fetchImpl){
   class Node{
     constructor(id){
       this.id=id;
-      this.value=id==="fxSymbol"?"EUR_USD":id==="scanFilter"||id==="simKind"?"all":
+      this.value=id==="fxSymbol"?"EUR_USD":
+        id==="fxMaxSpread"?"2":id==="fxSlip"?".2":id==="fxFee"?"0":id==="fxTarget"?"1.5":
+        id==="scanFilter"||id==="simKind"?"all":
         id==="mesRule"?"ORP-001":id==="mesSlip"?"1":id==="mesFee"?"2.5":
         id==="mesReward"?"2":id==="simSlip"||id==="simFee"?"1":
         id==="simTarget"?"2":id==="simHold"?"12":"";
@@ -67,7 +70,7 @@ function createUI(fetchImpl){
   const window={matchMedia(){return {matches:false}},addEventListener(){},confirm(){return true}};
   const inner=script.slice(script.indexOf("(function(){")+"(function(){".length,script.lastIndexOf("})();"));
   const patched=inner.replace(/\n\s*start\(\);\s*$/,
-    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger,checkMarketStatus,fetchPracticeCandles,loadPracticeCandles}));');
+    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger,checkMarketStatus,fetchPracticeCandles,loadPracticeCandles,backfillPracticeHistory,scanFxHistory,runFxResearch,renderFxResearch,focusFxSignal,fxFingerprint,revealFxReserve,loadExperimentRun}));');
   assert.notEqual(inner,patched);
   const launch=new Function("document","window","globalThis","indexedDB","localStorage","devicePixelRatio",
     "requestAnimationFrame","ResizeObserver","setTimeout","clearTimeout","fetch",patched);
@@ -192,11 +195,15 @@ test("OANDA practice controls load provider receipts without leaking tokens or e
       ollama:{reachable:false,model_available:false,model:"none"}});
     if(url==="/api/market/status")return answer({ok:true,market:{provider:"OANDA practice only",
       configured:true,stored_candle_counts:{EUR_USD:2}}});
+    if(url==="/api/market/backfill")return answer({ok:true,market_receipt:{
+      symbol:"EUR_USD",source:"oanda-fxpractice",
+      requests:12,added:10000,augmented:12,conflicts:0
+    }});
     if(url==="/api/market/fetch")return answer({ok:true,market_receipt:{
       symbol:"EUR_USD",source:"oanda-fxpractice",receipt_id:"source-receipt-123",
       added:2,repeated:0,conflicts:0
     }});
-    if(url==="/api/market/candles?symbol=EUR_USD&limit=1000")
+    if(url==="/api/market/candles?symbol=EUR_USD&limit=16000")
       return answer({ok:true,market:{
         symbol:"EUR_USD",source:"oanda-fxpractice",granularity:"M5",
         bars:[marketBar(0),marketBar(1)],last_received_utc_ms:Date.parse("2026-11-05T20:00:00Z"),
@@ -220,6 +227,13 @@ test("OANDA practice controls load provider receipts without leaking tokens or e
   assert.equal(x.S.data.symbol,"EUR_USD");
   assert.equal(x.S.data.bars.length,2);
   assert.equal(x.S.data.bars[0].bidClose,1.10025);
+  await x.backfillPracticeHistory();
+  const backfill=observed.find(x=>x.url==="/api/market/backfill");
+  assert.equal(backfill.method,"POST");
+  assert.deepEqual(JSON.parse(backfill.body),{symbol:"EUR_USD",pages:12});
+  assert.equal(backfill.headers["X-Trader-Token"],"local-session-token");
+  assert.equal(observed.some(x=>/order|trade|position/i.test(x.url)),false);
+
   assert.equal(x.packet().source.kind,"oanda-fxpractice");
   x.nodes.mesConfirm.checked=true;
   await x.runMesResearch();
@@ -231,4 +245,94 @@ test("offline standalone workspace leaves provider controls disabled",async()=>{
   assert.equal(x.S.fx.server,false);
   assert.equal(x.nodes.fxFetch.disabled,true);
   assert.equal(x.nodes.fxLoad.disabled,true);
+});
+
+function fxFixture(day){
+  const time=Date.parse(day+"T11:00:00Z"),ms=300000;
+  const make=(i,o=1.1008,h=1.1010,l=1.1006,c=1.1008)=>{
+    const half=.00005;
+    return {time:time+i*ms,open:o,high:h,low:l,close:c,
+      bidOpen:o-half,bidHigh:h-half,bidLow:l-half,bidClose:c-half,
+      askOpen:o+half,askHigh:h+half,askLow:l+half,askClose:c+half,
+      receivedAt:time+49*ms,receiptId:"test-receipt-"+day};
+  };
+  const bars=Array.from({length:48},(_,i)=>make(i));
+  for(let i=4;i<12;i++)bars[i]=make(i,1.1006,1.1025,1.0995,1.1008);
+  for(let i=12;i<20;i++)bars[i]=make(i,1.1008,1.1012,1.1004,1.1008);
+  bars[20]=make(20,1.1013,1.1020,1.1013,1.1016);
+  bars[21]=make(21,1.1018,1.1020,1.10165,1.1019);
+  bars[22]=make(22,1.1019,1.1046,1.1018,1.1043);
+  for(let i=23;i<48;i++)bars[i]=make(i,1.1040,1.1041,1.1039,1.1040);
+  return bars;
+}
+function fxDataset(){
+  const days=[];
+  for(let n=6;n<=16;n++){
+    const day="2026-07-"+String(n).padStart(2,"0");
+    const weekday=new Date(day+"T12:00:00Z").getUTCDay();
+    if(weekday>0&&weekday<6)days.push(day);
+  }
+  return {id:"oanda-fxpractice:EUR_USD",symbol:"EUR_USD",source:"oanda-fxpractice",
+    label:"OANDA practice receipts · test fixture",timeframe:"5m",
+    bars:days.flatMap(fxFixture)};
+}
+test("FX research saves only training results and not reserved trade outcomes",async()=>{
+  const x=await createUI();
+  x.resetDataset(fxDataset());
+  x.S.db=fakePaperDb();
+  await x.runFxResearch();
+  assert.equal(x.S.fxRunRecord.report.rule,"FXC-001");
+  assert.equal(x.S.experimentRuns[0].kind,"FXC_SESSION_V1");
+  const saved=x.S.experimentRuns[0];
+  assert.equal(saved.holdoutRevealedAt,null);
+  assert.equal(saved.report.reserve,null);
+  assert.deepEqual(saved.report.reserveTrades,[]);
+  assert.ok(saved.report.trades.every(t=>t.day<=saved.report.split.trainThrough));
+  assert.equal(saved.report.status,"RESEARCH_ONLY_NOT_VERIFIED");
+});
+test("FX scanner opens at confirmation with later provider candles concealed",async()=>{
+  const x=await createUI();x.resetDataset(fxDataset());
+  x.scanFxHistory();
+  assert.ok(x.S.fxSignals.matches.length>0);
+  const signal=x.S.fxSignals.matches[0];
+  x.focusFxSignal(signal);
+  assert.equal(x.S.replay,true);
+  assert.equal(x.visible().bars.at(-1).time,signal.signalBarStart);
+  assert.equal(x.S.fxSignalPreview.outcomeIncluded,false);
+  assert.equal(x.packet().evidence.fx_historical_signal.status,"HISTORICAL_PRACTICE_CONFIRMATION_NOT_EXECUTED");
+  assert.equal(x.packet().evidence.fx_research,undefined);
+});
+test("FX source is ineligible for MES and simulated futures risk research",async()=>{
+  const x=await createUI();x.resetDataset(fxDataset());
+  x.nodes.mesConfirm.checked=true;
+  await x.runMesResearch();
+  assert.equal(x.S.mesRun,null);
+  x.S.scopes.experiments=true;
+  await x.runFxResearch();
+  assert.equal(x.packet().evidence.fx_research.broker_fills,0);
+});
+test("reopening a saved FX experiment rejects a modified underlying provider receipt",async()=>{
+  const x=await createUI();x.resetDataset(fxDataset());
+  x.S.db=fakePaperDb();
+  await x.runFxResearch();
+  const record=x.S.experimentRuns[0],prior=x.fxFingerprint(x.S.data.bars);
+  assert.equal(record.fingerprint,prior);
+  x.S.data.bars[5]={...x.S.data.bars[5],askClose:x.S.data.bars[5].askClose+.0001};
+  assert.notEqual(x.fxFingerprint(x.S.data.bars),prior);
+  await x.loadExperimentRun(record.id);
+  assert.equal(x.S.fxRunRecord.id,record.id); // loaded record stays in memory; no silent replacement
+  assert.equal(x.S.experimentRuns[0].fingerprint,prior);
+});
+
+test("legacy OANDA bars missing bid/ask extremes are excluded, not silently approximated with midpoint",async()=>{
+  const x=await createUI();
+  const d=fxDataset(),whole=d.bars.length;
+  delete d.bars[8].askLow;
+  x.resetDataset(d);
+  assert.equal(x.S.data.bars.length,whole);
+  await x.runFxResearch();
+  assert.ok(x.S.fxRunRecord);
+  assert.equal(x.S.fxRunRecord.report.rejectedSessions.length,1);
+  assert.equal(x.S.fxRunRecord.report.completeSessions,8); // nine weekdays; one excluded
+  assert.ok(x.nodes.fxResults.children.length>0);
 });

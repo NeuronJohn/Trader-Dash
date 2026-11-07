@@ -279,6 +279,54 @@ def validate_context(payload: object) -> dict:
             "trading_qualification": "NONE",
         }
 
+    fx = evidence.get("fx_historical_signal")
+    safe_fx = None
+    if (source_info["kind"] == "oanda-fxpractice" and isinstance(fx, dict)
+            and fx.get("status") == "HISTORICAL_PRACTICE_CONFIRMATION_NOT_EXECUTED"):
+        safe_fx = {
+            "rule": "FXC-001",
+            "version": compact_text(fx.get("version"), 40),
+            "day": compact_text(fx.get("day"), 20),
+            "side": compact_text(fx.get("side"), 10),
+            "confirmation_close_utc": compact_text(fx.get("signal_time_utc"), 40),
+            "box_high": finite_price(fx.get("box_high")),
+            "box_low": finite_price(fx.get("box_low")),
+            "signal_spread_pips": finite_price(fx.get("signal_spread_pips")),
+            "provider_receipt_id": compact_text(fx.get("source_receipt"), 120),
+            "later_bars_visible": bool(fx.get("later_bars_visible", False)),
+            "status": "HISTORICAL_PRACTICE_CONFIRMATION_NOT_EXECUTED",
+            "actual_order_fills": None,
+        }
+    fx_report = evidence.get("fx_research")
+    safe_fx_report = None
+    if (source_info["kind"] == "oanda-fxpractice" and
+            not bool(replay.get("enabled")) and isinstance(fx_report, dict)
+            and fx_report.get("status") == "UNVERIFIED_FX_RESEARCH_ONLY"):
+        training = fx_report.get("training", {})
+        if not isinstance(training, dict):
+            training = {}
+        safe_fx_report = {
+            "rule": "FXC-001",
+            "version": compact_text(fx_report.get("version"), 40),
+            "status": "UNVERIFIED_FX_RESEARCH_ONLY",
+            "training_trades": (training.get("trades")
+                                if type(training.get("trades")) is int else None),
+            "training_avg_net_R": finite_price(training.get("avgNetR")),
+            "training_win_rate": finite_price(training.get("winRate")),
+            "reserve_unseen": bool(fx_report.get("reserve_unseen", True)),
+            "reserve_results": None,
+            "broker_fills_verified": False,
+            "trade_qualification": "NONE",
+        }
+        if not safe_fx_report["reserve_unseen"]:
+            reserve = fx_report.get("reserve")
+            if isinstance(reserve, dict):
+                safe_fx_report["reserve_results"] = {
+                    "trades": reserve.get("trades")
+                              if type(reserve.get("trades")) is int else None,
+                    "avg_net_R": finite_price(reserve.get("avgNetR")),
+                }
+
     candidate = payload.get("pattern_candidate")
     if isinstance(candidate, dict):
         candidate = {
@@ -316,12 +364,14 @@ def validate_context(payload: object) -> dict:
         "candidate": candidate,
         "mes_signal": safe_mes_signal,
         "mes_session_experiment": safe_mes_simulation,
+        "fx_historical_signal": safe_fx,
+        "opt_in_fx_research": safe_fx_report,
         "opt_in_paper_research": safe_paper,
         "exploratory_simulation": safe_simulation,
         "user_selected_prior_cases": safe_cases,
         "disclaimers": [
             "Historical structural matches have not been tested for edge",
-            "No connected broker fills, bid/ask spread, margin, or verified prices",
+            "No connected broker fills, account pricing, margin, or verified execution costs",
             "Model can only review provided evidence; no order actions possible",
         ],
     }
@@ -391,8 +441,11 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(content)
         elif pathname in ("/session-engine.js", "/prototype/session-engine.js",
-                          "/paper-ledger.js", "/prototype/paper-ledger.js"):
-            name = "paper-ledger.js" if "paper-ledger.js" in pathname else "session-engine.js"
+                          "/paper-ledger.js", "/prototype/paper-ledger.js",
+                          "/fx-research.js", "/prototype/fx-research.js"):
+            name = ("fx-research.js" if "fx-research.js" in pathname else
+                    "paper-ledger.js" if "paper-ledger.js" in pathname else
+                    "session-engine.js")
             path = ROOT / "prototype" / name
             if not path.is_file():
                 self._reply(404, {"ok": False, "error": "Research engine unavailable"})
@@ -453,7 +506,7 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(403, {"ok": False, "error": "Cross-origin requests disabled"})
             return
         pathname = urlsplit(self.path).path
-        if pathname not in ("/api/analyst", "/api/market/fetch"):
+        if pathname not in ("/api/analyst", "/api/market/fetch", "/api/market/backfill"):
             self._reply(404, {"ok": False, "error": "No such research action"})
             return
         if not secrets.compare_digest(self.headers.get("X-Trader-Token", ""), TOKEN):
@@ -472,18 +525,23 @@ class Handler(BaseHTTPRequestHandler):
         try:
             raw = self.rfile.read(length)
             payload = json.loads(raw)
-            if pathname == "/api/market/fetch":
-                if not isinstance(payload, dict) or set(payload) - {"symbol","count"}:
-                    raise ValueError("Unknown practice market fetch parameters")
+            if pathname in ("/api/market/fetch", "/api/market/backfill"):
+                backfill = pathname == "/api/market/backfill"
+                permitted = {"symbol", "pages"} if backfill else {"symbol", "count"}
+                if not isinstance(payload, dict) or set(payload) - permitted:
+                    raise ValueError("Unknown practice market request parameters")
                 symbol = payload.get("symbol", "EUR_USD")
-                count = payload.get("count", 360)
-                if symbol not in market.ALLOWED_SYMBOLS or type(count) is not int or not 10 <= count <= market.MAX_FETCH:
-                    raise ValueError("Use an allowed practice pair and 10–1000 complete M5 candles")
+                amount = payload.get("pages", 6) if backfill else payload.get("count", 500)
+                minimum, maximum = (1, 12) if backfill else (10, market.MAX_FETCH)
+                if (symbol not in market.ALLOWED_SYMBOLS or type(amount) is not int
+                        or not minimum <= amount <= maximum):
+                    raise ValueError("Invalid allowed practice symbol or bounded request size")
                 if not MARKET_GATE.acquire(blocking=False):
-                    self._reply(429, {"ok": False, "error": "A market refresh is already running"})
+                    self._reply(429, {"ok": False, "error": "A market read is already running"})
                     return
                 try:
-                    receipt = market.fetch_into_store(symbol, count)
+                    receipt = (market.backfill_into_store(symbol, amount) if backfill else
+                               market.fetch_into_store(symbol, amount))
                 finally:
                     MARKET_GATE.release()
                 self._reply(200, {"ok": True, "market_receipt": receipt,

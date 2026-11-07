@@ -134,6 +134,36 @@ class ContextTests(unittest.TestCase):
         self.assertNotIn("reserve", result["mes_session_experiment"])
 
 
+    def test_fx_ai_research_scope_excludes_hidden_reserve_and_fake_fills(self):
+        payload=context()
+        payload["source"]={"id":"oanda-fxpractice:EUR_USD","kind":"oanda-fxpractice",
+                           "symbol":"EUR_USD","timeframe":"5m"}
+        payload["evidence"]["fx_historical_signal"]={
+            "status":"HISTORICAL_PRACTICE_CONFIRMATION_NOT_EXECUTED",
+            "rule":"FXC-001","version":"FXC-001-v1","side":"LONG",
+            "day":"2026-10-05","signal_time_utc":"2026-10-05T13:35:00Z",
+            "box_high":1.1,"box_low":1.099,
+            "signal_spread_pips":1.2,"source_receipt":"receipt",
+            "fake_broker_order":10000,
+        }
+        payload["evidence"]["fx_research"]={
+            "status":"UNVERIFIED_FX_RESEARCH_ONLY",
+            "version":"FXC-001-v1",
+            "training":{"trades":8,"avgNetR":-.25,"winRate":.4},
+            "reserve_unseen":True,
+            "reserve":{"trades":20,"avgNetR":200},
+            "broker_fills":100000,
+        }
+        result=server.validate_context(payload)
+        self.assertEqual(result["fx_historical_signal"]["actual_order_fills"],None)
+        self.assertNotIn("fake_broker_order",result["fx_historical_signal"])
+        self.assertEqual(result["opt_in_fx_research"]["training_avg_net_R"],-.25)
+        self.assertIsNone(result["opt_in_fx_research"]["reserve_results"])
+        self.assertFalse(result["opt_in_fx_research"]["broker_fills_verified"])
+        payload["replay"]["enabled"]=True
+        result=server.validate_context(payload)
+        self.assertIsNone(result["opt_in_fx_research"])
+
     def test_oanda_practice_candle_source_stays_nonexecution(self):
         request = context()
         request["source"] = {
@@ -236,6 +266,29 @@ class PracticeEndpointTests(unittest.TestCase):
             status,result=self.post(body)
             self.assertEqual(status,422)
             self.assertFalse(result["ok"])
+
+    def test_backfill_is_origin_token_checked_and_strictly_bounded(self):
+        for body in [
+            {"symbol":"EUR_USD","pages":13},
+            {"symbol":"MES","pages":1},
+            {"symbol":"EUR_USD","pages":2,"to":"arbitrary-time"},
+            {"symbol":"EUR_USD","pages":"3"},
+        ]:
+            status,result=self.post(body,path="/api/market/backfill")
+            self.assertEqual(status,422)
+            self.assertFalse(result["ok"])
+        receipt={"symbol":"EUR_USD","source":"oanda-fxpractice",
+                 "requests":2,"added":1500,"conflicts":0,"augmented":0}
+        with patch.object(server.market,"backfill_into_store",return_value=receipt) as mocked:
+            status,result=self.post(
+                {"symbol":"EUR_USD","pages":2},path="/api/market/backfill")
+        self.assertEqual(status,200)
+        self.assertFalse(result["execution"])
+        self.assertEqual(result["market_receipt"]["requests"],2)
+        mocked.assert_called_once_with("EUR_USD",2)
+        status,result=self.post({"symbol":"EUR_USD","pages":2},
+             path="/api/market/backfill",origin="https://evil.invalid")
+        self.assertEqual(status,403)
 
     def test_success_is_a_receipt_and_explicitly_has_no_execution(self):
         sample={

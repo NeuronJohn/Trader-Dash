@@ -27,7 +27,7 @@ BASE_URL = "https://api-fxpractice.oanda.com"
 ALLOWED_SYMBOLS = ("EUR_USD", "GBP_USD", "USD_JPY")
 BAR_MS = 300_000
 MAX_FETCH = 1000
-MAX_OUTPUT = 1000
+MAX_OUTPUT = 16000
 MAX_BYTES = 2_500_000
 LOCK = threading.Lock()
 SCHEMA_VERSION = 1
@@ -113,8 +113,10 @@ def normalize_response(response: Any, symbol: str, received_ms: int) -> list[dic
         seen.add(stamp)
         out.append({
             "time": stamp, **mid,
-            "bidOpen": bid["open"], "bidClose": bid["close"],
-            "askOpen": ask["open"], "askClose": ask["close"],
+            "bidOpen": bid["open"], "bidHigh": bid["high"],
+            "bidLow": bid["low"], "bidClose": bid["close"],
+            "askOpen": ask["open"], "askHigh": ask["high"],
+            "askLow": ask["low"], "askClose": ask["close"],
             "volume": entry.get("volume") if type(entry.get("volume")) is int else None,
         })
     out.sort(key=lambda x: x["time"])
@@ -123,10 +125,28 @@ def normalize_response(response: Any, symbol: str, received_ms: int) -> list[dic
 def canonical_hash(row: dict) -> str:
     immutable = {k: row[k] for k in (
         "time", "open", "high", "low", "close",
-        "bidOpen", "bidClose", "askOpen", "askClose")}
+        "bidOpen", "bidHigh", "bidLow", "bidClose",
+        "askOpen", "askHigh", "askLow", "askClose")}
     return hashlib.sha256(
         json.dumps(immutable, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
     ).hexdigest()
+
+def canonical_legacy_hash(row: dict) -> str:
+    """The v0.6 first-seen base fields: preserve their exact old SHA-256."""
+    old = {k: row[k] for k in (
+        "time", "open", "high", "low", "close",
+        "bidOpen", "bidClose", "askOpen", "askClose"
+    )}
+    return hashlib.sha256(
+        json.dumps(old, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
+
+EXTRA_KEYS = ("bidHigh", "bidLow", "askHigh", "askLow")
+
+def component_hash(components: dict) -> str:
+    return hashlib.sha256(json.dumps(
+        components, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")).hexdigest()
 
 def open_store(path: Path | None = None) -> sqlite3.Connection:
     location = path or storage_path()
@@ -149,7 +169,8 @@ def open_store(path: Path | None = None) -> sqlite3.Connection:
         returned_complete INTEGER NOT NULL,
         inserted INTEGER NOT NULL,
         repeated INTEGER NOT NULL,
-        conflicted INTEGER NOT NULL
+        conflicted INTEGER NOT NULL,
+        augmented INTEGER NOT NULL DEFAULT 0
       );
       CREATE TABLE IF NOT EXISTS bars (
         source TEXT NOT NULL,
@@ -163,6 +184,18 @@ def open_store(path: Path | None = None) -> sqlite3.Connection:
         PRIMARY KEY (source, symbol, granularity, candle_start_ms),
         FOREIGN KEY (first_receipt_id) REFERENCES receipts(receipt_id)
       );
+      CREATE TABLE IF NOT EXISTS component_extensions (
+        source TEXT NOT NULL,
+        symbol TEXT NOT NULL,
+        granularity TEXT NOT NULL,
+        candle_start_ms INTEGER NOT NULL,
+        extra_json TEXT NOT NULL,
+        extra_sha256 TEXT NOT NULL,
+        receipt_id TEXT NOT NULL,
+        received_utc_ms INTEGER NOT NULL,
+        PRIMARY KEY(source,symbol,granularity,candle_start_ms),
+        FOREIGN KEY(receipt_id) REFERENCES receipts(receipt_id)
+      );
       CREATE TABLE IF NOT EXISTS revisions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         receipt_id TEXT NOT NULL,
@@ -175,6 +208,9 @@ def open_store(path: Path | None = None) -> sqlite3.Connection:
       CREATE INDEX IF NOT EXISTS receipts_by_time ON receipts(received_utc_ms);
       CREATE INDEX IF NOT EXISTS revisions_by_candle ON revisions(symbol, candle_start_ms);
     """)
+    columns = {row["name"] for row in connection.execute("PRAGMA table_info(receipts)")}
+    if "augmented" not in columns:
+        connection.execute("ALTER TABLE receipts ADD COLUMN augmented INTEGER NOT NULL DEFAULT 0")
     return connection
 
 def ingest(
@@ -193,7 +229,7 @@ def ingest(
     raw_sha256 = raw_sha256 or hashlib.sha256(
         json.dumps(candles, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
-    inserted, repeated, conflicted = 0, 0, 0
+    inserted, repeated, conflicted, augmented = 0, 0, 0, 0
     with connection:
         connection.execute("""
           INSERT INTO receipts (
@@ -210,19 +246,48 @@ def ingest(
                 raise MarketError("A candle ended after receipt; refusing future data")
             incoming = canonical_hash(row)
             present = connection.execute("""
-               SELECT row_sha256 FROM bars WHERE source=? AND symbol=? AND
+               SELECT row_sha256,row_json FROM bars WHERE source=? AND symbol=? AND
                  granularity=? AND candle_start_ms=?
             """, (SOURCE, symbol, "M5", timestamp)).fetchone()
             if present:
                 if present["row_sha256"] == incoming:
                     repeated += 1
-                else:
-                    conflicted += 1
-                    connection.execute("""
-                       INSERT INTO revisions (
-                         receipt_id,symbol,candle_start_ms,observed_sha256,incoming_sha256
-                       ) VALUES(?,?,?,?,?)
-                    """, (receipt_id,symbol,timestamp,present["row_sha256"],incoming))
+                    continue
+                prior = json.loads(present["row_json"])
+                same_legacy_base = (
+                    not any(key in prior for key in EXTRA_KEYS) and
+                    canonical_legacy_hash(prior) == canonical_legacy_hash(row)
+                )
+                if same_legacy_base:
+                    extras = {k: row[k] for k in EXTRA_KEYS}
+                    extras_hash = component_hash(extras)
+                    before = connection.execute("""
+                      SELECT extra_sha256 FROM component_extensions
+                      WHERE source=? AND symbol=? AND granularity=? AND candle_start_ms=?
+                    """, (SOURCE,symbol,"M5",timestamp)).fetchone()
+                    if before is None:
+                        connection.execute("""
+                          INSERT INTO component_extensions(
+                            source,symbol,granularity,candle_start_ms,extra_json,
+                            extra_sha256,receipt_id,received_utc_ms
+                          ) VALUES(?,?,?,?,?,?,?,?)
+                        """, (SOURCE,symbol,"M5",timestamp,
+                              json.dumps(extras,sort_keys=True,separators=(",",":")),
+                              extras_hash,receipt_id,received_ms))
+                        augmented += 1
+                        continue
+                    if before["extra_sha256"] == extras_hash:
+                        repeated += 1
+                        continue
+                # Genuine price revision, or later revision to an already
+                # observed extension: keep both first-seen components intact.
+                conflicted += 1
+                connection.execute("""
+                   INSERT INTO revisions (
+                     receipt_id,symbol,candle_start_ms,observed_sha256,incoming_sha256
+                   ) VALUES(?,?,?,?,?)
+                """, (receipt_id,symbol,timestamp,
+                      present["row_sha256"],incoming))
                 continue
             connection.execute("""
               INSERT INTO bars (
@@ -234,12 +299,12 @@ def ingest(
                   incoming,receipt_id,received_ms))
             inserted += 1
         connection.execute(
-            "UPDATE receipts SET inserted=?,repeated=?,conflicted=? WHERE receipt_id=?",
-            (inserted,repeated,conflicted,receipt_id))
+            "UPDATE receipts SET inserted=?,repeated=?,conflicted=?,augmented=? WHERE receipt_id=?",
+            (inserted,repeated,conflicted,augmented,receipt_id))
     return {
         "receipt_id":receipt_id,"source":SOURCE,"symbol":symbol,"granularity":"M5",
         "received_utc_ms":received_ms,
-        "added":inserted,"repeated":repeated,"conflicts":conflicted,
+        "added":inserted,"repeated":repeated,"conflicts":conflicted,"augmented":augmented,
         "complete_candles":len(candles),"verified_broker_fills":0,
         "source_status":PROVENANCE,
     }
@@ -250,15 +315,26 @@ def read_bars(connection: sqlite3.Connection, symbol: str, limit: int = 500) -> 
     if not isinstance(limit,int) or not 1 <= limit <= MAX_OUTPUT:
         raise MarketError("Invalid output limit")
     rows = connection.execute("""
-      SELECT row_json,first_seen_ms,first_receipt_id
-      FROM bars WHERE source=? AND symbol=? AND granularity=?
-      ORDER BY candle_start_ms DESC LIMIT ?
+      SELECT b.row_json,b.first_seen_ms,b.first_receipt_id,
+             x.extra_json,x.receipt_id AS component_receipt_id,
+             x.received_utc_ms AS component_received_ms
+      FROM bars AS b LEFT JOIN component_extensions AS x
+        ON b.source=x.source AND b.symbol=x.symbol AND
+           b.granularity=x.granularity AND b.candle_start_ms=x.candle_start_ms
+      WHERE b.source=? AND b.symbol=? AND b.granularity=?
+      ORDER BY b.candle_start_ms DESC LIMIT ?
     """,(SOURCE,symbol,"M5",limit)).fetchall()
     bars=[]
     for row in reversed(rows):
         bar=json.loads(row["row_json"])
         bar["receivedAt"]=row["first_seen_ms"]
         bar["receiptId"]=row["first_receipt_id"]
+        if row["extra_json"]:
+            bar.update(json.loads(row["extra_json"]))
+        bar["componentReceiptId"]=(row["component_receipt_id"] or
+                                   row["first_receipt_id"])
+        bar["componentReceivedAt"]=(row["component_received_ms"] or
+                                    row["first_seen_ms"])
         bars.append(bar)
     conflicts=connection.execute(
         "SELECT COUNT(*) AS n FROM revisions WHERE symbol=?",(symbol,)
@@ -269,7 +345,8 @@ def read_bars(connection: sqlite3.Connection, symbol: str, limit: int = 500) -> 
     """,(SOURCE,symbol)).fetchone()
     return {
       "symbol":symbol,"source":SOURCE,"granularity":"M5",
-      "price_component":"M (midpoint), bid/ask open/close retained",
+      "price_component":"M (midpoint), complete bid/ask OHLC retained",
+      "component_quality":"FULL_MID_BID_ASK_OHLC_OR_RECEIPT_LINKED_LEGACY_AUGMENTATION",
       "provenance":PROVENANCE,
       "timestamp_convention":"UTC 5-minute BAR START",
       "authenticated_practice_api":True,
@@ -284,15 +361,25 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise MarketError("OANDA endpoint redirected; credentials were not forwarded")
 
-def fetch_practice_candles(symbol: str, count: int, token: str) -> tuple[dict,str,str,str]:
+def fetch_practice_candles(symbol: str, count: int, token: str, before_ms: int | None = None) -> tuple[dict,str,str,str]:
     if symbol not in ALLOWED_SYMBOLS or type(count) is not int or not 10 <= count <= MAX_FETCH:
         raise MarketError("Only allowed FX pairs and 10–1000 candles are permitted")
     if (not isinstance(token,str) or not token or len(token)>4096 or
             any(ord(ch)<33 or ord(ch)>126 for ch in token)):
         raise MarketError("Set a valid OANDA_PRACTICE_TOKEN in the local server environment")
-    params=urllib.parse.urlencode({
+    request_params={
         "granularity":"M5","price":"MBA","count":count,"smooth":"false"
-    })
+    }
+    if before_ms is not None:
+        if (type(before_ms) is not int or before_ms<=0 or
+                before_ms>now_ms()+BAR_MS):
+            raise MarketError("Invalid UTC historical backfill cutoff")
+        # Provider time bounds are explicit. Never follow provider pagination
+        # links or send credentials anywhere except the fixed practice host.
+        request_params["to"]=dt.datetime.fromtimestamp(
+            before_ms/1000,tz=dt.timezone.utc
+        ).isoformat().replace("+00:00","Z")
+    params=urllib.parse.urlencode(request_params)
     url=f"{BASE_URL}/v3/instruments/{symbol}/candles?{params}"
     request=urllib.request.Request(url,method="GET",headers={
         "Authorization":"Bearer "+token,
@@ -336,6 +423,50 @@ def fetch_into_store(symbol: str, count: int, *, clock_ms: int | None = None) ->
                           raw_sha256=response_hash)
         finally:
             conn.close()
+
+def backfill_into_store(symbol: str, pages: int = 6, *, clock_ms: int | None = None) -> dict:
+    """Explicit, bounded historical retrieval; no timer, account action or live polling."""
+    if symbol not in ALLOWED_SYMBOLS or type(pages) is not int or not 1 <= pages <= 12:
+        raise MarketError("Backfill permits 1–12 pages and fixed practice FX pairs")
+    token=os.environ.get("OANDA_PRACTICE_TOKEN","")
+    received_ms=clock_ms if clock_ms is not None else now_ms()
+    with LOCK:
+        connection=open_store()
+        count_requests,added,repeated,conflicted,augmented=0,0,0,0,0
+        older_than=None
+        try:
+            for page in range(pages):
+                response,http_date,request_id,sha=fetch_practice_candles(
+                    symbol,MAX_FETCH,token,before_ms=older_than
+                )
+                candles=normalize_response(response,symbol,received_ms)
+                if not candles:
+                    break
+                earliest=min(row["time"] for row in candles)
+                if older_than is not None and earliest>=older_than:
+                    raise MarketError("Historical pagination did not advance backward")
+                receipt=ingest(
+                    connection,symbol=symbol,candles=candles,
+                    received_ms=received_ms,provider_http_date=http_date,
+                    provider_request_id=request_id,raw_sha256=sha
+                )
+                count_requests+=1
+                added+=receipt["added"]
+                repeated+=receipt["repeated"]
+                conflicted+=receipt["conflicts"]
+                augmented+=receipt["augmented"]
+                # Strictly before first candle of previous page; accept a
+                # possible small overlap as a duplicate, never hide revision.
+                older_than=earliest-1
+        finally:
+            connection.close()
+    return {
+        "source":SOURCE,"symbol":symbol,"requests":count_requests,
+        "added":added,"repeated":repeated,"conflicts":conflicted,
+        "augmented":augmented,"received_utc_ms":received_ms,
+        "complete_only":True,"verified_broker_fills":0,
+        "warning":"Manually fetched practice historical candles. No executable fills."
+    }
 
 def status() -> dict:
     db=storage_path()

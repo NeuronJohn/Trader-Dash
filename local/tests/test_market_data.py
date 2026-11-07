@@ -1,6 +1,7 @@
 """Offline no-token regression tests for the immutable OANDA-practice price ledger."""
 import importlib.util
 import json
+import sqlite3
 import os
 from pathlib import Path
 import tempfile
@@ -39,6 +40,12 @@ class MarketDataTests(unittest.TestCase):
         self.assertEqual(len(rows),1)
         self.assertEqual(rows[0]["open"],1.1)
         self.assertGreater(rows[0]["askClose"],rows[0]["bidClose"])
+        self.assertGreater(rows[0]["askHigh"],rows[0]["bidHigh"])
+        self.assertLess(rows[0]["bidLow"],rows[0]["askLow"])
+        self.assertTrue(all(k in rows[0] for k in (
+            "bidOpen","bidHigh","bidLow","bidClose",
+            "askOpen","askHigh","askLow","askClose"
+        )))
         self.assertEqual(rows[0]["time"]%300000,0)
     def test_provider_must_match_exact_contract_and_m5(self):
         with self.assertRaisesRegex(md.MarketError,"Unexpected instrument"):
@@ -74,6 +81,66 @@ class MarketDataTests(unittest.TestCase):
         self.assertEqual(viewed["bars"][0]["receiptId"],first["receipt_id"])
         self.assertEqual(viewed["conflicts"],1)
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0],3)
+    def test_v06_first_seen_bars_receive_supplemental_extrema_without_revision(self):
+        rows = self.normalize(candle())
+        original = {k: rows[0][k] for k in (
+            "time","open","high","low","close",
+            "bidOpen","bidClose","askOpen","askClose"
+        )}
+        first_id = "legacy-v06-receipt"
+        self.conn.execute("""
+            INSERT INTO receipts(receipt_id,source,symbol,granularity,received_utc_ms,
+                response_sha256,returned_complete,inserted,repeated,conflicted)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
+        """, (first_id,md.SOURCE,"EUR_USD","M5",self.received,"legacy",1,1,0,0))
+        self.conn.execute("""
+            INSERT INTO bars(source,symbol,granularity,candle_start_ms,row_json,
+                row_sha256,first_receipt_id,first_seen_ms)
+            VALUES (?,?,?,?,?,?,?,?)
+        """, (md.SOURCE,"EUR_USD","M5",rows[0]["time"],
+              json.dumps(original,sort_keys=True,separators=(",",":")),
+              md.canonical_legacy_hash(original),first_id,self.received))
+        self.conn.commit()
+        first=md.ingest(self.conn,symbol="EUR_USD",candles=rows,received_ms=self.received+1000)
+        self.assertEqual(first["added"],0)
+        self.assertEqual(first["augmented"],1)
+        self.assertEqual(first["conflicts"],0)
+        selected=md.read_bars(self.conn,"EUR_USD")["bars"][0]
+        self.assertEqual(selected["receiptId"],first_id)
+        self.assertEqual(selected["componentReceiptId"],first["receipt_id"])
+        self.assertEqual(selected["componentReceivedAt"],self.received+1000)
+        self.assertEqual(selected["bidHigh"],rows[0]["bidHigh"])
+        stored=json.loads(self.conn.execute("SELECT row_json FROM bars").fetchone()[0])
+        self.assertNotIn("bidHigh",stored) # original immutable
+        repeated=md.ingest(self.conn,symbol="EUR_USD",candles=rows,received_ms=self.received+2000)
+        self.assertEqual(repeated["repeated"],1)
+        change=[{**rows[0],"bidHigh":rows[0]["bidHigh"]+.0001}]
+        revised=md.ingest(self.conn,symbol="EUR_USD",candles=change,received_ms=self.received+3000)
+        self.assertEqual(revised["conflicts"],1)
+        unchanged=md.read_bars(self.conn,"EUR_USD")["bars"][0]
+        self.assertEqual(unchanged["bidHigh"],rows[0]["bidHigh"])
+
+    def test_existing_v06_receipts_table_is_upgraded_in_place(self):
+        db=Path(self.tmp.name)/"v06.sqlite3"
+        con=sqlite3.connect(str(db))
+        con.execute("""CREATE TABLE receipts (
+          receipt_id TEXT PRIMARY KEY, source TEXT NOT NULL, symbol TEXT NOT NULL,
+          granularity TEXT NOT NULL, received_utc_ms INTEGER NOT NULL,
+          provider_http_date TEXT, provider_request_id TEXT,
+          response_sha256 TEXT NOT NULL, returned_complete INTEGER NOT NULL,
+          inserted INTEGER NOT NULL, repeated INTEGER NOT NULL,
+          conflicted INTEGER NOT NULL)""")
+        con.commit();con.close()
+        upgraded=md.open_store(db)
+        try:
+            names=[row["name"] for row in upgraded.execute("PRAGMA table_info(receipts)")]
+            self.assertIn("augmented",names)
+            self.assertEqual(upgraded.execute(
+                "SELECT COUNT(*) FROM component_extensions"
+            ).fetchone()[0],0)
+        finally:
+            upgraded.close()
+
     def test_ingest_is_atomic_on_invalid_middle_record(self):
         good=self.normalize(candle())
         corrupted=[*good,{**good[0],"time":self.received}]
@@ -85,7 +152,7 @@ class MarketDataTests(unittest.TestCase):
         with self.assertRaisesRegex(md.MarketError,"Invalid requested"):
             md.read_bars(self.conn,"ES")
         with self.assertRaisesRegex(md.MarketError,"Invalid output limit"):
-            md.read_bars(self.conn,"EUR_USD",5001)
+            md.read_bars(self.conn,"EUR_USD",16001)
     def test_provider_host_and_request_method_are_hardcoded(self):
         seen={}
         class MockResponse:
@@ -110,6 +177,45 @@ class MarketDataTests(unittest.TestCase):
         self.assertNotIn("fixture-token",json.dumps(result))
         with self.assertRaisesRegex(md.MarketError,"allowed FX pairs"):
             md.fetch_practice_candles("MES",30,"fixture-token")
+    def test_bounded_backward_history_pagination_creates_separate_receipts(self):
+        starts=[1793970000000,1793969700000,1793969400000]
+        seen=[]
+        def fake(symbol,count,token,before_ms=None):
+            seen.append(before_ms)
+            row=candle()
+            from datetime import datetime,timezone
+            row["time"]=datetime.fromtimestamp(starts[len(seen)-1]/1000,
+                tz=timezone.utc).isoformat().replace("+00:00","Z")
+            return payload(row),"Fri, 06 Nov 2026 14:00:00 GMT",str(len(seen)),"a"*64
+        db=Path(self.tmp.name)/"test.sqlite3"
+        with patch.dict(os.environ,{"TRADER_MARKET_DB":str(db),
+            "OANDA_PRACTICE_TOKEN":"TEST_ONLY"},clear=False):
+            with patch.object(md,"fetch_practice_candles",side_effect=fake):
+                result=md.backfill_into_store("EUR_USD",3,clock_ms=self.received)
+        self.assertEqual(result["requests"],3)
+        self.assertEqual(result["added"],3)
+        self.assertEqual(seen,[None,starts[0]-1,starts[1]-1])
+        bars=md.read_bars(self.conn,"EUR_USD",16000)["bars"]
+        self.assertEqual(len(bars),3)
+        self.assertEqual(self.conn.execute(
+            "SELECT COUNT(*) FROM receipts"
+        ).fetchone()[0],3)
+        with self.assertRaisesRegex(md.MarketError,"1–12 pages"):
+            md.backfill_into_store("EUR_USD",13)
+
+    def test_backfill_fails_if_provider_does_not_move_backward(self):
+        def fixed(symbol,count,token,before_ms=None):
+            return payload(candle()),"","",("a"*64)
+        db=Path(self.tmp.name)/"test.sqlite3"
+        with patch.dict(os.environ,{"TRADER_MARKET_DB":str(db),
+            "OANDA_PRACTICE_TOKEN":"TEST_ONLY"},clear=False):
+            with patch.object(md,"fetch_practice_candles",side_effect=fixed):
+                with self.assertRaisesRegex(md.MarketError,"did not advance"):
+                    md.backfill_into_store("EUR_USD",2,clock_ms=self.received)
+        self.assertEqual(self.conn.execute(
+            "SELECT COUNT(*) FROM receipts"
+        ).fetchone()[0],1) # first page persists with its own audit receipt
+
     def test_no_token_required_to_read_offline_status(self):
         with patch.dict(os.environ,{"TRADER_MARKET_DB":str(Path(self.tmp.name)/"test.sqlite3")},
                         clear=False):
