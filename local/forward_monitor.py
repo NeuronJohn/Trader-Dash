@@ -16,7 +16,7 @@ import math
 import sqlite3
 import threading
 import time
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # The localhost server injects its single market-data adapter, so the same
 # request lock and storage are reused. The recorder cannot choose a provider.
@@ -25,7 +25,12 @@ market = None
 RULE="FXC-001"
 VERSION="FXC-001-v1"
 SOURCE="oanda-fxpractice"
-TZ=ZoneInfo("America/New_York")
+try:
+    TZ=ZoneInfo("America/New_York")
+except ZoneInfoNotFoundError:
+    # Stock Windows Python may have no IANA timezone database. For the
+    # explicitly scoped 2007+ US sessions use the statutory NY DST calendar.
+    TZ=None
 M5=300_000
 PIPS={"EUR_USD":0.0001,"GBP_USD":0.0001,"USD_JPY":0.01}
 DEFAULTS={
@@ -54,8 +59,22 @@ def digest(value):
     ).encode("utf-8")).hexdigest()
 
 def local_clock(utc_ms):
-    instant=dt.datetime.fromtimestamp(utc_ms/1000,dt.timezone.utc).astimezone(TZ)
-    return instant.date().isoformat(),instant.hour*60+instant.minute,instant.weekday()
+    instant=dt.datetime.fromtimestamp(utc_ms/1000,dt.timezone.utc)
+    if TZ is None:
+        year=instant.year
+        if year<2007:
+            raise ForwardError("Local New York DST fallback supports 2007+ sessions")
+        march_first=dt.date(year,3,1)
+        nov_first=dt.date(year,11,1)
+        second_sunday=1+(6-march_first.weekday())%7+7
+        first_sunday=1+(6-nov_first.weekday())%7
+        dst_begin=dt.datetime(year,3,second_sunday,7,tzinfo=dt.timezone.utc)
+        dst_end=dt.datetime(year,11,first_sunday,6,tzinfo=dt.timezone.utc)
+        offset=-4 if dst_begin<=instant<dst_end else -5
+        local=instant+dt.timedelta(hours=offset)
+    else:
+        local=instant.astimezone(TZ)
+    return local.date().isoformat(),local.hour*60+local.minute,local.weekday()
 
 def valid_price_row(bar):
     keys=("open","high","low","close","bidOpen","bidHigh","bidLow",
@@ -404,6 +423,45 @@ def summary(records):
       "verifiedLivePerformance":False,
       "source":"oanda-fxpractice",
       "warning":"Locally observed practice price receipt, not independently signed or broker-executed"
+    }
+
+def summary_store(connection,symbol):
+    """Full persisted research scorecard, not only the latest visible cases."""
+    if symbol not in PIPS:raise ForwardError("Unsupported summary pair")
+    ensure_tables(connection)
+    totals=connection.execute("""
+      SELECT COUNT(*) AS n FROM forward_observations WHERE symbol=?
+    """,(symbol,)).fetchone()["n"]
+    rows=connection.execute("""
+      SELECT o.outcome_json
+      FROM forward_observations f
+      JOIN forward_outcomes o ON o.signal_id=f.signal_id
+      WHERE f.symbol=? ORDER BY f.signal_close_ms
+    """,(symbol,)).fetchall()
+    states=[json.loads(x["outcome_json"]) for x in rows]
+    won=0;equity=0.0;peak=0.0;max_dd=0.0;modeled=0
+    for x in states:
+        if x.get("status")!="MODELED":continue
+        value=x.get("netR")
+        if type(value) not in (int,float) or not math.isfinite(value):
+            raise ForwardError("Stored model outcome has invalid R value")
+        modeled+=1
+        if value>0:won+=1
+        equity+=value
+        peak=max(peak,equity)
+        max_dd=max(max_dd,peak-equity)
+    return {
+      "recorded":totals,"pending":totals-len(states),
+      "modeled":modeled,
+      "skipped":sum(x.get("status")=="SKIPPED" for x in states),
+      "conflicts":sum(x.get("status")=="CONFLICT" for x in states),
+      "wins":won,
+      "winRate":won/modeled if modeled else None,
+      "averageModeledR":equity/modeled if modeled else None,
+      "modeledClosedDrawdownR":max_dd if modeled else None,
+      "actualBrokerFills":0,"verifiedLivePerformance":False,
+      "source":"oanda-fxpractice",
+      "warning":"Local prospective practice receipt observations, not authenticated account fills. Monitor gaps and missed setups are not yet independently audited."
     }
 
 class Monitor:
