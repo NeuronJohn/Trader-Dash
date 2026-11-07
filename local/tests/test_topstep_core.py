@@ -55,4 +55,35 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(s["net_realized_usd"],16)
         self.assertEqual(s["active_legs"],2)
 
+
+    def test_fractional_timestamp_database_filter(self):
+        with tempfile.TemporaryDirectory() as folder:
+            db=TradeLedger(Path(folder)/"ledger.db")
+            db.save(15,[leg(1,stamp="2026-11-06T15:00:00Z"),
+                        leg(2,stamp="2026-11-06T15:00:00.234Z")])
+            got=db.history(15,"2026-11-06T15:00:00.100Z")
+            self.assertEqual([r["id"] for r in got],[2])
+
+    def test_history_backfill_is_bounded_and_deduped(self):
+        class Fake(ProjectXClient):
+            def __init__(self):
+                self.windows=[]
+            def accounts(self):
+                return [{"id":15, "name":"Practice", "balance":50000}]
+            def request(self,path,data):
+                if path=="/api/Trade/search":
+                    self.windows.append((data["startTimestamp"],data["endTimestamp"]))
+                    return {"trades":[leg(1)]}
+                if path=="/api/Order/searchOpen":
+                    return {"orders":[]}
+                if path=="/api/Position/searchOpen":
+                    return {"positions":[]}
+                raise AssertionError(path)
+        gateway=Fake()
+        data=gateway.snapshot(15,30)
+        self.assertEqual(len(gateway.windows),3)
+        self.assertEqual(len(data["legs"]),1)
+        for i in range(1, len(gateway.windows)):
+            self.assertEqual(gateway.windows[i-1][1], gateway.windows[i][0])
+
 if __name__=="__main__": unittest.main()
