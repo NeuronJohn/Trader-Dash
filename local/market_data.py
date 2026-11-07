@@ -468,6 +468,52 @@ def backfill_into_store(symbol: str, pages: int = 6, *, clock_ms: int | None = N
         "warning":"Manually fetched practice historical candles. No executable fills."
     }
 
+def backup_store() -> dict:
+    """A local WAL-aware SQLite snapshot. Never copies a live .db file raw.
+
+    Fixed user-local output directory; no user supplied paths or URL requests.
+    """
+    path=storage_path()
+    if not path.is_file():
+        raise MarketError("No locally recorded market data to back up yet")
+    with LOCK:
+        dest_dir=path.parent / "backups"
+        dest_dir.mkdir(parents=True,exist_ok=True)
+        stamp=dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        target=dest_dir / ("market-receipts-"+stamp+"-"+uuid.uuid4().hex[:8]+".sqlite3")
+        temp=dest_dir / (target.name+".incomplete")
+        try:
+            source=sqlite3.connect(str(path),timeout=10)
+            try:
+                destination=sqlite3.connect(str(temp),timeout=10)
+                try:
+                    source.backup(destination,pages=256,sleep=0.1)
+                    check=destination.execute("PRAGMA quick_check").fetchone()
+                    if check is None or check[0]!="ok":
+                        raise MarketError("SQLite backup failed integrity check")
+                finally:
+                    destination.close()
+            finally:
+                source.close()
+            os.replace(temp,target)
+            try:
+                target.chmod(0o600)
+            except OSError:
+                pass  # Windows filesystem permissions are managed by the OS.
+        except Exception:
+            try:
+                temp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
+        return {
+            "ok":True,"backup_path":str(target),"size_bytes":target.stat().st_size,
+            "created_utc":dt.datetime.now(dt.timezone.utc).isoformat(),
+            "includes":"market receipts, provider revisions, prospective FXC observations/outcomes",
+            "broker_order_data":False,
+            "warning":"Keep this file private. It is a local snapshot, not an independently notarized exchange record."
+        }
+
 def status() -> dict:
     db=storage_path()
     totals={}
