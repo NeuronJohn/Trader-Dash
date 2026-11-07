@@ -94,3 +94,21 @@ test("a different instrument/series cannot be substituted on reconciliation",()=
   const all=fixture(),c=capture(all.slice(0,6));
   assert.equal(Paper.reconcile(c,{...data(all),symbol:"MNQ_5m"},Engine,Date.now()).status,"UNAVAILABLE");
 });
+
+test("future-dated appended bars are never treated as already-observed outcomes",()=>{
+  const bars=fixture(),trial=capture(bars.slice(0,6),{replay:false});
+  const before=bars.at(-1).time+MS-1;
+  const response=Paper.reconcile(trial,data(bars),Engine,before);
+  assert.equal(response.status,"PENDING");
+  assert.match(response.reason,/after the observation clock/);
+});
+test("restored resolved cases require consistent result event and financial fields",()=>{
+  const bars=fixture(),initial=capture(bars);
+  const good=Paper.appendResolution(initial,Paper.reconcile(initial,data(bars),Engine,Date.now()),Date.now());
+  const corrupt=JSON.parse(JSON.stringify(good));
+  corrupt.outcome.netUsd=null;
+  assert.throws(()=>Paper.verifyCase(corrupt),/Malformed resolved outcome/);
+  const noEvent=JSON.parse(JSON.stringify(good));
+  noEvent.events.pop();
+  assert.throws(()=>Paper.verifyCase(noEvent),/matching event/);
+});
