@@ -177,6 +177,45 @@ class MarketDataTests(unittest.TestCase):
         self.assertNotIn("fixture-token",json.dumps(result))
         with self.assertRaisesRegex(md.MarketError,"allowed FX pairs"):
             md.fetch_practice_candles("MES",30,"fixture-token")
+    def test_bounded_backward_history_pagination_creates_separate_receipts(self):
+        starts=[1793970000000,1793969700000,1793969400000]
+        seen=[]
+        def fake(symbol,count,token,before_ms=None):
+            seen.append(before_ms)
+            row=candle()
+            from datetime import datetime,timezone
+            row["time"]=datetime.fromtimestamp(starts[len(seen)-1]/1000,
+                tz=timezone.utc).isoformat().replace("+00:00","Z")
+            return payload(row),"Fri, 06 Nov 2026 14:00:00 GMT",str(len(seen)),"a"*64
+        db=Path(self.tmp.name)/"test.sqlite3"
+        with patch.dict(os.environ,{"TRADER_MARKET_DB":str(db),
+            "OANDA_PRACTICE_TOKEN":"TEST_ONLY"},clear=False):
+            with patch.object(md,"fetch_practice_candles",side_effect=fake):
+                result=md.backfill_into_store("EUR_USD",3,clock_ms=self.received)
+        self.assertEqual(result["requests"],3)
+        self.assertEqual(result["added"],3)
+        self.assertEqual(seen,[None,starts[0]-1,starts[1]-1])
+        bars=md.read_bars(self.conn,"EUR_USD",16000)["bars"]
+        self.assertEqual(len(bars),3)
+        self.assertEqual(self.conn.execute(
+            "SELECT COUNT(*) FROM receipts"
+        ).fetchone()[0],3)
+        with self.assertRaisesRegex(md.MarketError,"1–12 pages"):
+            md.backfill_into_store("EUR_USD",13)
+
+    def test_backfill_fails_if_provider_does_not_move_backward(self):
+        def fixed(symbol,count,token,before_ms=None):
+            return payload(candle()),"","",("a"*64)
+        db=Path(self.tmp.name)/"test.sqlite3"
+        with patch.dict(os.environ,{"TRADER_MARKET_DB":str(db),
+            "OANDA_PRACTICE_TOKEN":"TEST_ONLY"},clear=False):
+            with patch.object(md,"fetch_practice_candles",side_effect=fixed):
+                with self.assertRaisesRegex(md.MarketError,"did not advance"):
+                    md.backfill_into_store("EUR_USD",2,clock_ms=self.received)
+        self.assertEqual(self.conn.execute(
+            "SELECT COUNT(*) FROM receipts"
+        ).fetchone()[0],1) # first page persists with its own audit receipt
+
     def test_no_token_required_to_read_offline_status(self):
         with patch.dict(os.environ,{"TRADER_MARKET_DB":str(Path(self.tmp.name)/"test.sqlite3")},
                         clear=False):
