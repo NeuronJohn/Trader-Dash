@@ -43,6 +43,9 @@ function verifyInput(bars,symbol,source){
     if(b.time<=last)err("Repeated or unsorted FX timestamps at "+i);
     if(!Number.isSafeInteger(b.receivedAt)||typeof b.receiptId!=="string"||!b.receiptId)
       err("Missing first-seen provider receipt at "+i);
+    if(b.componentReceivedAt!==undefined && (!Number.isSafeInteger(b.componentReceivedAt)||
+       b.componentReceivedAt<b.time+BAR_MS))
+      err("Invalid supplemental bid/ask receipt timestamp at "+i);
     if(b.time+BAR_MS>b.receivedAt+2000)err("Provider receipt precedes candle close at "+i);
     last=b.time;
   });
@@ -118,7 +121,8 @@ function pattern(session,pip,o){
       signalTime:c.time+BAR_MS,signalBarStart:c.time,
       boxHigh:box.high,boxLow:box.low,baselinePips,boxPips,signalSpreadPips:signalSpread,
       stopReference:upper?box.low-o.stopBufferPips*pip:box.high+o.stopBufferPips*pip,
-      sourceReceiptId:c.receiptId,receivedAt:c.receivedAt,
+      sourceReceiptId:c.componentReceiptId||c.receiptId,
+      receivedAt:c.componentReceivedAt||c.receivedAt,
       note:"Frozen 08:00–08:40 NY contraction breakout; first qualifying close only"
     };
   }
