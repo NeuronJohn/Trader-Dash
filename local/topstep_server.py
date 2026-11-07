@@ -17,6 +17,7 @@ import workspace_server as research
 from topstep_core import ProjectXClient, TradeLedger, calculate_stats, GatewayError, iso_utc, utc_now
 from trade_analytics import summarize as summarize_completed
 from realtime_bridge import LiveBridge, valid_contract
+from demo_broker import DemoBroker, DemoBridge
 from structure_context import analyze as analyze_structure
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +25,7 @@ DASH = ROOT / "topstep" / "index.html"
 PORT = research.PORT
 CLIENT = None
 LEDGER = None
+DEMO_MODE = os.getenv("TRADER_DEMO", "") == "1"
 CACHE = {}
 FULL_SYNC = {}
 DIRTY = set()
@@ -34,6 +36,8 @@ LOCK = threading.RLock()
 def client():
     global CLIENT
     with LOCK:
+        if CLIENT is None and DEMO_MODE:
+            CLIENT = DemoBroker()
         if CLIENT is None:
             name = os.getenv("TOPSTEPX_USERNAME", "").strip()
             key = os.getenv("TOPSTEPX_API_KEY", "")
@@ -47,7 +51,12 @@ def ledger():
     global LEDGER
     with LOCK:
         if LEDGER is None:
-            LEDGER = TradeLedger()
+            if DEMO_MODE:
+                # Hard separation: demo data never writes to live trade ledger.
+                from topstep_core import DATA_DIR
+                LEDGER = TradeLedger(DATA_DIR / "demo-fixture-ledger.sqlite3")
+            else:
+                LEDGER = TradeLedger()
         return LEDGER
 
 
@@ -60,6 +69,8 @@ def mark_live_dirty():
 def bridge():
     global BRIDGE
     with LOCK:
+        if BRIDGE is None and DEMO_MODE:
+            BRIDGE = DemoBridge()
         if BRIDGE is None:
             def ingest_trade(trade):
                 # Corrections and voided legs replace their existing broker trade ID.
@@ -93,7 +104,8 @@ def snapshot_account(account_id, days, force=False):
         result = {"account": snap["account"], "stats": stats, "completed_trades": completed, "positions": snap["positions"],
                   "orders": snap["orders"], "synced_at": snap["synced_at"],
                   "record_count": len(all_legs), "historical_window_days": days,
-                  "real_time": False, "order_execution_enabled": False}
+                  "real_time": False, "order_execution_enabled": False,
+                  "synthetic": DEMO_MODE, "source": "SYNTHETIC_OFFLINE_FIXTURE" if DEMO_MODE else "TOPSTEPX_BROKER_REST"}
         CACHE[cache_key] = {"data": result, "at": time.monotonic()}
         if full:
             FULL_SYNC[cache_key] = time.monotonic()
@@ -142,7 +154,8 @@ class Handler(research.Handler):
         try:
             if path == "/topstep/api/health":
                 return self._reply(200, {"ok": True, "mode": "TOPSTEPX_READ_ONLY",
-                    "configured": bool(os.getenv("TOPSTEPX_USERNAME") and os.getenv("TOPSTEPX_API_KEY")),
+                    "configured": DEMO_MODE or bool(os.getenv("TOPSTEPX_USERNAME") and os.getenv("TOPSTEPX_API_KEY")),
+                    "synthetic": DEMO_MODE,
                     "clock_utc": iso_utc(utc_now()), "execution": False})
             if path == "/topstep/api/live":
                 snapshot = BRIDGE.snapshot() if BRIDGE is not None else {
@@ -154,7 +167,8 @@ class Handler(research.Handler):
                 return self._reply(200, {"ok": True, **snapshot})
             if path == "/topstep/api/accounts":
                 accounts = client().accounts()
-                return self._reply(200, {"ok": True, "accounts": accounts, "synced_at": iso_utc(utc_now())})
+                return self._reply(200, {"ok": True, "accounts": accounts,
+                    "synthetic": DEMO_MODE, "synced_at": iso_utc(utc_now())})
             if path == "/topstep/api/contracts":
                 symbol = self._query().get("symbol", ["MES"])[0]
                 values = client().contracts(symbol)
@@ -165,7 +179,7 @@ class Handler(research.Handler):
                 bars = client().bars(contract, minutes)
                 observation = analyze_structure(bars, minutes)
                 return self._reply(200, {"ok": True, "bars": bars,
-                    "context": observation,
+                    "synthetic": DEMO_MODE, "context": observation,
                     "contract": contract, "minutes": minutes,
                     "synced_at": iso_utc(utc_now()), "transport": "REST_POLL"})
             if path == "/topstep/api/account":
@@ -219,6 +233,8 @@ def main():
     server = ThreadingHTTPServer((research.HOST, PORT), Handler)
     url = "http://127.0.0.1:" + str(PORT) + "/topstep"
     print("TopstepX read-only workstation: " + url)
+    if DEMO_MODE:
+        print("OFFLINE SYNTHETIC DEMO — not a broker connection; no real market data or account history")
     print("Broker API key stays in local process memory, never browser or repository.")
     print("No order endpoints available. Ctrl+C stops server.")
     if "--no-browser" not in sys.argv:
