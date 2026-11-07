@@ -25,7 +25,7 @@ function fixture(day){
   a[7]=make(7,6014,6022,6013,6021);
   return a;
 }
-function createUI(){
+function createUI(fetchImpl){
   class Node{
     constructor(id){
       this.id=id;
@@ -67,13 +67,13 @@ function createUI(){
   const window={matchMedia(){return {matches:false}},addEventListener(){},confirm(){return true}};
   const inner=script.slice(script.indexOf("(function(){")+"(function(){".length,script.lastIndexOf("})();"));
   const patched=inner.replace(/\n\s*start\(\);\s*$/,
-    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger}));');
+    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger,checkMarketStatus,fetchPracticeCandles,loadPracticeCandles}));');
   assert.notEqual(inner,patched);
   const launch=new Function("document","window","globalThis","indexedDB","localStorage","devicePixelRatio",
     "requestAnimationFrame","ResizeObserver","setTimeout","clearTimeout","fetch",patched);
   return launch(document,window,globalThis,undefined,
     {getItem(){return null},setItem(){}},1,fn=>fn(),class {observe(){}},()=>1,()=>{},
-    async()=>{throw Error("Optional model is intentionally unavailable")}).then(r=>({...r,nodes}));
+    fetchImpl|| (async()=>{throw Error("Optional model is intentionally unavailable")})).then(r=>({...r,nodes}));
 }
 function dataset(){
   const dates=[];
@@ -175,4 +175,59 @@ test("paper statistics are opt-in and excluded from historical replay AI context
   assert.equal(x.packet().evidence.paper_research.summary.verifiedForwardCases,0);
   x.S.replay=true;x.S.reveal=10;x.S.viewportEnd=10;
   assert.equal(x.packet().evidence.paper_research,undefined);
+});
+
+test("OANDA practice controls load provider receipts without leaking tokens or enabling MES rule tests",async()=>{
+  const observed=[];
+  const marketBar=(i)=>{
+    const time=Date.parse("2026-11-05T14:00:00.000Z")+i*300000;
+    return {time,open:1.1,high:1.1006,low:1.0998,close:1.1003,
+      bidClose:1.10025,askClose:1.10035,
+      receivedAt:Date.parse("2026-11-05T20:00:00Z"),receiptId:"source-receipt-123"};
+  };
+  const answer=(body)=>({ok:true,json:async()=>body});
+  const fetchImpl=async (url,options={})=>{
+    observed.push({url,method:options.method||"GET",headers:options.headers,body:options.body});
+    if(url==="/api/session")return answer({ok:true,token:"local-session-token",
+      ollama:{reachable:false,model_available:false,model:"none"}});
+    if(url==="/api/market/status")return answer({ok:true,market:{provider:"OANDA practice only",
+      configured:true,stored_candle_counts:{EUR_USD:2}}});
+    if(url==="/api/market/fetch")return answer({ok:true,market_receipt:{
+      symbol:"EUR_USD",source:"oanda-fxpractice",receipt_id:"source-receipt-123",
+      added:2,repeated:0,conflicts:0
+    }});
+    if(url==="/api/market/candles?symbol=EUR_USD&limit=1000")
+      return answer({ok:true,market:{
+        symbol:"EUR_USD",source:"oanda-fxpractice",granularity:"M5",
+        bars:[marketBar(0),marketBar(1)],last_received_utc_ms:Date.parse("2026-11-05T20:00:00Z"),
+        conflicts:0
+      }});
+    throw Error("Unexpected API path "+url);
+  };
+  const x=await createUI(fetchImpl);
+  await x.checkMarketStatus();
+  await Promise.resolve();
+  assert.equal(x.S.fx.configured,true);
+  await x.fetchPracticeCandles();
+  const outbound=observed.find(x=>x.url==="/api/market/fetch");
+  assert.equal(outbound.method,"POST");
+  assert.equal(outbound.headers["X-Trader-Token"],"local-session-token");
+  assert.deepEqual(JSON.parse(outbound.body),{symbol:"EUR_USD",count:500});
+  assert.equal(outbound.body.includes("password"),false);
+  await x.loadPracticeCandles();
+  assert.equal(x.S.data.source,"oanda-fxpractice");
+  assert.equal(x.S.data.symbol,"EUR_USD");
+  assert.equal(x.S.data.bars.length,2);
+  assert.equal(x.S.data.bars[0].bidClose,1.10025);
+  assert.equal(x.packet().source.kind,"oanda-fxpractice");
+  x.nodes.mesConfirm.checked=true;
+  await x.runMesResearch();
+  assert.equal(x.S.mesRun,null);
+});
+test("offline standalone workspace leaves provider controls disabled",async()=>{
+  const x=await createUI();
+  await x.checkMarketStatus();
+  assert.equal(x.S.fx.server,false);
+  assert.equal(x.nodes.fxFetch.disabled,true);
+  assert.equal(x.nodes.fxLoad.disabled,true);
 });
