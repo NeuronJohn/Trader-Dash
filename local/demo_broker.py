@@ -63,8 +63,13 @@ class DemoBroker:
         raise RuntimeError("Demo broker never issues or accepts live tokens")
 
     def accounts(self):
+        # Keep the invented broker balance mathematically consistent with every
+        # synthetic execution and charged fee, including both half-turns.
+        realized = sum((leg["profitAndLoss"] or 0)-leg["fees"]-leg["commissions"]
+                       for leg in self._fills if not leg["voided"])
+        balance = round(50000.0 + realized, 2)
         return [{"id": DEMO_ACCOUNT_ID, "name": "SYNTHETIC Practice — Not Topstep",
-                 "balance": 50000.00, "canTrade": False, "simulated": True,
+                 "balance": balance, "canTrade": False, "simulated": True,
                  "isVisible": True}]
 
     def contracts(self, query):
