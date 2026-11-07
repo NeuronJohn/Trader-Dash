@@ -361,7 +361,8 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
             <option value="USD_JPY">USD/JPY</option>
           </select>
           <button class="btn" id="fxLoad" disabled>Open saved prices</button>
-          <button class="btn primary" id="fxFetch" disabled>Fetch completed candles</button>
+          <button class="btn primary" id="fxFetch" disabled>Refresh chart</button>
+          <button class="btn" id="fxBackfill" disabled title="Manually retrieve up to 12 historical pages, never orders">Backfill history</button>
         </div>
         <p class="feed-detail" id="fxDetail">Launch the local server to use practice data. No automatic polling or order execution.</p>
       </div>
@@ -1811,6 +1812,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
   function setPracticeControls(){
     $("fxLoad").disabled=!S.fx.server||S.fx.busy;
     $("fxFetch").disabled=!S.fx.server||!S.fx.configured||S.fx.busy||!S.runtime.token;
+    $("fxBackfill").disabled=!S.fx.server||!S.fx.configured||S.fx.busy||!S.runtime.token;
     const host=$("fxStatus");host.classList.remove("ok","warn");
     if(!S.fx.server){host.textContent="Local server offline";host.classList.add("warn")}
     else if(!S.fx.configured){host.textContent="Practice token not configured";host.classList.add("warn")}
@@ -1839,14 +1841,14 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     const symbol=$("fxSymbol").value;
     try{
       if(!["EUR_USD","GBP_USD","USD_JPY"].includes(symbol))throw Error("Unsupported practice pair");
-      const response=await fetch("/api/market/candles?symbol="+encodeURIComponent(symbol)+"&limit=1000",{
+      const response=await fetch("/api/market/candles?symbol="+encodeURIComponent(symbol)+"&limit=16000",{
         method:"GET",credentials:"same-origin",cache:"no-store"
       });
       const payload=await response.json();
       if(!response.ok||!payload.ok)throw Error(payload.error||"Cannot load local OANDA receipts");
       const market=payload.market;
       if(market.symbol!==symbol||market.source!=="oanda-fxpractice"||
-         !Array.isArray(market.bars)||market.bars.length>1000)
+         !Array.isArray(market.bars)||market.bars.length>16000)
         throw Error("Unexpected market data source");
       if(!market.bars.length)throw Error("No completed practice candles saved for "+symbol+". Fetch once first.");
       let last=-Infinity;
@@ -1916,6 +1918,42 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     // One explicit practice fetch automatically refreshes the chart using the
     // recorded local receipt. Never silently poll or invoke trade endpoints.
     if(completed)await loadPracticeCandles();
+  }
+
+  async function backfillPracticeHistory(){
+    if(!S.fx.server||!S.fx.configured||!S.runtime.token||S.fx.busy){
+      toast("Local OANDA practice reader unavailable");return
+    }
+    const symbol=$("fxSymbol").value;
+    if(!["EUR_USD","GBP_USD","USD_JPY"].includes(symbol)){toast("Unsupported pair");return}
+    if(!window.confirm("Download up to 12 successive pages of OANDA PRACTICE historical M5 candles ("+
+      "up to 12,000 bars) for "+symbol+"? This records local receipts only; no trades or automatic ongoing checks."))return;
+    S.fx.busy=true;setPracticeControls();
+    $("fxDetail").textContent="Importing bounded historical practice data. Local receipts preserve the first-seen candle version.";
+    let successful=false;
+    try{
+      const response=await fetch("/api/market/backfill",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json","X-Trader-Token":S.runtime.token},
+        body:JSON.stringify({symbol,pages:12})
+      });
+      const data=await response.json();
+      if(!response.ok||!data.ok)throw Error(data.error||"Historical backfill failed");
+      const receipt=data.market_receipt;
+      if(receipt.source!=="oanda-fxpractice"||receipt.symbol!==symbol||receipt.requests>12)
+        throw Error("Unexpected historical response");
+      successful=true;
+      $("fxDetail").textContent=receipt.requests+" practice-page receipts · "+
+        receipt.added+" new bars · "+Number(receipt.augmented||0)+" older records enriched · "+
+        receipt.conflicts+" revisions retained";
+      toast("Historical practice pages recorded. No order actions performed.");
+    }catch(e){
+      $("fxDetail").textContent="Backfill blocked: "+e.message;
+      toast("OANDA history: "+e.message);
+    }finally{
+      S.fx.busy=false;setPracticeControls();
+    }
+    if(successful)await loadPracticeCandles();
   }
 
   async function checkLocalRuntime(){
@@ -2879,6 +2917,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("runExperiment").addEventListener("click",runResearchExperiment);
     $("runMes").addEventListener("click",runMesResearch);
     $("fxFetch").addEventListener("click",fetchPracticeCandles);
+    $("fxBackfill").addEventListener("click",backfillPracticeHistory);
     $("fxScan").addEventListener("click",scanFxHistory);
     $("fxRun").addEventListener("click",runFxResearch);
     $("fxLoad").addEventListener("click",loadPracticeCandles);
