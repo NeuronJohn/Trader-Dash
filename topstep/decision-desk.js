@@ -32,6 +32,16 @@ function assess(input={}){
  const broken=!!c.completed_data_stale||!!c.gaps_in_last_20;
  const accountOk=input.accountFresh===true;
  const marketOk=input.quoteFresh===true;
+ if(!input.synthetic&&input.accountCanTrade===false){
+   base.headline="Account is not eligible for new trading";
+   base.summary="Broker account canTrade is false. You can study the chart, not treat the setup as actionable.";
+   return base;
+ }
+ if((input.positionCount||0)>0||(input.orderCount||0)>0){
+   base.headline="Existing exposure needs review";
+   base.summary="Open positions or orders exist. Review those exposures before preparing another hypothetical plan.";
+   return base;
+ }
  const isBreak=c.range_state==="ABOVE_PRIOR_RANGE"||c.range_state==="BELOW_PRIOR_RANGE";
  const side=c.range_state==="ABOVE_PRIOR_RANGE"?"LONG":c.range_state==="BELOW_PRIOR_RANGE"?"SHORT":null;
  const level=side==="LONG"?c.prior_20_high:side==="SHORT"?c.prior_20_low:null;
