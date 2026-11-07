@@ -14,7 +14,26 @@
   <div style="margin-left:auto"><div class="muted small">Quote freshness</div><strong id="quoteAge">No fresh quote</strong></div>
 </div>
 <div class="layout"><section class="panel"><div class="panelhead"><h2 id="chartTitle">Futures · Broker candles</h2><div class="tools"><input id="symbol" value="MES" size="5" maxlength="16" aria-label="Symbol"><button id="find">Find</button><select id="contract"><option value="">Select contract</option></select><select id="minutes"><option value="1">1m</option><option selected value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option></select><button id="zin" title="Zoom in">+</button><button id="zout" title="Zoom out">−</button><button id="tail" title="Return to latest broker candle">Latest</button></div></div><canvas id="chart" aria-label="Interactive OHLC candles: mouse wheel zooms around cursor, drag pans earlier bars" style="cursor:crosshair;touch-action:none"></canvas><div id="canvasEmpty">Choose a futures contract to load broker-source candles.</div><div class="chartfoot"><span id="chartInfo">No broker data</span><span id="syncBar">—</span><span id="chartPointer">Wheel zoom · Drag pan · Latest returns to live tail</span></div></section>
-<div style="display:grid;gap:15px;align-content:start"><section class="panel pad"><h2>Account activity</h2><div class="kv"><span class="muted">Account canTrade</span><strong id="permission">—</strong></div><div class="kv"><span class="muted">Open positions</span><strong id="positionsCount">—</strong></div><div class="kv"><span class="muted">Open orders</span><strong id="ordersCount">—</strong></div><div class="kv"><span class="muted">Closing fill legs</span><strong id="closedCount">—</strong></div><div class="kv"><span class="muted">Session-close drawdown</span><strong id="dd">—</strong></div><div class="kv"><span class="muted">Last synchronization</span><span id="sync">—</span></div><p class="small muted" style="margin-top:12px">Session-close drawdown is not Topstep maximum loss limit. This dashboard does not approve trades or calculate real-time compliance.</p></section><section class="panel pad"><h2>Research & AI</h2><p class="muted small" style="margin-top:8px">Open the <a href="/">research workspace</a> for setup scanning, MES strategy experiments, chart drawings, and optional local Ollama analysis. The broker connection here cannot place orders.</p></section></div></div>
+<div style="display:grid;gap:15px;align-content:start"><section class="panel pad"><h2>Account activity</h2><div class="kv"><span class="muted">Account canTrade</span><strong id="permission">—</strong></div><div class="kv"><span class="muted">Open positions</span><strong id="positionsCount">—</strong></div><div class="kv"><span class="muted">Open orders</span><strong id="ordersCount">—</strong></div><div class="kv"><span class="muted">Closing fill legs</span><strong id="closedCount">—</strong></div><div class="kv"><span class="muted">Session-close drawdown</span><strong id="dd">—</strong></div><div class="kv"><span class="muted">Last synchronization</span><span id="sync">—</span></div><p class="small muted" style="margin-top:12px">Session-close drawdown is not Topstep maximum loss limit. This dashboard does not approve trades or calculate real-time compliance.</p></section><section class="panel pad" id="decisionDesk" style="display:grid;gap:9px" aria-live="polite">
+ <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+  <h2>Decision Desk</h2><span class="tag" id="deskStatus">CHECK DATA</span>
+ </div>
+ <strong id="deskHeadline">Analyzing the chart and account…</strong>
+ <p id="deskSummary" class="small muted">Select a contract to start.</p>
+ <p id="deskCaution" class="small muted">Never a trade instruction.</p>
+ <p id="deskStats" class="small muted">Setup-specific performance is not established.</p>
+ <div class="tools" style="gap:7px">
+  <button type="button" id="deskDraft" disabled>Draft risk plan</button>
+  <button type="button" id="deskAI" disabled>Recheck with local AI</button>
+ </div>
+ <div id="deskNote" hidden style="background:#192630;border:1px solid #354955;border-radius:8px;padding:10px;display:grid;gap:5px">
+  <strong class="small">Local AI explanation · unverified</strong>
+  <p class="small" id="deskObservation"></p>
+  <p class="small muted" id="deskConcern"></p>
+  <p class="small muted" id="deskNext"></p>
+ </div>
+ <p id="deskAIStatus" class="small muted">The decision overview is automatic. Local AI adds a short contextual note when available.</p>
+</section></div></div>
 <div class="panel pad"><div style="display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap"><h2>Market structure · completed candles only</h2><span class="tag">Observation, not a trade signal</span></div>
 <div class="cards" style="margin-top:12px;grid-template-columns:repeat(4,minmax(0,1fr))">
  <div><span class="muted small">20-bar high</span><div id="rangeHigh" class="number" style="font-size:16px">—</div></div>
@@ -55,8 +74,13 @@
 <section class="panel"><div class="panelhead"><h2>Performance patterns</h2><span class="small muted">Observed results, not predictions</span></div><div style="overflow:auto;max-height:420px"><table><thead><tr><th>Breakdown</th><th>Count</th><th>Win %</th><th>Net</th></tr></thead><tbody id="patternRows"></tbody></table></div></section></div><div class="foot">TopstepX REST data refreshed approximately every 30 seconds while visible. Broker authentication remains local. No order execution, live-streaming claim, or guarantee of trading performance.</div></main>
 <script src="/topstep/risk-plan.js"></script>
 <script src="/topstep/chart-model.js"></script>
+<script src="/topstep/decision-desk.js"></script>
 <script>(()=>{"use strict";const $=id=>document.getElementById(id);let token="",bars=[],count=110,busy=false,demoMode=false;
-let chartEnd=null, chartDrag=null, chartHover=null, chartSeries="", chartSeq=0, chartMeta=null;let contractSpecs=new Map(),latestStructure=null;const set=(id,v)=>$(id).textContent=v;const money=x=>Number.isFinite(x)?(x<0?"−":"")+Math.abs(x).toLocaleString("en-US",{style:"currency",currency:"USD"}):"—";const percent=x=>typeof x==="number"?((x*100).toFixed(1)+"%"):"—";const fail=e=>{$("error").textContent=e;$("error").classList.add("active")};const clear=()=>$("error").classList.remove("active");
+let chartEnd=null, chartDrag=null, chartHover=null, chartSeries="", chartSeq=0, chartMeta=null;let contractSpecs=new Map(),latestStructure=null;
+let deskStats=null,deskAccountId=null,deskPositions=0,deskOrders=0,deskCanTrade=null;
+let deskQuoteFresh=false,deskModelAvailable=false,deskCurrent=null,deskKey="";
+let deskModelWorking=false;
+const deskModelAttempted=new Set();const set=(id,v)=>$(id).textContent=v;const money=x=>Number.isFinite(x)?(x<0?"−":"")+Math.abs(x).toLocaleString("en-US",{style:"currency",currency:"USD"}):"—";const percent=x=>typeof x==="number"?((x*100).toFixed(1)+"%"):"—";const fail=e=>{$("error").textContent=e;$("error").classList.add("active")};const clear=()=>$("error").classList.remove("active");
 let selectedStream="",lastAccountSync=0,lastChangeKey="",livePolling=false;
 async function subscribeStream(){
   const accountId=Number($("account").value),contractId=$("contract").value;
@@ -83,6 +107,7 @@ async function pollStream(){
    const d=await get("/topstep/api/live");
    const match=selectedStream===String(d.selected_account)+"|"+String(d.selected_contract);
    const market=match&&d.hubs?.market?.connected;
+   deskQuoteFresh=!!(match&&d.quote_fresh);renderDesk();
    const account=match&&d.hubs?.user?.connected;
    set("streamMarket",demoMode?(market?"SIMULATED":"OFFLINE"):(market?(d.quote_fresh?"LIVE QUOTE":"CONNECTED · QUOTE STALE"):"DISCONNECTED"));
    set("streamAccount",demoMode?(account?"SIMULATED":"OFFLINE"):(account?"CONNECTED":"DISCONNECTED"));
@@ -96,14 +121,14 @@ async function pollStream(){
    const changeKey=[d.user_trade_event_count,d.positions_event_count,d.orders_event_count].join("|");
    if(lastChangeKey!==""&&lastChangeKey!==changeKey&&Date.now()-lastAccountSync>12000)await account();
    lastChangeKey=changeKey;
- }catch(e){set("streamMarket","OFFLINE");set("streamAccount","OFFLINE");
+ }catch(e){deskQuoteFresh=false;renderDesk();set("streamMarket","OFFLINE");set("streamAccount","OFFLINE");
  set("quoteLast","—");set("quoteSpread","—");set("quoteAge","Connection unavailable");
  $("quoteAge").className="bad"}
  finally{livePolling=false}
 }
 async function get(path){const r=await fetch(path,{cache:"no-store",headers:{"X-Trader-Token":token}});let j;try{j=await r.json()}catch{throw Error("Local server returned invalid data")}if(!r.ok||!j.ok)throw Error(j.error||"Request failed");return j}
 function table(id,items,columns){const body=$(id);body.replaceChildren();if(!items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=columns.length;td.textContent="No entries";tr.appendChild(td);body.appendChild(tr);return}for(const row of items){const tr=document.createElement("tr");for(const f of columns){const td=document.createElement("td");td.textContent=f(row);tr.appendChild(td)}body.appendChild(tr)}}
-function invalidateAccount(reason){
+function invalidateAccount(reason){deskStats=null;deskAccountId=null;deskPositions=0;deskOrders=0;deskCanTrade=null;lastAccountSync=0;renderDesk();
   for(const id of ["balance","net","gross","costs","legs","closedCount","dd",
                    "completedCount","completedWin","expectancy","profitFactor","tradeDD",
                    "positionsCount","ordersCount"])set(id,"—");
@@ -113,7 +138,7 @@ function invalidateAccount(reason){
   table("completedRows",[],[x=>x]);table("patternRows",[],[x=>x]);
 }
 async function accounts(){const d=await get("/topstep/api/accounts"),sel=$("account");sel.replaceChildren(new Option("Choose account",""));for(const a of d.accounts)sel.add(new Option((a.name||"Account")+" · "+a.id,a.id));set("conn",demoMode?"SYNTHETIC OFFLINE":"Connected");if(d.accounts.length){sel.value=String(d.accounts[0].id);await account()}}
-async function account(){if(!$("account").value||busy)return;busy=true;try{const d=await get("/topstep/api/account?id="+$("account").value+"&days="+$("days").value);if(d.synthetic!==demoMode)throw Error("Account source mismatch");set("balance",money(d.account.balance));set("net",money(d.stats.net_realized_usd));set("gross",money(d.stats.gross_realized_usd));set("costs",money(d.stats.fees_usd+d.stats.commissions_usd));set("legs",d.stats.active_legs);set("permission",String(d.account.canTrade===true));set("positionsCount",d.positions.length);set("ordersCount",d.orders.length);set("closedCount",d.stats.closed_legs);set("dd",money(d.stats.session_close_drawdown_usd));set("sync",new Date(d.synced_at).toLocaleString());lastAccountSync=Date.now();completeTrades(d.completed_trades);table("daily",[...d.stats.daily].reverse(),[x=>x.session,x=>x.closed_legs,x=>money(x.net)]);table("positions",d.positions,[x=>x.contractId||"—",x=>String(x.size??"—"),x=>String(x.averagePrice??"—")]);clear()}catch(e){invalidateAccount(e.message);fail("Account synchronization failed · "+e.message)}finally{busy=false}}
+async function account(){if(!$("account").value||busy)return;busy=true;try{const d=await get("/topstep/api/account?id="+$("account").value+"&days="+$("days").value);if(d.synthetic!==demoMode)throw Error("Account source mismatch");set("balance",money(d.account.balance));set("net",money(d.stats.net_realized_usd));set("gross",money(d.stats.gross_realized_usd));set("costs",money(d.stats.fees_usd+d.stats.commissions_usd));set("legs",d.stats.active_legs);set("permission",String(d.account.canTrade===true));set("positionsCount",d.positions.length);set("ordersCount",d.orders.length);set("closedCount",d.stats.closed_legs);set("dd",money(d.stats.session_close_drawdown_usd));set("sync",new Date(d.synced_at).toLocaleString());lastAccountSync=Date.now();deskStats=d.completed_trades;deskAccountId=Number(d.account.id);deskPositions=d.positions.length;deskOrders=d.orders.length;deskCanTrade=d.account.canTrade;completeTrades(d.completed_trades);renderDesk();table("daily",[...d.stats.daily].reverse(),[x=>x.session,x=>x.closed_legs,x=>money(x.net)]);table("positions",d.positions,[x=>x.contractId||"—",x=>String(x.size??"—"),x=>String(x.averagePrice??"—")]);clear()}catch(e){invalidateAccount(e.message);fail("Account synchronization failed · "+e.message)}finally{busy=false}}
 function completeTrades(c){
 if(!c||c.status==="UNAVAILABLE"){
   for(const id of ["completedCount","completedWin","expectancy","profitFactor","tradeDD"])set(id,"—");
@@ -138,6 +163,66 @@ const pattern=[...(c.breakdowns?.side||[]).map(x=>({...x,label:"Direction: "+x.l
  ...(c.breakdowns?.entry_hour_ct||[]).map(x=>({...x,label:"Entry hour CT: "+x.label+":00"})),
  ...(c.breakdowns?.contract_id||[]).map(x=>({...x,label:"Contract: "+x.label.split(".").slice(-2).join(" · ")}))];
 table("patternRows",pattern,[x=>x.label,x=>x.count,x=>percent(x.win_rate),x=>money(x.net_usd)]);
+}
+
+function renderDesk(){
+ const accountFresh=deskAccountId===Number($("account").value)&&
+   Date.now()-lastAccountSync<90000;
+ const choice=$("contract").value,meta=contractSpecs.get(choice);
+ const d=globalThis.TraderDecision.assess({
+   context:latestStructure,contractId:choice,minutes:Number($("minutes").value),
+   synthetic:demoMode,quoteFresh:deskQuoteFresh,accountFresh,
+   stats:deskStats,contractSpec:meta,
+   positionCount:deskPositions,orderCount:deskOrders,accountCanTrade:deskCanTrade
+ });
+ const key=d.candidateKey?deskAccountId+"|"+d.candidateKey:"";
+ if(key!==deskKey){
+   deskKey=key;
+   $("deskNote").hidden=true;
+   set("deskObservation","");set("deskConcern","");set("deskNext","");
+   set("deskAIStatus",deskModelAvailable?"Local AI checks the next completed-bar observation automatically.":
+       "Local model offline. The verified-data overview continues without AI.");
+ }
+ deskCurrent=d;
+ set("deskStatus",d.status==="REVIEW"?"REVIEW STRUCTURE":d.status==="WATCH"?"WATCH":"PAUSE");
+ $("deskStatus").className=d.status==="REVIEW"?"tag good":d.status==="WATCH"?"tag muted":"tag bad";
+ set("deskHeadline",(demoMode?"SYNTHETIC · ":"")+d.headline);
+ set("deskSummary",d.summary);set("deskCaution",d.caution);set("deskStats",d.statsNote);
+ $("deskDraft").disabled=!d.draftAllowed;
+ $("deskAI").disabled=!deskModelAvailable||d.status!=="REVIEW"||deskModelWorking;
+ if(d.status==="REVIEW"&&deskModelAvailable&&!deskModelAttempted.has(key)&&!deskModelWorking)
+   runDeskModel(false);
+}
+async function runDeskModel(force){
+ const d=deskCurrent,accountId=Number($("account").value);
+ if(!d||d.status!=="REVIEW"||!deskModelAvailable||!accountId||deskModelWorking)return;
+ const key=deskKey;
+ if(!force&&deskModelAttempted.has(key))return;
+ deskModelAttempted.add(key);
+ deskModelWorking=true;$("deskAI").disabled=true;
+ set("deskAIStatus","Local AI is reading the completed-bar evidence and your account statistics…");
+ try{
+   const response=await fetch("/topstep/api/desk/review",{
+     method:"POST",cache:"no-store",
+     headers:{"Content-Type":"application/json","X-Trader-Token":token},
+     body:JSON.stringify({account_id:accountId,contract_id:$("contract").value,
+       minutes:Number($("minutes").value),confirmed_through_ms:d.confirmedAt})
+   });
+   const result=await response.json();
+   if(!response.ok||!result.ok)throw Error(result.error||"Review unavailable");
+   if(key!==deskKey||result.confirmed_through_ms!==d.confirmedAt||
+       result.source!==d.source)return;
+   set("deskObservation",result.analysis.observation);
+   set("deskConcern","Concern: "+result.analysis.concern);
+   set("deskNext","Check next: "+result.analysis.next_check);
+   $("deskNote").hidden=false;
+   set("deskAIStatus","Local model note only. Prices, readiness and risk are computed separately.");
+ }catch(e){
+   if(key===deskKey)set("deskAIStatus","Local AI note unavailable · "+e.message+" · Core analysis remains active.");
+ }finally{
+   deskModelWorking=false;
+   $("deskAI").disabled=!deskModelAvailable||deskCurrent?.status!=="REVIEW";
+ }
 }
 function planRisk(){
  const meta=contractSpecs.get($("contract").value);
@@ -170,7 +255,7 @@ function planRisk(){
        " · This assumes stop execution plus "+result.slippageTicksPerSide+" ticks of slippage per side.");
  }catch(e){set("riskMessage",e.message+" · Planning only.");}
 }
-async function find(){try{const d=await get("/topstep/api/contracts?symbol="+encodeURIComponent($("symbol").value.trim().toUpperCase())),sel=$("contract");sel.replaceChildren(new Option("Choose contract",""));contractSpecs=new Map();for(const x of d.contracts)if(x.activeContract!==false){sel.add(new Option((x.name||x.id)+" · "+(x.description||""),x.id));contractSpecs.set(x.id,{name:x.name||x.id,tickSize:x.tickSize,tickValue:x.tickValue})}planRisk();if(sel.options.length===1){fail("No active matching futures contract found");return}
+async function find(){deskQuoteFresh=false;showStructure(null);try{const d=await get("/topstep/api/contracts?symbol="+encodeURIComponent($("symbol").value.trim().toUpperCase())),sel=$("contract");sel.replaceChildren(new Option("Choose contract",""));contractSpecs=new Map();for(const x of d.contracts)if(x.activeContract!==false){sel.add(new Option((x.name||x.id)+" · "+(x.description||""),x.id));contractSpecs.set(x.id,{name:x.name||x.id,tickSize:x.tickSize,tickValue:x.tickValue})}planRisk();if(sel.options.length===1){fail("No active matching futures contract found");return}
 const previous=localStorage.getItem(demoMode?"topstep_demo_contract_id":"topstep_contract_id");
 if(previous&&[...sel.options].some(x=>x.value===previous)){sel.value=previous;await candles()}
 else if(sel.options.length===2){sel.selectedIndex=1;await candles()}
@@ -179,7 +264,7 @@ set("chartTitle","Futures · Choose expiry");
 set("chartInfo","Select a specific active expiry · no contract guessed");
 set("streamMarket","DISCONNECTED");set("streamAccount","DISCONNECTED");
 set("quoteLast","—");set("quoteSpread","—");set("quoteAge","No fresh quote")}}catch(e){fail(e.message)}}
-function showStructure(c){latestStructure=c;
+function showStructure(c){latestStructure=c;renderDesk();
  if(!c||c.status!=="OBSERVATION_ONLY"){
    for(const id of ["rangeHigh","rangeLow","contextATR","contextClose"])set(id,"—");
    set("structureLabel",c?.status==="INSUFFICIENT_HISTORY"?"Insufficient complete bars ("+c.closed_bars+"/22)":"Structure not available");
@@ -328,11 +413,25 @@ function finishDrag(){chartDrag=null}
 chartCanvas.addEventListener("pointerup",finishDrag);
 chartCanvas.addEventListener("pointercancel",finishDrag);
 chartCanvas.addEventListener("pointerleave",()=>{if(!chartDrag){chartHover=null;paint()}});
-$("account").onchange=async()=>{invalidateAccount("Account selection changed");selectedStream="";set("streamMarket","DISCONNECTED");
+$("account").onchange=async()=>{deskQuoteFresh=false;invalidateAccount("Account selection changed");selectedStream="";set("streamMarket","DISCONNECTED");
 set("streamAccount","DISCONNECTED");set("quoteLast","—");set("quoteSpread","—");
-set("quoteAge","No fresh quote");await account();await subscribeStream()};$("days").onchange=account;$("find").onclick=find;$("contract").onchange=async()=>{planRisk();await candles()};$("minutes").onchange=candles;$("zin").onclick=()=>zoomChart(.83);$("zout").onclick=()=>zoomChart(1.2);$("tail").onclick=()=>{chartEnd=null;chartHover=null;paint()};$("refresh").onclick=async()=>{await account();await candles()};window.addEventListener("resize",paint);
+set("quoteAge","No fresh quote");await account();await subscribeStream()};$("days").onchange=account;$("find").onclick=find;$("contract").onchange=async()=>{deskQuoteFresh=false;showStructure(null);planRisk();await candles()};$("minutes").onchange=candles;$("zin").onclick=()=>zoomChart(.83);$("zout").onclick=()=>zoomChart(1.2);$("tail").onclick=()=>{chartEnd=null;chartHover=null;paint()};$("refresh").onclick=async()=>{await account();await candles()};window.addEventListener("resize",paint);
 for(const id of ["riskSide","riskEntry","riskStop","riskTarget","riskQty","riskBudget","riskCap","riskFees","riskSlip"])
   $(id).addEventListener("input",()=>{planRisk();if(["riskEntry","riskStop","riskTarget"].includes(id))paint()});
+$("deskDraft").addEventListener("click",()=>{
+ const meta=contractSpecs.get($("contract").value);
+ try{
+   const plan=globalThis.TraderDecision.draft(deskCurrent,latestStructure,meta);
+   $("riskSide").value=plan.side;
+   $("riskEntry").value=plan.entry;
+   $("riskStop").value=plan.stop;
+   $("riskTarget").value=plan.target;
+   planRisk();paint();
+   set("deskAIStatus","Illustrative ATR levels placed in the worksheet. Enter your own risk cap and check the plan.");
+   $("riskWorksheet").scrollIntoView({behavior:"smooth",block:"center"});
+ }catch(e){set("deskAIStatus",e.message)}
+});
+$("deskAI").addEventListener("click",()=>runDeskModel(true));
 $("riskUseClose").addEventListener("click",()=>{
  if(!latestStructure||latestStructure.status!=="OBSERVATION_ONLY"||
     latestStructure.completed_data_stale||latestStructure.gaps_in_last_20){
@@ -342,5 +441,5 @@ $("riskUseClose").addEventListener("click",()=>{
  $("riskEntry").value=latestStructure.latest_complete_close;planRisk();
 });
 setInterval(async()=>{if(document.visibilityState==="visible"){await account();if($("contract").value)await candles()}},30000);setInterval(()=>{if(document.visibilityState==="visible")pollStream()},2500);
-(async()=>{try{const d=await(await fetch("/api/session",{cache:"no-store"})).json();token=d.token||"";const h=await get("/topstep/api/health");demoMode=h.synthetic===true;if(demoMode)$("demoWarning").hidden=false;if(!h.configured){fail("Set TOPSTEPX_USERNAME and TOPSTEPX_API_KEY locally before connecting. Do not paste keys into this page.");return}await accounts();await find()}catch(e){fail(e.message)}})();
+(async()=>{try{const d=await(await fetch("/api/session",{cache:"no-store"})).json();token=d.token||"";deskModelAvailable=d.ollama?.reachable===true&&d.ollama?.model_available===true;renderDesk();const h=await get("/topstep/api/health");demoMode=h.synthetic===true;renderDesk();if(demoMode)$("demoWarning").hidden=false;if(!h.configured){fail("Set TOPSTEPX_USERNAME and TOPSTEPX_API_KEY locally before connecting. Do not paste keys into this page.");return}await accounts();await find()}catch(e){fail(e.message)}})();
 })();</script></body></html>
