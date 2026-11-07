@@ -199,7 +199,7 @@ test("OANDA practice controls load provider receipts without leaking tokens or e
       symbol:"EUR_USD",source:"oanda-fxpractice",receipt_id:"source-receipt-123",
       added:2,repeated:0,conflicts:0
     }});
-    if(url==="/api/market/candles?symbol=EUR_USD&limit=1000")
+    if(url==="/api/market/candles?symbol=EUR_USD&limit=16000")
       return answer({ok:true,market:{
         symbol:"EUR_USD",source:"oanda-fxpractice",granularity:"M5",
         bars:[marketBar(0),marketBar(1)],last_received_utc_ms:Date.parse("2026-11-05T20:00:00Z"),
