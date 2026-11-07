@@ -325,6 +325,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
 .forward-entry small{display:block;font-size:10px;color:#8d9eaa;margin-top:5px}
 .forward-entry .forward-state{font:10px var(--mono);color:#d4c49b}
 .forward-entry:hover{border-color:#8caea7}
+.forward-backup-status{font-size:10px;line-height:1.55;color:#94a9b3;overflow-wrap:anywhere;margin:0 16px 10px}
 </style>
 </head>
 <body>
@@ -497,10 +498,14 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
             <h3>Prospective paper observations <span class="pill">v0.8</span></h3>
             <p class="small muted">The local server may check completed candles after you arm it. A setup is saved only if it is observed promptly after closing and after monitoring began.</p>
           </div>
-          <button class="btn" id="fxForwardRefresh">Refresh local journal</button>
+          <div class="action-row">
+            <button class="btn" id="fxForwardRefresh">Refresh local journal</button>
+            <button class="btn" id="fxBackup" disabled>Back up local evidence</button>
+          </div>
         </div>
         <div class="paper-summary" id="forwardSummary"></div>
         <div class="forward-caution">Not an executable signal, independently timestamped feed, real account fill, or validated edge. The monitor runs only while your local Python server remains running. Historical backfills cannot become prospective cases.</div>
+        <p id="fxBackupStatus" class="forward-backup-status">SQLite market receipts and forward events are separate from the dashboard JSON archive.</p>
         <div class="forward-entries" id="forwardEntries"><p class="empty">Observer is off. Arm it from the Market workspace when you are ready to collect future practice candles.</p></div>
       </section>
       <section class="panel mes-research" id="mesLab">
@@ -1860,6 +1865,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("fxBackfill").disabled=!S.fx.server||!S.fx.configured||S.fx.busy||!S.runtime.token;
     $("fxForwardStart").disabled=!S.fx.server||!S.fx.configured||!S.runtime.token||S.forward.monitor?.active;
     $("fxForwardStop").disabled=!S.fx.server||!S.runtime.token||!S.forward.monitor?.active;
+    $("fxBackup").disabled=!S.fx.server||!S.runtime.token;
     const host=$("fxStatus");host.classList.remove("ok","warn");
     if(!S.fx.server){host.textContent="Local server offline";host.classList.add("warn")}
     else if(!S.fx.configured){host.textContent="Practice token not configured";host.classList.add("warn")}
@@ -2003,6 +2009,31 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     if(successful)await loadPracticeCandles();
   }
 
+
+  async function backupPracticeEvidence(){
+    if(!S.fx.server||!S.runtime.token){
+      toast("Local server and session token required for a safe snapshot");return
+    }
+    $("fxBackup").disabled=true;
+    try{
+      const response=await fetch("/api/market/backup",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json","X-Trader-Token":S.runtime.token},
+        body:"{}"
+      });
+      const data=await response.json();
+      if(!response.ok||!data.ok||data.broker_orders!==false||
+        !data.backup?.ok||!data.backup.backup_path)
+        throw Error(data.error||"Local backup unsuccessful");
+      $("fxBackupStatus").textContent="Evidence backup created: "+
+        data.backup.backup_path+" · "+data.backup.size_bytes+
+        " bytes · SQLite quick-check passed. Keep this private.";
+      toast("Market receipts and local forward observations safely backed up.");
+    }catch(e){
+      $("fxBackupStatus").textContent="Could not create evidence backup: "+e.message;
+      toast("Evidence backup: "+e.message);
+    }finally{setPracticeControls()}
+  }
 
   async function checkForwardStatus(){
     try{
@@ -3088,6 +3119,7 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
     $("fxForwardStart").addEventListener("click",startForwardObserver);
     $("fxForwardStop").addEventListener("click",stopForwardObserver);
     $("fxForwardRefresh").addEventListener("click",checkForwardStatus);
+    $("fxBackup").addEventListener("click",backupPracticeEvidence);
     $("fxScan").addEventListener("click",scanFxHistory);
     $("fxRun").addEventListener("click",runFxResearch);
     $("fxLoad").addEventListener("click",loadPracticeCandles);
