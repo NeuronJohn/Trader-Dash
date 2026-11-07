@@ -1,4 +1,4 @@
-# TopstepX read-only workstation v0.6 (development)
+# TopstepX read-only workstation v0.7 (development)
 
 ## What exists
 - Local, browser-based /topstep dashboard reusing the project research server, plus / for the earlier research workspace.
@@ -41,3 +41,15 @@ Requires Python 3.10+ with standard library and an OS time zone database providi
 - Read-only pattern scanner using broker-confirmed price bars, no-lookahead backtests and session rules.
 - Real Topstep rules source and agreement-specific MLL/risk panel.
 - Trading order routing only after *separate* user approval, dedicated implementation and additional controls.
+
+## v0.7 completed-trade analytics improvements
+
+The Topstep workstation now shows **fee-adjusted completed positions** alongside the original broker execution-leg totals. Complete flat-to-flat positions are reconstructed by contract ID and buy/sell side. Scale-ins, partial exits, same-timestamp reversals and corrected/voided half-turns are handled conservatively. When the selected history starts mid-position, orphan closing legs are excluded from completed-trade metrics and the data-quality warning is visible. Partial positions are never counted as completed trades.
+
+Metrics: complete-position count, net win rate, net expectancy in USD, profit factor, average winner/loser, median, completed-trade peak-to-trough drawdown, recent completed position cycles, and results by contract, direction, Chicago entry hour and weekday. The dashboard does **not** calculate R-multiples from fills because the original protective stop/risk amount is absent. A historical win rate does not imply a statistically validated trading edge.
+
+For initial long-window imports, the adapter now requests trade legs in consecutive 14-day windows, deduplicates broker legs by ID, and upserts corrections into the SQLite journal. The broker remains the source of truth. Imported records are local and scoped by account. A high-volume account may still need rate-limit-aware incremental backfill and streaming updates. The chart no longer silently chooses among multiple futures expiry contracts, remembers an explicitly selected contract locally, and clears stale candles during a contract switch.
+
+**Verification status:** nine isolated deterministic completed-trade tests were executed successfully in the development environment. Additional checked-in tests cover historical backfill and SQLite timestamp filtering, but the complete repository test suite and Windows launcher have not been run against a genuine TopstepX Practice account. The new JavaScript parsed successfully, with no missing referenced DOM element IDs. No live quotes, balance, orders or executions were seen by this development session.
+
+**Remaining:** authenticated Practice-account handshake/snapshots, live SignalR user and market hubs, robust reconnection and stale indicators, contract rollover calendar, full broker-history provenance, genuine account-specific drawdown and daily loss controls, strategy/risk tagging, feeding Topstep candles directly into the research scanner, independent forward performance verification, and user-gated execution if ever separately authorized.
