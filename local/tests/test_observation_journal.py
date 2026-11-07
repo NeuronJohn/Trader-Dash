@@ -76,6 +76,29 @@ class JournalTests(unittest.TestCase):
         self.assertAlmostEqual(complete["recent"][0]["directional_points"],6)
         self.assertAlmostEqual(complete["recent"][0]["directional_pct"],100*6/102,places=4)
 
+    def test_corrected_future_bar_revises_matured_outcome(self):
+        self.advance()
+        future=setup()+later()
+        first=self.advance(future,now=T0+6*INTERVAL,allow=False)
+        self.assertEqual(first["matured"],1)
+        self.assertEqual(first["recent"][0]["directional_points"],6)
+        corrected=[dict(b) for b in future]
+        corrected[-1]["close"]=105
+        second=self.advance(corrected,now=T0+6*INTERVAL,allow=False)
+        self.assertEqual(second["matured"],1)
+        self.assertEqual(second["recent"][0]["directional_points"],3)
+
+    def test_revised_signal_is_excluded_not_counted_as_positive(self):
+        self.advance()
+        future=setup()+later()
+        self.advance(future,now=T0+6*INTERVAL,allow=False)
+        corrected=[dict(b) for b in future]
+        corrected[24]["close"]=100
+        result=self.advance(corrected,now=T0+6*INTERVAL,allow=False)
+        self.assertEqual(result["matured"],0)
+        self.assertEqual(result["excluded_revised_signals"],1)
+        self.assertIsNone(result["favorable_fraction"])
+
     def test_missing_future_bar_is_excluded_not_interpolated(self):
         self.advance()
         future=later()
