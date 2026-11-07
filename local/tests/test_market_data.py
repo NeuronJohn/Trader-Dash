@@ -39,6 +39,12 @@ class MarketDataTests(unittest.TestCase):
         self.assertEqual(len(rows),1)
         self.assertEqual(rows[0]["open"],1.1)
         self.assertGreater(rows[0]["askClose"],rows[0]["bidClose"])
+        self.assertGreater(rows[0]["askHigh"],rows[0]["bidHigh"])
+        self.assertLess(rows[0]["bidLow"],rows[0]["askLow"])
+        self.assertTrue(all(k in rows[0] for k in (
+            "bidOpen","bidHigh","bidLow","bidClose",
+            "askOpen","askHigh","askLow","askClose"
+        )))
         self.assertEqual(rows[0]["time"]%300000,0)
     def test_provider_must_match_exact_contract_and_m5(self):
         with self.assertRaisesRegex(md.MarketError,"Unexpected instrument"):
