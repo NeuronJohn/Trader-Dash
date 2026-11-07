@@ -506,7 +506,7 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(403, {"ok": False, "error": "Cross-origin requests disabled"})
             return
         pathname = urlsplit(self.path).path
-        if pathname not in ("/api/analyst", "/api/market/fetch"):
+        if pathname not in ("/api/analyst", "/api/market/fetch", "/api/market/backfill"):
             self._reply(404, {"ok": False, "error": "No such research action"})
             return
         if not secrets.compare_digest(self.headers.get("X-Trader-Token", ""), TOKEN):
@@ -525,18 +525,23 @@ class Handler(BaseHTTPRequestHandler):
         try:
             raw = self.rfile.read(length)
             payload = json.loads(raw)
-            if pathname == "/api/market/fetch":
-                if not isinstance(payload, dict) or set(payload) - {"symbol","count"}:
-                    raise ValueError("Unknown practice market fetch parameters")
+            if pathname in ("/api/market/fetch", "/api/market/backfill"):
+                backfill = pathname == "/api/market/backfill"
+                permitted = {"symbol", "pages"} if backfill else {"symbol", "count"}
+                if not isinstance(payload, dict) or set(payload) - permitted:
+                    raise ValueError("Unknown practice market request parameters")
                 symbol = payload.get("symbol", "EUR_USD")
-                count = payload.get("count", 360)
-                if symbol not in market.ALLOWED_SYMBOLS or type(count) is not int or not 10 <= count <= market.MAX_FETCH:
-                    raise ValueError("Use an allowed practice pair and 10–1000 complete M5 candles")
+                amount = payload.get("pages", 6) if backfill else payload.get("count", 500)
+                minimum, maximum = (1, 12) if backfill else (10, market.MAX_FETCH)
+                if (symbol not in market.ALLOWED_SYMBOLS or type(amount) is not int
+                        or not minimum <= amount <= maximum):
+                    raise ValueError("Invalid allowed practice symbol or bounded request size")
                 if not MARKET_GATE.acquire(blocking=False):
-                    self._reply(429, {"ok": False, "error": "A market refresh is already running"})
+                    self._reply(429, {"ok": False, "error": "A market read is already running"})
                     return
                 try:
-                    receipt = market.fetch_into_store(symbol, count)
+                    receipt = (market.backfill_into_store(symbol, amount) if backfill else
+                               market.fetch_into_store(symbol, amount))
                 finally:
                     MARKET_GATE.release()
                 self._reply(200, {"ok": True, "market_receipt": receipt,
