@@ -699,6 +699,10 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       highs.push(S.mesSignalPreview.boundary,S.mesSignalPreview.structuralStop);
       lows.push(S.mesSignalPreview.boundary,S.mesSignalPreview.structuralStop);
     }
+    if(S.fxSignalPreview&&a.bars.some(x=>x.time===S.fxSignalPreview.signalBarStart)){
+      highs.push(S.fxSignalPreview.boxHigh,S.fxSignalPreview.boxLow,S.fxSignalPreview.stopReference);
+      lows.push(S.fxSignalPreview.boxHigh,S.fxSignalPreview.boxLow,S.fxSignalPreview.stopReference);
+    }
     const maxPrice=Math.max(...highs),minPrice=Math.min(...lows);
     const minPadding=S.data.source==="oanda-fxpractice"?(.00002*(S.data.symbol==="USD_JPY"?100:1)):.005;
     const padding=Math.max((maxPrice-minPrice)*.10,Math.abs(maxPrice)*.00003,minPadding);
@@ -756,6 +760,26 @@ kbd{padding:1px 5px;border:1px solid #46515c;border-radius:4px;color:#afbcc8;fon
       line(x,yFor(b.high,m),x,yFor(b.low,m),color,Math.max(1,Math.min(1.5,bodyWidth*.12)));
       const hiY=yFor(Math.max(b.open,b.close),m),loY=yFor(Math.min(b.open,b.close),m);
       ctx.fillStyle=color;ctx.fillRect(x-bodyWidth/2,hiY,bodyWidth,Math.max(1.35,loY-hiY));
+    }
+    if(S.fxSignalPreview){
+      const q=S.fxSignalPreview,i=S.data.bars.findIndex(b=>b.time===q.signalBarStart);
+      if(i>=m.a.start&&i<=m.a.end){
+        const x1=Math.max(m.L,xFor(Math.max(0,i-17),m));
+        const x2=Math.min(m.w-m.R,xFor(i,m)+m.step*.5);
+        for(const ref of [
+          {p:q.boxHigh,name:"BOX HIGH",color:"#9ec7ad"},
+          {p:q.boxLow,name:"BOX LOW",color:"#9ec7ad"},
+          {p:q.stopReference,name:"STOP REFERENCE",color:"#dfabab"}
+        ]){
+          const y=yFor(ref.p,m);
+          line(x1,y,Math.max(x1+2,x2),y,ref.color,1.25,[5,4]);
+          ctx.fillStyle=ref.color;ctx.textAlign="left";
+          ctx.fillText(ref.name,Math.min(x1+9,m.w-m.R-120),
+            clamp(y-9,m.T+12,m.h-m.B-12));
+        }
+        ctx.fillStyle="#b8dfd4";ctx.textAlign="left";
+        ctx.fillText("FX HISTORICAL CONFIRMATION · FUTURE HIDDEN",m.L+8,m.T+15);
+      }
     }
     if(S.mesSignalPreview){
       const q=S.mesSignalPreview;
