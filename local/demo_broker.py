@@ -89,15 +89,21 @@ class DemoBroker:
         last=int(self._clock().timestamp()*1000)//interval*interval
         offset=0 if ".MES." in contract else 14000
         bars=[]
+        # A candle is a pure function of contract + timestamp, NOT its
+        # position in a sliding window. Otherwise rolling the chart would
+        # silently rewrite older prices and corrupt prospective statistics.
+        salt = {CONTRACTS[0]["id"]: 0, CONTRACTS[1]["id"]: 131,
+                CONTRACTS[2]["id"]: 467}[contract]
         for i in range(limit):
             t=last-(limit-i-1)*interval
-            base=6000+offset+.22*i+9*math.sin(i/13)
+            k=t//interval+salt
+            base=6000+offset+6*math.sin(k/19)+9*math.sin(k/63)
             opening=round(round(base*4)/4,2)
-            close=round(round((base+2*math.sin(i/3))*4)/4,2)
-            high=max(opening,close)+round(.25+(i%6)*.25,2)
-            low=min(opening,close)-round(.25+(i%5)*.25,2)
+            close=round(round((base+2*math.sin(k/7))*4)/4,2)
+            high=max(opening,close)+round(.25+(k%6)*.25,2)
+            low=min(opening,close)-round(.25+(k%5)*.25,2)
             bars.append({"time":t,"open":opening,"high":high,"low":low,
-                         "close":close,"volume":int(100+(i*17)%400)})
+                         "close":close,"volume":int(100+(k*17)%400)})
         return bars
 
     def snapshot(self, account_id, days=30, reconcile_days=None):
