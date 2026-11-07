@@ -29,16 +29,21 @@ def make_fills(anchor):
     for i in range(42):
         opened = anchor - timedelta(days=35-i*0.82)
         closed = opened + timedelta(minutes=8+i % 6*4)
-        base = 5800 + i*3
-        pnl = round((32 if i % 4 else -47) + (i % 5)*3, 2)
+        contract = CONTRACTS[i%3]
+        base = 5800 + i*3 + (14000 if ".MNQ." in contract["id"] else 0)
+        # Derive gross P&L from integer tick movement and contract tickValue.
+        # This prevents fixture price movements that contradict the stated P&L.
+        ticks = (28 if i % 4 else -38) + (i % 5)*2
+        pnl = round(ticks * contract["tickValue"], 2)
         side = i % 2
-        common = {"accountId": DEMO_ACCOUNT_ID, "contractId": CONTRACTS[i%3]["id"],
+        exit_price = round(base + (1 if side==0 else -1) * ticks * contract["tickSize"], 2)
+        common = {"accountId": DEMO_ACCOUNT_ID, "contractId": contract["id"],
                   "voided": False, "fees": 1.15, "commissions": .35,
                   "orderId": 20000+i*2, "fillId": None}
         legs.append({**common, "id": 10000+i*2, "creationTimestamp": iso_utc(opened),
                      "price": base, "side": side, "size": 1, "profitAndLoss": None})
         legs.append({**common, "id": 10001+i*2, "orderId": 20001+i*2,
-                     "creationTimestamp": iso_utc(closed), "price": base + (pnl/5 if side==0 else -pnl/5),
+                     "creationTimestamp": iso_utc(closed), "price": exit_price,
                      "side": 1-side, "size": 1, "profitAndLoss": pnl})
     # Correction / void is retained for deduplication and must never affect P&L.
     legs.append({"id": 777777, "accountId": DEMO_ACCOUNT_ID,
