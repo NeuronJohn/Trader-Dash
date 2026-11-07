@@ -12,6 +12,7 @@ import math
 import os
 import re
 import secrets
+import sqlite3
 import sys
 import threading
 import time
@@ -22,7 +23,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
 
-import market_data as market
+# Load the adjacent fixed module by file path. This works when launched as a
+# script or when the server is imported by offline unittest discovery.
+import importlib.util as importlib_util
+_MARKET_SPEC = importlib_util.spec_from_file_location(
+    "_trader_market_data", Path(__file__).resolve().with_name("market_data.py")
+)
+if _MARKET_SPEC is None or _MARKET_SPEC.loader is None:
+    raise RuntimeError("Local market-data module is unavailable")
+market = importlib_util.module_from_spec(_MARKET_SPEC)
+_MARKET_SPEC.loader.exec_module(market)
 
 HOST = "127.0.0.1"
 PORT = int(os.getenv("TRADER_PORT", "8765"))
@@ -505,6 +515,8 @@ class Handler(BaseHTTPRequestHandler):
             })
         except market.MarketError as exc:
             self._reply(422, {"ok": False, "error": str(exc)})
+        except sqlite3.Error:
+            self._reply(503, {"ok": False, "error": "Local market receipt database error; review the local database"})
         except urllib.error.URLError:
             self._reply(503, {"ok": False, "error": "Local Ollama is unavailable. Check Ollama is running."})
         except ValueError as exc:
