@@ -1,0 +1,485 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Trader / TopstepX</title><style>
+:root{color-scheme:dark;--bg:#0a1017;--panel:#131c26;--edge:#283847;--text:#e9f1f5;--muted:#99a9b8;--green:#7cddbb;--red:#eb8e97}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 system-ui,Segoe UI,sans-serif}header{height:62px;padding:0 24px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:18px;background:#0f1720}header strong{font-size:16px}a{color:var(--green);text-decoration:none}header a{margin-left:auto}main{max-width:1700px;margin:auto;padding:22px;display:grid;gap:15px}h1,h2,p{margin:0}h1{font-size:22px}h2{font-size:14px}select,input,button{background:#1b2936;border:1px solid #344758;color:var(--text);padding:8px;border-radius:7px;font:inherit;max-width:100%}button{cursor:pointer}.heading{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.heading h1{margin-right:auto}.tag{color:#b8ead8;border:1px solid #476b60;border-radius:30px;padding:4px 10px;font-size:11px}.cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.panel{background:var(--panel);border:1px solid var(--edge);border-radius:11px;overflow:hidden}.card{padding:14px}.muted{color:var(--muted)}.small{font-size:11px}.number{font:650 24px/1.5 Consolas,monospace;margin-top:7px}.layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:15px}.panelhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-bottom:1px solid var(--edge);flex-wrap:wrap}.tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}canvas{display:block;width:100%;height:380px}#canvasEmpty{padding:18px;text-align:center;color:var(--muted)}.chartfoot{padding:9px 15px 14px;color:var(--muted);font-size:11px;display:flex;justify-content:space-between;gap:8px}.pad{padding:16px}.kv{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--edge);gap:8px}.kv:last-child{border:0}.tables{display:grid;grid-template-columns:1fr 1fr;gap:15px}table{border-collapse:collapse;width:100%;font-size:11px}th,td{padding:10px 12px;border-bottom:1px solid var(--edge);text-align:left}th{color:var(--muted);font-weight:500}td:last-child,th:last-child{text-align:right}.good{color:var(--green)}.bad{color:var(--red)}.error{display:none;background:#372329;color:#f5bdc1;border:1px solid #6c474d;border-radius:8px;padding:11px}.error.active{display:block}.foot{color:var(--muted);font-size:11px}@media(max-width:1000px){.layout,.tables{grid-template-columns:1fr}.cards{grid-template-columns:repeat(3,1fr)}}@media(max-width:600px){main{padding:10px}.cards{grid-template-columns:1fr 1fr}.number{font-size:19px}header{padding:0 10px}header .tag{display:none}canvas{height:290px}}
+</style></head><body><header><strong>◈ Trader / Lab</strong><span class="tag">TOPSTEPX · READ ONLY</span><a href="/">Research workspace</a><span class="muted" id="conn">Offline</span></header>
+<div id="demoWarning" hidden style="background:#463818;border-bottom:1px solid #a17b29;color:#ffe5a5;text-align:center;padding:10px 15px;font-weight:750;letter-spacing:.06em">OFFLINE SYNTHETIC DEMO — All prices, balances, trades and statistics are invented test fixtures. NO TOPSTEP CONNECTION.</div>
+<main><div class="heading"><h1>Trading workstation</h1><select id="account"><option value="">Choose account</option></select><select id="days"><option value="7">7 days</option><option selected value="30">30 days</option><option value="90">90 days</option><option value="365">365 days</option></select><button id="refresh">Refresh</button></div><div class="error" id="error" role="alert"></div>
+<div class="cards"><div class="panel card"><span class="muted small">Broker balance</span><div class="number" id="balance">—</div></div><div class="panel card"><span class="muted small">Net realized</span><div class="number" id="net">—</div></div><div class="panel card"><span class="muted small">Gross realized</span><div class="number" id="gross">—</div></div><div class="panel card"><span class="muted small">Fees + commissions</span><div class="number" id="costs">—</div></div><div class="panel card"><span class="muted small">Trade legs, not round trips</span><div class="number" id="legs">—</div></div></div>
+<div class="cards"><div class="panel card"><span class="muted small">Completed positions</span><div class="number" id="completedCount">—</div></div><div class="panel card"><span class="muted small">Net win rate</span><div class="number" id="completedWin">—</div></div><div class="panel card"><span class="muted small">Expectancy / position</span><div class="number" id="expectancy">—</div></div><div class="panel card"><span class="muted small">Profit factor</span><div class="number" id="profitFactor">—</div></div><div class="panel card"><span class="muted small">Completed-trade drawdown</span><div class="number" id="tradeDD">—</div></div></div>
+<div class="panel pad"><h2>Completed-position analysis <span class="tag">Fee-adjusted, broker legs</span></h2><p class="muted small" id="quality" style="margin-top:7px">Requires a linked Topstep account. No risk-adjusted R without the original stop.</p><p class="muted small" style="margin-top:6px">Net realized P&L above includes every broker closing leg. Completed-position results below exclude open cycles and unmatched entry history, so totals can differ. A win rate is descriptive; it is not a validated edge.</p></div>
+<div class="panel pad" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+  <div><div class="muted small">Market stream</div><strong id="streamMarket">DISCONNECTED</strong></div>
+  <div><div class="muted small">Account stream</div><strong id="streamAccount">DISCONNECTED</strong></div>
+  <div><div class="muted small">Broker quote · latest</div><strong id="quoteLast" class="number" style="font-size:19px">—</strong></div>
+  <div><div class="muted small">Bid / ask</div><strong id="quoteSpread">—</strong></div>
+  <div style="margin-left:auto"><div class="muted small">Quote freshness</div><strong id="quoteAge">No fresh quote</strong></div>
+</div>
+<div class="layout"><section class="panel"><div class="panelhead"><h2 id="chartTitle">Futures · Broker candles</h2><div class="tools"><input id="symbol" value="MES" size="5" maxlength="16" aria-label="Symbol"><button id="find">Find</button><select id="contract"><option value="">Select contract</option></select><select id="minutes"><option value="1">1m</option><option selected value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option></select><button id="zin" title="Zoom in">+</button><button id="zout" title="Zoom out">−</button><button id="tail" title="Return to latest broker candle">Latest</button></div></div><canvas id="chart" aria-label="Interactive OHLC candles: mouse wheel zooms around cursor, drag pans earlier bars" style="cursor:crosshair;touch-action:none"></canvas><div id="canvasEmpty">Choose a futures contract to load broker-source candles.</div><div class="chartfoot"><span id="chartInfo">No broker data</span><span id="syncBar">—</span><span id="chartPointer">Wheel zoom · Drag pan · Latest returns to live tail</span></div></section>
+<div style="display:grid;gap:15px;align-content:start"><section class="panel pad" id="decisionDesk" style="display:grid;gap:9px" aria-live="polite">
+ <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+  <h2>Decision Desk</h2><span class="tag" id="deskStatus">CHECK DATA</span>
+ </div>
+ <strong id="deskHeadline">Analyzing the chart and account…</strong>
+ <p id="deskSummary" class="small muted">Select a contract to start.</p>
+ <p id="deskCaution" class="small muted">Never a trade instruction.</p>
+ <p id="deskStats" class="small muted">Setup-specific performance is not established.</p>
+ <p id="deskJournal" class="small muted">Forward observations will be tracked after the first confirmed candle.</p>
+ <details id="deskJournalDetails" hidden><summary class="small muted" style="cursor:pointer">See recorded observations</summary>
+ <table><thead><tr><th>Observed</th><th>Direction</th><th>Five-bar result</th></tr></thead>
+ <tbody id="deskJournalRows"></tbody></table></details>
+ <div class="tools" style="gap:7px">
+  <button type="button" id="deskDraft" disabled>Draft risk plan</button>
+  <button type="button" id="deskAI" disabled>Recheck with local AI</button>
+ </div>
+ <div id="deskNote" hidden style="background:#192630;border:1px solid #354955;border-radius:8px;padding:10px;display:grid;gap:5px">
+  <strong class="small">Local AI explanation · unverified</strong>
+  <p class="small" id="deskObservation"></p>
+  <p class="small muted" id="deskConcern"></p>
+  <p class="small muted" id="deskNext"></p>
+ </div>
+ <p id="deskAIStatus" class="small muted">The decision overview is automatic. Local AI adds a short contextual note when available.</p>
+</section><section class="panel pad"><h2>Account activity</h2><div class="kv"><span class="muted">Account canTrade</span><strong id="permission">—</strong></div><div class="kv"><span class="muted">Open positions</span><strong id="positionsCount">—</strong></div><div class="kv"><span class="muted">Open orders</span><strong id="ordersCount">—</strong></div><div class="kv"><span class="muted">Closing fill legs</span><strong id="closedCount">—</strong></div><div class="kv"><span class="muted">Session-close drawdown</span><strong id="dd">—</strong></div><div class="kv"><span class="muted">Last synchronization</span><span id="sync">—</span></div><p class="small muted" style="margin-top:12px">Session-close drawdown is not Topstep maximum loss limit. This dashboard does not approve trades or calculate real-time compliance.</p></section></div></div>
+<div class="panel pad"><div style="display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap"><h2>Market structure · completed candles only</h2><span class="tag">Observation, not a trade signal</span></div>
+<div class="cards" style="margin-top:12px;grid-template-columns:repeat(4,minmax(0,1fr))">
+ <div><span class="muted small">20-bar high</span><div id="rangeHigh" class="number" style="font-size:16px">—</div></div>
+ <div><span class="muted small">20-bar low</span><div id="rangeLow" class="number" style="font-size:16px">—</div></div>
+ <div><span class="muted small">ATR · 14 bars</span><div id="contextATR" class="number" style="font-size:16px">—</div></div>
+ <div><span class="muted small">Last completed close</span><div id="contextClose" class="number" style="font-size:16px">—</div></div>
+</div><p id="structureLabel" class="muted" style="margin-top:11px">Select a contract to analyze completed bars.</p>
+<p class="muted small" style="margin-top:5px">Uses previous 20 fully closed candles as the reference; excludes the forming candle and does not establish a profitable setup.</p></div>
+<details class="panel pad" id="riskWorksheet"><summary style="cursor:pointer;font-weight:650">Risk worksheet <span class="muted small">· open to edit a hypothetical plan</span></summary><div style="display:grid;gap:12px;margin-top:12px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+  <h2>Pre-trade risk worksheet</h2><span class="tag">PLANNING ONLY · NEVER AN ORDER</span>
+</div>
+<p class="muted small">Your own risk budget, not Topstep maximum loss limit. Costs and stops are estimates, not guarantees of fills or account eligibility.</p>
+<div class="tools" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:10px">
+<label class="small muted">Direction<select id="riskSide" style="display:block;width:100%;margin-top:5px"><option value="LONG">Long</option><option value="SHORT">Short</option></select></label>
+<label class="small muted">Entry price<input id="riskEntry" type="number" step="any" min="0" placeholder="Entry" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Stop price<input id="riskStop" type="number" step="any" min="0" placeholder="Stop" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Target price<input id="riskTarget" type="number" step="any" min="0" placeholder="Target" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Quantity<input id="riskQty" type="number" value="1" step="1" min="1" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Personal risk cap ($)<input id="riskBudget" type="number" step="0.01" min="0" placeholder="Your limit" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Max contracts<input id="riskCap" type="number" step="1" min="1" value="10" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Round-trip fees ($/contract)<input id="riskFees" type="number" step="0.01" min="0" value="3" style="display:block;width:100%;margin-top:5px"></label>
+<label class="small muted">Slippage (ticks/side)<input id="riskSlip" type="number" step="0.25" min="0" value="1" style="display:block;width:100%;margin-top:5px"></label>
+</div>
+<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+  <span id="riskSpec" class="muted small">Select an active expiry with confirmed tick specifications.</span>
+  <button id="riskUseClose" type="button">Use last completed close as entry</button>
+</div>
+<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(135px,1fr))">
+  <div><span class="muted small">Estimated total stop loss</span><div class="number" id="riskLoss">—</div></div>
+  <div><span class="muted small">Estimated target profit</span><div class="number" id="riskGain">—</div></div>
+  <div><span class="muted small">Reward / risk</span><div class="number" id="riskRR">—</div></div>
+  <div><span class="muted small">Max qty under self-limit</span><div class="number" id="riskMaxQty">—</div></div>
+</div>
+<p class="small" id="riskMessage" role="status">Enter a trade plan and personal risk budget. No orders can be submitted here.</p>
+</div></details>
+<div class="tables"><section class="panel"><div class="panelhead"><h2>Daily realized performance</h2><span class="small muted">Chicago futures session</span></div><table><thead><tr><th>Session</th><th>Closing legs</th><th>Net P&L</th></tr></thead><tbody id="daily"></tbody></table></section><section class="panel"><div class="panelhead"><h2>Open positions</h2><span class="small muted">Broker snapshot</span></div><table><thead><tr><th>Contract</th><th>Size</th><th>Avg price</th></tr></thead><tbody id="positions"></tbody></table></section></div><div class="tables"><section class="panel"><div class="panelhead"><h2>Completed trade history</h2><span class="small muted">Full position cycles · most recent 100</span></div><div style="overflow:auto;max-height:420px"><table><thead><tr><th>Exit (CT)</th><th>Contract</th><th>Side</th><th>Qty</th><th>Duration</th><th>Net</th></tr></thead><tbody id="completedRows"></tbody></table></div></section>
+<section class="panel"><div class="panelhead"><h2>Performance patterns</h2><span class="small muted">Observed results, not predictions</span></div><div style="overflow:auto;max-height:420px"><table><thead><tr><th>Breakdown</th><th>Count</th><th>Win %</th><th>Net</th></tr></thead><tbody id="patternRows"></tbody></table></div></section></div><div class="foot">TopstepX REST data refreshed approximately every 30 seconds while visible. Broker authentication remains local. No order execution, live-streaming claim, or guarantee of trading performance.</div></main>
+<script src="/topstep/risk-plan.js"></script>
+<script src="/topstep/chart-model.js"></script>
+<script src="/topstep/decision-desk.js"></script>
+<script>(()=>{"use strict";const $=id=>document.getElementById(id);let token="",bars=[],count=110,busy=false,demoMode=false;
+let chartEnd=null, chartDrag=null, chartHover=null, chartSeries="", chartSeq=0, chartMeta=null;let contractSpecs=new Map(),latestStructure=null;
+let deskStats=null,deskAccountId=null,deskPositions=0,deskOrders=0,deskCanTrade=null;
+let deskQuoteFresh=false,deskModelAvailable=false,deskCurrent=null,deskKey="";
+let deskModelWorking=false;
+let deskJournalData=null;
+const deskModelAttempted=new Set();const set=(id,v)=>$(id).textContent=v;const money=x=>Number.isFinite(x)?(x<0?"−":"")+Math.abs(x).toLocaleString("en-US",{style:"currency",currency:"USD"}):"—";const percent=x=>typeof x==="number"?((x*100).toFixed(1)+"%"):"—";const fail=e=>{$("error").textContent=e;$("error").classList.add("active")};const clear=()=>$("error").classList.remove("active");
+let selectedStream="",lastAccountSync=0,lastChangeKey="",livePolling=false;
+async function subscribeStream(){
+  const accountId=Number($("account").value),contractId=$("contract").value;
+  if(!token||!accountId||!contractId)return;
+  const key=accountId+"|"+contractId;
+  if(selectedStream===key)return;
+  try{
+    const r=await fetch("/topstep/api/live/subscribe",{
+      method:"POST",cache:"no-store",
+      headers:{"Content-Type":"application/json","X-Trader-Token":token},
+      body:JSON.stringify({account_id:accountId,contract_id:contractId})
+    });
+    const d=await r.json();
+    if(!r.ok||!d.ok)throw Error(d.error||"Live subscriptions unavailable");
+    selectedStream=key;
+    set("streamMarket","CONNECTING");
+    set("streamAccount","CONNECTING");
+  }catch(e){set("streamMarket","OFFLINE");set("streamAccount","OFFLINE");fail(e.message)}
+}
+async function pollStream(){
+ if(livePolling||!token||!selectedStream)return;
+ livePolling=true;
+ try{
+   const d=await get("/topstep/api/live");
+   const match=selectedStream===String(d.selected_account)+"|"+String(d.selected_contract);
+   const market=match&&d.hubs?.market?.connected;
+   deskQuoteFresh=!!(match&&d.quote_fresh);renderDesk();
+   const account=match&&d.hubs?.user?.connected;
+   set("streamMarket",demoMode?(market?"SIMULATED":"OFFLINE"):(market?(d.quote_fresh?"LIVE QUOTE":"CONNECTED · QUOTE STALE"):"DISCONNECTED"));
+   set("streamAccount",demoMode?(account?"SIMULATED":"OFFLINE"):(account?"CONNECTED":"DISCONNECTED"));
+   set("quoteLast",match&&d.quote?Number(d.quote.lastPrice).toLocaleString("en-US",{maximumFractionDigits:4}):"—");
+   set("quoteSpread",match&&d.quote&&Number.isFinite(d.quote.bestBid)&&Number.isFinite(d.quote.bestAsk)
+     ?d.quote.bestBid.toFixed(2)+" / "+d.quote.bestAsk.toFixed(2):"—");
+   set("quoteAge",demoMode?"SYNTHETIC · NOT A QUOTE":(d.quote_fresh?"FRESH · "+d.quote_age_s+"s":(d.quote_age_s!==null?"STALE / UNSAFE":"No fresh quote")));
+   $("quoteAge").className=demoMode?"muted":(d.quote_fresh?"good":"bad");
+   if(match&&account&&d.account_update&&Number.isFinite(d.account_update.balance))
+      set("balance",money(d.account_update.balance));
+   const changeKey=[d.user_trade_event_count,d.positions_event_count,d.orders_event_count].join("|");
+   if(lastChangeKey!==""&&lastChangeKey!==changeKey&&Date.now()-lastAccountSync>12000)await account();
+   lastChangeKey=changeKey;
+ }catch(e){deskQuoteFresh=false;renderDesk();set("streamMarket","OFFLINE");set("streamAccount","OFFLINE");
+ set("quoteLast","—");set("quoteSpread","—");set("quoteAge","Connection unavailable");
+ $("quoteAge").className="bad"}
+ finally{livePolling=false}
+}
+async function get(path){const r=await fetch(path,{cache:"no-store",headers:{"X-Trader-Token":token}});let j;try{j=await r.json()}catch{throw Error("Local server returned invalid data")}if(!r.ok||!j.ok)throw Error(j.error||"Request failed");return j}
+function table(id,items,columns){const body=$(id);body.replaceChildren();if(!items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=columns.length;td.textContent="No entries";tr.appendChild(td);body.appendChild(tr);return}for(const row of items){const tr=document.createElement("tr");for(const f of columns){const td=document.createElement("td");td.textContent=f(row);tr.appendChild(td)}body.appendChild(tr)}}
+function invalidateAccount(reason){deskJournalData=null;renderJournal();deskStats=null;deskAccountId=null;deskPositions=0;deskOrders=0;deskCanTrade=null;lastAccountSync=0;renderDesk();
+  for(const id of ["balance","net","gross","costs","legs","closedCount","dd",
+                   "completedCount","completedWin","expectancy","profitFactor","tradeDD",
+                   "positionsCount","ordersCount"])set(id,"—");
+  set("permission","UNKNOWN");set("sync","STALE / unavailable");
+  set("quality","Account data unavailable — stats must not be used. "+reason);
+  table("daily",[],[x=>x]);table("positions",[],[x=>x]);
+  table("completedRows",[],[x=>x]);table("patternRows",[],[x=>x]);
+}
+async function accounts(){const d=await get("/topstep/api/accounts"),sel=$("account");sel.replaceChildren(new Option("Choose account",""));for(const a of d.accounts)sel.add(new Option((a.name||"Account")+" · "+a.id,a.id));set("conn",demoMode?"SYNTHETIC OFFLINE":"Connected");if(d.accounts.length){sel.value=String(d.accounts[0].id);await account()}}
+async function account(){if(!$("account").value||busy)return;busy=true;try{const d=await get("/topstep/api/account?id="+$("account").value+"&days="+$("days").value);if(d.synthetic!==demoMode)throw Error("Account source mismatch");set("balance",money(d.account.balance));set("net",money(d.stats.net_realized_usd));set("gross",money(d.stats.gross_realized_usd));set("costs",money(d.stats.fees_usd+d.stats.commissions_usd));set("legs",d.stats.active_legs);set("permission",String(d.account.canTrade===true));set("positionsCount",d.positions.length);set("ordersCount",d.orders.length);set("closedCount",d.stats.closed_legs);set("dd",money(d.stats.session_close_drawdown_usd));set("sync",new Date(d.synced_at).toLocaleString());lastAccountSync=Date.now();deskStats=d.completed_trades;deskAccountId=Number(d.account.id);deskPositions=d.positions.length;deskOrders=d.orders.length;deskCanTrade=d.account.canTrade;completeTrades(d.completed_trades);renderDesk();table("daily",[...d.stats.daily].reverse(),[x=>x.session,x=>x.closed_legs,x=>money(x.net)]);table("positions",d.positions,[x=>x.contractId||"—",x=>String(x.size??"—"),x=>String(x.averagePrice??"—")]);clear()}catch(e){invalidateAccount(e.message);fail("Account synchronization failed · "+e.message)}finally{busy=false}}
+function completeTrades(c){
+if(!c||c.status==="UNAVAILABLE"){
+  for(const id of ["completedCount","completedWin","expectancy","profitFactor","tradeDD"])set(id,"—");
+  set("quality",c?.error||"No complete fill history available");
+  table("completedRows",[],[x=>x]);table("patternRows",[],[x=>x]);return
+}
+set("completedCount",c.complete_trade_count);set("completedWin",percent(c.win_rate));
+set("expectancy",money(c.expectancy_usd));
+set("profitFactor",c.profit_factor===null?"—":c.profit_factor.toFixed(2));
+set("tradeDD",money(c.completed_trade_peak_to_trough_usd));
+const issues=Object.entries(c.issues||{}).filter(([k,v])=>v>0).map(([k,v])=>k.replaceAll("_"," ")+": "+v);
+const pending=c.pending_positions?.length||0;
+set("quality",c.coverage==="PARTIAL_OR_UNCERTAIN"
+ ? "Incomplete match · "+issues.join("; ")+(pending?"; "+pending+" pending position cycle(s)":"")+" · Win rate excludes these records."
+ : "Matching complete within requested import window, not all-time history. "+c.complete_trade_count+" completed position cycle(s).");
+table("completedRows",c.recent_trades||[],[
+ x=>new Date(x.exit_time).toLocaleString("en-US",{timeZone:"America/Chicago",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}),
+ x=>x.contract_id.split(".").slice(-2).join(" · "),x=>x.side,x=>x.total_opened,
+ x=>Math.round(x.duration_seconds/60)+"m",x=>money(x.net_usd)
+]);
+const pattern=[...(c.breakdowns?.side||[]).map(x=>({...x,label:"Direction: "+x.label})),
+ ...(c.breakdowns?.entry_hour_ct||[]).map(x=>({...x,label:"Entry hour CT: "+x.label+":00"})),
+ ...(c.breakdowns?.contract_id||[]).map(x=>({...x,label:"Contract: "+x.label.split(".").slice(-2).join(" · ")}))];
+table("patternRows",pattern,[x=>x.label,x=>x.count,x=>percent(x.win_rate),x=>money(x.net_usd)]);
+}
+
+function renderJournal(){
+ const j=deskJournalData;
+ if(!j){
+   set("deskJournal","Forward observation tracking starts after a confirmed, fresh completed bar.");
+   $("deskJournalDetails").hidden=true;
+   $("deskJournalRows").replaceChildren();
+   return;
+ }
+ const count=j.matured;
+ const rate=count>=30&&Number.isFinite(j.favorable_fraction)
+   ? " · "+(100*j.favorable_fraction).toFixed(1)+"% had positive direction-adjusted price change (descriptive only)"
+   : " · Too few matured observations to display a directional fraction";
+ set("deskJournal",(demoMode?"SYNTHETIC · ":"")+"Forward journal: "+j.recorded+
+   " observed, "+j.awaiting_future_bars+" awaiting future bars, "+count+
+   " measured, "+j.excluded_data_gaps+" gaps, "+
+   (j.excluded_revised_signals||0)+" revised signals excluded"+rate+
+   ". Price-only, not fills or P&L.");
+ const rows=$("deskJournalRows");rows.replaceChildren();
+ for(const item of (j.recent||[])){
+   const tr=document.createElement("tr");
+   const date=new Date(item.observed_at_ms).toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+   const result=item.status==="MATURED"&&Number.isFinite(item.directional_pct)
+      ? (item.directional_pct>=0?"+":"")+item.directional_pct.toFixed(3)+"% price change"
+      : item.status==="DATA_GAP"?"Excluded · missing bars":item.status==="SIGNAL_REVISED"?"Excluded · source revised":"Awaiting bars";
+   for(const value of [date,item.direction,result]){
+     const td=document.createElement("td");td.textContent=value;tr.appendChild(td);
+   }
+   rows.appendChild(tr);
+ }
+ $("deskJournalDetails").hidden=rows.childElementCount===0;
+}
+function renderDesk(){
+ const accountFresh=deskAccountId===Number($("account").value)&&
+   Date.now()-lastAccountSync<90000;
+ const choice=$("contract").value,meta=contractSpecs.get(choice);
+ const d=globalThis.TraderDecision.assess({
+   context:latestStructure,contractId:choice,minutes:Number($("minutes").value),
+   synthetic:demoMode,quoteFresh:deskQuoteFresh,accountFresh,
+   stats:deskStats,contractSpec:meta,
+   positionCount:deskPositions,orderCount:deskOrders,accountCanTrade:deskCanTrade
+ });
+ const key=d.candidateKey?deskAccountId+"|"+d.candidateKey:"";
+ if(key!==deskKey){
+   deskKey=key;
+   $("deskNote").hidden=true;
+   set("deskObservation","");set("deskConcern","");set("deskNext","");
+   set("deskAIStatus",deskModelAvailable?"Local AI checks the next completed-bar observation automatically.":
+       "Local model offline. The verified-data overview continues without AI.");
+ }
+ deskCurrent=d;
+ set("deskStatus",d.status==="REVIEW"?"REVIEW STRUCTURE":d.status==="WATCH"?"WATCH":"PAUSE");
+ $("deskStatus").className=d.status==="REVIEW"?"tag good":d.status==="WATCH"?"tag muted":"tag bad";
+ set("deskHeadline",(demoMode?"SYNTHETIC · ":"")+d.headline);
+ set("deskSummary",d.summary);set("deskCaution",d.caution);set("deskStats",d.statsNote);
+ $("deskDraft").disabled=!d.draftAllowed;
+ $("deskAI").disabled=!deskModelAvailable||d.status!=="REVIEW"||deskModelWorking;
+ if(d.status==="REVIEW"&&deskModelAvailable&&!deskModelAttempted.has(key)&&!deskModelWorking)
+   runDeskModel(false);
+}
+async function runDeskModel(force){
+ const d=deskCurrent,accountId=Number($("account").value);
+ if(!d||d.status!=="REVIEW"||!deskModelAvailable||!accountId||deskModelWorking)return;
+ const key=deskKey;
+ if(!force&&deskModelAttempted.has(key))return;
+ deskModelAttempted.add(key);
+ deskModelWorking=true;$("deskAI").disabled=true;
+ set("deskAIStatus","Local AI is reading the completed-bar evidence and your account statistics…");
+ try{
+   const response=await fetch("/topstep/api/desk/review",{
+     method:"POST",cache:"no-store",
+     headers:{"Content-Type":"application/json","X-Trader-Token":token},
+     body:JSON.stringify({account_id:accountId,contract_id:$("contract").value,
+       minutes:Number($("minutes").value),confirmed_through_ms:d.confirmedAt})
+   });
+   const result=await response.json();
+   if(!response.ok||!result.ok)throw Error(result.error||"Review unavailable");
+   if(key!==deskKey||result.confirmed_through_ms!==d.confirmedAt||
+       result.source!==d.source)return;
+   set("deskObservation",result.analysis.observation);
+   set("deskConcern","Concern: "+result.analysis.concern);
+   set("deskNext","Check next: "+result.analysis.next_check);
+   $("deskNote").hidden=false;
+   set("deskAIStatus","Local model note only. Prices, readiness and risk are computed separately.");
+ }catch(e){
+   if(key===deskKey)set("deskAIStatus","Local AI note unavailable · "+e.message+" · Core analysis remains active.");
+ }finally{
+   deskModelWorking=false;
+   $("deskAI").disabled=!deskModelAvailable||deskCurrent?.status!=="REVIEW";
+ }
+}
+function planRisk(){
+ const meta=contractSpecs.get($("contract").value);
+ const ids=["riskLoss","riskGain","riskRR","riskMaxQty"];
+ for(const id of ids)set(id,"—");
+ if(!meta||!Number.isFinite(meta.tickSize)||!Number.isFinite(meta.tickValue)
+    ||meta.tickSize<=0||meta.tickValue<=0){
+   set("riskSpec","Contract tick specifications unavailable · cannot calculate");
+   set("riskMessage","Select a futures contract with validated tick size and tick value.");
+   return;
+ }
+ set("riskSpec",(demoMode?"SYNTHETIC · ":"")+"Tick size "+meta.tickSize+" · Tick value "+
+     money(meta.tickValue)+" · "+meta.name);
+ try{
+   const parsed=id=>{const raw=$(id).value.trim();return raw===""?NaN:Number(raw)};
+   const result=globalThis.TraderRisk.analyze({
+     side:$("riskSide").value,entry:parsed("riskEntry"),stop:parsed("riskStop"),
+     target:parsed("riskTarget"),quantity:parsed("riskQty"),
+     budgetUsd:parsed("riskBudget"),maxContracts:parsed("riskCap"),
+     feeRoundTripUsd:parsed("riskFees"),slippageTicksPerSide:parsed("riskSlip"),
+     tickSize:meta.tickSize,tickValue:meta.tickValue
+   });
+   set("riskLoss",money(result.riskUsd));
+   set("riskGain",money(result.rewardUsd));
+   set("riskRR",Number.isFinite(result.rewardRiskRatio)?result.rewardRiskRatio.toFixed(2)+"R":"—");
+   set("riskMaxQty",result.suggestedQuantity);
+   set("riskMessage",(result.status==="PLAN_WITHIN_SELF_LIMITS"?
+       "Within your self-imposed worksheet limits. NOT a Topstep rules check or trade recommendation.":
+       "REVIEW REQUIRED · "+result.issues.join("; "))+
+       " · This assumes stop execution plus "+result.slippageTicksPerSide+" ticks of slippage per side.");
+ }catch(e){set("riskMessage",e.message+" · Planning only.");}
+}
+async function find(){deskJournalData=null;renderJournal();deskQuoteFresh=false;showStructure(null);try{const d=await get("/topstep/api/contracts?symbol="+encodeURIComponent($("symbol").value.trim().toUpperCase())),sel=$("contract");sel.replaceChildren(new Option("Choose contract",""));contractSpecs=new Map();for(const x of d.contracts)if(x.activeContract!==false){sel.add(new Option((x.name||x.id)+" · "+(x.description||""),x.id));contractSpecs.set(x.id,{name:x.name||x.id,tickSize:x.tickSize,tickValue:x.tickValue})}planRisk();if(sel.options.length===1){fail("No active matching futures contract found");return}
+const previous=localStorage.getItem(demoMode?"topstep_demo_contract_id":"topstep_contract_id");
+if(previous&&[...sel.options].some(x=>x.value===previous)){sel.value=previous;await candles()}
+else if(sel.options.length===2){sel.selectedIndex=1;await candles()}
+else{sel.selectedIndex=0;bars=[];paint();showStructure(null);selectedStream="";
+set("chartTitle","Futures · Choose expiry");
+set("chartInfo","Select a specific active expiry · no contract guessed");
+set("streamMarket","DISCONNECTED");set("streamAccount","DISCONNECTED");
+set("quoteLast","—");set("quoteSpread","—");set("quoteAge","No fresh quote")}}catch(e){fail(e.message)}}
+function showStructure(c){latestStructure=c;renderDesk();
+ if(!c||c.status!=="OBSERVATION_ONLY"){
+   for(const id of ["rangeHigh","rangeLow","contextATR","contextClose"])set(id,"—");
+   set("structureLabel",c?.status==="INSUFFICIENT_HISTORY"?"Insufficient complete bars ("+c.closed_bars+"/22)":"Structure not available");
+   return;
+ }
+ const fmt=v=>Number(v).toLocaleString("en-US",{maximumFractionDigits:5});
+ set("rangeHigh",fmt(c.prior_20_high));set("rangeLow",fmt(c.prior_20_low));
+ set("contextATR",fmt(c.average_true_range_14));set("contextClose",fmt(c.latest_complete_close));
+ const status=c.range_state==="ABOVE_PRIOR_RANGE"?"Closed ABOVE previous 20-bar high":
+   c.range_state==="BELOW_PRIOR_RANGE"?"Closed BELOW previous 20-bar low":"Closed INSIDE previous 20-bar range";
+ set("structureLabel",(demoMode?"SYNTHETIC · ":"")+(c.completed_data_stale?"STALE DATA · ":"")+
+   (c.gaps_in_last_20?"CANDLE GAPS ("+c.gaps_in_last_20+") · ":"")+
+   status+" · "+c.timeframe_minutes+"m · "+new Date(c.confirmed_through_ms).toLocaleString()+" · NOT a validated trade");
+ $("structureLabel").className=c.completed_data_stale||c.gaps_in_last_20?"bad":"muted";
+}
+async function candles(){
+ const contract=$("contract").value, minutes=Number($("minutes").value);
+ if(!contract)return;
+ const series=contract+"|"+minutes,changed=chartSeries!==series, request=++chartSeq;
+ if(changed){
+   chartSeries=series;chartEnd=null;chartHover=null;bars=[];paint();
+   set("chartInfo","Loading contract data…");$("canvasEmpty").hidden=false;
+ }
+ localStorage.setItem(demoMode?"topstep_demo_contract_id":"topstep_contract_id",contract);
+ await subscribeStream();
+ try{
+   const accountId=$("account").value;
+   const d=await get("/topstep/api/bars?contract="+encodeURIComponent(contract)+"&minutes="+minutes+
+      (accountId?"&account_id="+encodeURIComponent(accountId):""));
+   if(request!==chartSeq||series!==chartSeries)return;
+   if(d.synthetic!==demoMode)throw Error("Source mismatch — refusing to display prices");
+   if(d.journal&&d.journal.source!==(demoMode?"SYNTHETIC_OFFLINE_FIXTURE":"TOPSTEPX_BROKER_REST"))
+     throw Error("Forward observation source mismatch");
+   const priorEnd=chartEnd,priorStamp=priorEnd!==null&&bars.length?
+       bars[Math.min(priorEnd-1,bars.length-1)]?.time:null;
+   const next=d.bars;
+   if(priorStamp!=null){
+     const index=next.findIndex(x=>x.time===priorStamp);
+     chartEnd=index<0?Math.min(next.length,count):index+1;
+   }
+   bars=next;
+   if(changed){chartEnd=null;}
+   deskJournalData=d.journal||null;renderJournal();showStructure(d.context);planRisk();
+   set("chartTitle",$("contract").selectedOptions[0].textContent.split(" · ")[0]);
+   set("chartInfo",(demoMode?"OFFLINE SYNTHETIC":"ProjectX REST")+" · "+bars.length+
+       " candles · "+d.minutes+"m"+(chartEnd===null?" · newest":" · history view"));
+   set("syncBar","Polled "+new Date(d.synced_at).toLocaleTimeString());
+   $("canvasEmpty").hidden=!!bars.length;
+   paint();clear();
+ }catch(e){
+   if(request!==chartSeq)return;
+   // Stale-source visuals must never be represented as current.
+   bars=[];chartEnd=null;chartHover=null;deskJournalData=null;renderJournal();paint();showStructure(null);
+   set("chartInfo","STALE / NO CONTRACT DATA · "+e.message);fail(e.message);
+ }
+}
+function currentViewport(){
+ return globalThis.TraderChart.range(bars.length,count,chartEnd??bars.length);
+}
+function zoomChart(factor,anchor=.5){
+ if(!bars.length)return;
+ const before=currentViewport();
+ const next=globalThis.TraderChart.zoom(bars.length,before.count,before.end,factor,anchor);
+ count=next.count;chartEnd=next.end===bars.length?null:next.end;
+ paint();
+}
+function paint(){
+ const canvas=$("chart"),r=canvas.getBoundingClientRect();
+ const scale=Math.min(2,devicePixelRatio||1);
+ const w=Math.max(100,r.width),h=Math.max(100,r.height);
+ canvas.width=Math.round(w*scale);canvas.height=Math.round(h*scale);
+ const g=canvas.getContext("2d");g.scale(scale,scale);
+ g.fillStyle="#101924";g.fillRect(0,0,w,h);chartMeta=null;
+ if(!bars.length)return;
+ let meta;
+ try{meta=globalThis.TraderChart.geometry(bars,currentViewport(),w,h)}
+ catch(e){set("chartPointer","Candle geometry unavailable");return}
+ chartMeta=meta;
+ const {left,right,top,bottom,min,max,step,widthBar,candles,range}=meta;
+ const y=meta.y;
+ g.font="11px Consolas,monospace";g.lineWidth=1;
+ for(let j=0;j<=5;j++){
+   const yy=top+(bottom-top)*j/5;
+   g.strokeStyle="#293645";g.beginPath();g.moveTo(left,yy);g.lineTo(right,yy);g.stroke();
+   g.fillStyle="#9aabba";g.fillText((max-(max-min)*j/5).toFixed(2),right+6,yy+4);
+ }
+ for(const q of candles){
+   const up=q.close>=q.open;g.fillStyle=g.strokeStyle=up?"#70cbb1":"#e5868d";
+   g.beginPath();g.moveTo(q.x,q.yHigh);g.lineTo(q.x,q.yLow);g.stroke();
+   g.fillRect(q.x-widthBar/2,Math.min(q.yOpen,q.yClose),widthBar,Math.max(1,Math.abs(q.yClose-q.yOpen)));
+ }
+ for(let j=0;j<6;j++){
+   const ix=Math.min(candles.length-1,Math.round(j/5*(candles.length-1)));
+   const c=candles[ix];if(!c)continue;
+   g.fillStyle="#8093a5";
+   g.fillText(new Date(c.time).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),Math.max(4,c.x-20),h-10);
+ }
+ for(const [id,label,color] of [["riskEntry","ENTRY","#a7c4dc"],["riskStop","STOP","#ec9094"],["riskTarget","TARGET","#7cddbb"]]){
+   const raw=$(id).value.trim(),price=raw?Number(raw):NaN;
+   if(!Number.isFinite(price)||price<min||price>max)continue;
+   const yy=y(price);
+   g.save();g.strokeStyle=color;g.setLineDash([5,5]);g.beginPath();
+   g.moveTo(left,yy);g.lineTo(right,yy);g.stroke();g.restore();
+   g.fillStyle=color;g.fillText(label+" "+price,right-1,Math.max(top+8,Math.min(bottom-4,yy-4)));
+ }
+ if(chartHover!==null&&chartHover>=range.start&&chartHover<range.end){
+   const candle=candles[chartHover-range.start];
+   g.save();g.setLineDash([3,5]);g.strokeStyle="#7890a3";
+   g.beginPath();g.moveTo(candle.x,top);g.lineTo(candle.x,bottom);g.stroke();g.restore();
+   set("chartPointer",new Date(candle.time).toLocaleString()+" · O "+candle.open+
+       " H "+candle.high+" L "+candle.low+" C "+candle.close);
+ }else{
+   set("chartPointer",range.end===bars.length?"Latest bars · wheel zoom · drag pan":"Historical bars · wheel zoom · drag pan");
+ }
+}
+function chartFraction(clientX){
+ const rect=$("chart").getBoundingClientRect(),left=14,right=rect.width-70;
+ return Math.max(0,Math.min(1,(clientX-rect.left-left)/(right-left)));
+}
+const chartCanvas=$("chart");
+chartCanvas.addEventListener("wheel",e=>{
+ e.preventDefault();if(!bars.length)return;
+ if(e.shiftKey){
+   const range=currentViewport();
+   const delta=(e.deltaY>0?1:-1)*Math.max(1,Math.round(range.count*.15));
+   const next=globalThis.TraderChart.pan(bars.length,range.count,range.end,delta);
+   chartEnd=next.end===bars.length?null:next.end;paint();
+ }else{
+   zoomChart(e.deltaY<0?.83:1.2,chartFraction(e.clientX));
+ }
+},{passive:false});
+chartCanvas.addEventListener("pointerdown",e=>{
+ if(!bars.length)return;
+ chartDrag={startX:e.clientX,range:currentViewport()};
+ chartCanvas.setPointerCapture(e.pointerId);
+});
+chartCanvas.addEventListener("pointermove",e=>{
+ if(!bars.length||!chartMeta)return;
+ if(chartDrag){
+   const dragBars=(e.clientX-chartDrag.startX)/chartMeta.step;
+   const next=globalThis.TraderChart.pan(bars.length,chartDrag.range.count,chartDrag.range.end,dragBars);
+   chartEnd=next.end===bars.length?null:next.end;
+ }else{
+   const rect=chartCanvas.getBoundingClientRect();
+   chartHover=globalThis.TraderChart.hit(chartMeta.range,e.clientX-rect.left,chartMeta.left,chartMeta.right);
+ }
+ paint();
+});
+function finishDrag(){chartDrag=null}
+chartCanvas.addEventListener("pointerup",finishDrag);
+chartCanvas.addEventListener("pointercancel",finishDrag);
+chartCanvas.addEventListener("pointerleave",()=>{if(!chartDrag){chartHover=null;paint()}});
+$("account").onchange=async()=>{deskQuoteFresh=false;invalidateAccount("Account selection changed");selectedStream="";set("streamMarket","DISCONNECTED");
+set("streamAccount","DISCONNECTED");set("quoteLast","—");set("quoteSpread","—");
+set("quoteAge","No fresh quote");await account();await subscribeStream()};$("days").onchange=account;$("find").onclick=find;$("contract").onchange=async()=>{deskJournalData=null;renderJournal();deskQuoteFresh=false;showStructure(null);planRisk();await candles()};$("minutes").onchange=()=>{deskJournalData=null;renderJournal();showStructure(null);candles()};$("zin").onclick=()=>zoomChart(.83);$("zout").onclick=()=>zoomChart(1.2);$("tail").onclick=()=>{chartEnd=null;chartHover=null;paint()};$("refresh").onclick=async()=>{await account();await candles()};window.addEventListener("resize",paint);
+for(const id of ["riskSide","riskEntry","riskStop","riskTarget","riskQty","riskBudget","riskCap","riskFees","riskSlip"])
+  $(id).addEventListener("input",()=>{planRisk();if(["riskEntry","riskStop","riskTarget"].includes(id))paint()});
+$("deskDraft").addEventListener("click",()=>{
+ const meta=contractSpecs.get($("contract").value);
+ try{
+   const plan=globalThis.TraderDecision.draft(deskCurrent,latestStructure,meta);
+   $("riskSide").value=plan.side;
+   $("riskEntry").value=plan.entry;
+   $("riskStop").value=plan.stop;
+   $("riskTarget").value=plan.target;
+   $("riskWorksheet").open=true;planRisk();paint();
+   set("deskAIStatus","Illustrative ATR levels placed in the worksheet. Enter your own risk cap and check the plan.");
+   $("riskWorksheet").scrollIntoView({behavior:"smooth",block:"center"});
+ }catch(e){set("deskAIStatus",e.message)}
+});
+$("deskAI").addEventListener("click",()=>runDeskModel(true));
+$("riskUseClose").addEventListener("click",()=>{
+ if(!latestStructure||latestStructure.status!=="OBSERVATION_ONLY"||
+    latestStructure.completed_data_stale||latestStructure.gaps_in_last_20){
+   set("riskMessage","Latest completed candle missing, stale or gapped. Enter entry manually.");
+   return;
+ }
+ $("riskEntry").value=latestStructure.latest_complete_close;planRisk();
+});
+setInterval(async()=>{if(document.visibilityState==="visible"){await account();if($("contract").value)await candles()}},30000);setInterval(()=>{if(document.visibilityState==="visible")pollStream()},2500);
+(async()=>{try{const d=await(await fetch("/api/session",{cache:"no-store"})).json();token=d.token||"";deskModelAvailable=d.ollama?.reachable===true&&d.ollama?.model_available===true;renderDesk();const h=await get("/topstep/api/health");demoMode=h.synthetic===true;renderDesk();if(demoMode)$("demoWarning").hidden=false;if(!h.configured){fail("Set TOPSTEPX_USERNAME and TOPSTEPX_API_KEY locally before connecting. Do not paste keys into this page.");return}await accounts();await find()}catch(e){fail(e.message)}})();
+})();</script></body></html>

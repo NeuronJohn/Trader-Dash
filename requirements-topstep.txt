@@ -1,0 +1,2 @@
+websocket-client>=1.8,<2
+# tzdata is installed by Start-Topstep-Readonly.cmd when Windows needs the IANA Chicago zone.
