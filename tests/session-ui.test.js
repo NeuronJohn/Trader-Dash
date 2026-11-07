@@ -70,7 +70,7 @@ function createUI(fetchImpl){
   const window={matchMedia(){return {matches:false}},addEventListener(){},confirm(){return true}};
   const inner=script.slice(script.indexOf("(function(){")+"(function(){".length,script.lastIndexOf("})();"));
   const patched=inner.replace(/\n\s*start\(\);\s*$/,
-    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger,checkMarketStatus,fetchPracticeCandles,loadPracticeCandles,scanFxHistory,runFxResearch,renderFxResearch,focusFxSignal,fxFingerprint,revealFxReserve,loadExperimentRun}));');
+    '\nreturn start().then(()=>({S,resetDataset,runMesResearch,runMesScan,focusMesSignal,focusMesCase,visible,packet,capturePaperCase,reconcilePaperCases,renderPaperLedger,checkMarketStatus,fetchPracticeCandles,loadPracticeCandles,backfillPracticeHistory,scanFxHistory,runFxResearch,renderFxResearch,focusFxSignal,fxFingerprint,revealFxReserve,loadExperimentRun}));');
   assert.notEqual(inner,patched);
   const launch=new Function("document","window","globalThis","indexedDB","localStorage","devicePixelRatio",
     "requestAnimationFrame","ResizeObserver","setTimeout","clearTimeout","fetch",patched);
@@ -195,6 +195,10 @@ test("OANDA practice controls load provider receipts without leaking tokens or e
       ollama:{reachable:false,model_available:false,model:"none"}});
     if(url==="/api/market/status")return answer({ok:true,market:{provider:"OANDA practice only",
       configured:true,stored_candle_counts:{EUR_USD:2}}});
+    if(url==="/api/market/backfill")return answer({ok:true,market_receipt:{
+      symbol:"EUR_USD",source:"oanda-fxpractice",
+      requests:12,added:10000,augmented:12,conflicts:0
+    }});
     if(url==="/api/market/fetch")return answer({ok:true,market_receipt:{
       symbol:"EUR_USD",source:"oanda-fxpractice",receipt_id:"source-receipt-123",
       added:2,repeated:0,conflicts:0
@@ -223,6 +227,13 @@ test("OANDA practice controls load provider receipts without leaking tokens or e
   assert.equal(x.S.data.symbol,"EUR_USD");
   assert.equal(x.S.data.bars.length,2);
   assert.equal(x.S.data.bars[0].bidClose,1.10025);
+  await x.backfillPracticeHistory();
+  const backfill=observed.find(x=>x.url==="/api/market/backfill");
+  assert.equal(backfill.method,"POST");
+  assert.deepEqual(JSON.parse(backfill.body),{symbol:"EUR_USD",pages:12});
+  assert.equal(backfill.headers["X-Trader-Token"],"local-session-token");
+  assert.equal(observed.some(x=>/order|trade|position/i.test(x.url)),false);
+
   assert.equal(x.packet().source.kind,"oanda-fxpractice");
   x.nodes.mesConfirm.checked=true;
   await x.runMesResearch();
