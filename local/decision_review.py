@@ -68,6 +68,9 @@ def explain(evidence):
             r"\b(?:buy|sell|enter|execute|order|guarantee|sure thing)\b",value,re.I):
             raise ValueError("Assistant response made an unsupported numerical or trade claim")
         cleaned[field]=value.strip()
+    if evidence.get("source") == "SYNTHETIC_OFFLINE_FIXTURE" and \
+       "synthetic" not in " ".join(cleaned.values()).lower():
+        raise ValueError("Synthetic provenance must remain explicit")
     return cleaned
 
 
