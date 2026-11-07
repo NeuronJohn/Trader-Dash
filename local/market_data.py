@@ -287,8 +287,9 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 def fetch_practice_candles(symbol: str, count: int, token: str) -> tuple[dict,str,str,str]:
     if symbol not in ALLOWED_SYMBOLS or type(count) is not int or not 10 <= count <= MAX_FETCH:
         raise MarketError("Only allowed FX pairs and 10–1000 candles are permitted")
-    if not isinstance(token,str) or not token or len(token)>4096:
-        raise MarketError("Set OANDA_PRACTICE_TOKEN in the local server environment")
+    if (not isinstance(token,str) or not token or len(token)>4096 or
+            any(ord(ch)<33 or ord(ch)>126 for ch in token)):
+        raise MarketError("Set a valid OANDA_PRACTICE_TOKEN in the local server environment")
     params=urllib.parse.urlencode({
         "granularity":"M5","price":"MBA","count":count,"smooth":"false"
     })
