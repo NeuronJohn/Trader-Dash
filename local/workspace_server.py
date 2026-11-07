@@ -391,8 +391,11 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(content)
         elif pathname in ("/session-engine.js", "/prototype/session-engine.js",
-                          "/paper-ledger.js", "/prototype/paper-ledger.js"):
-            name = "paper-ledger.js" if "paper-ledger.js" in pathname else "session-engine.js"
+                          "/paper-ledger.js", "/prototype/paper-ledger.js",
+                          "/fx-research.js", "/prototype/fx-research.js"):
+            name = ("fx-research.js" if "fx-research.js" in pathname else
+                    "paper-ledger.js" if "paper-ledger.js" in pathname else
+                    "session-engine.js")
             path = ROOT / "prototype" / name
             if not path.is_file():
                 self._reply(404, {"ok": False, "error": "Research engine unavailable"})
